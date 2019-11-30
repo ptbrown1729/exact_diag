@@ -1,0 +1,469 @@
+\documentclass{article}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{amssymb,amsmath,amsthm}
+
+\newcommand{\ensavg}[1]{\left< #1 \right>} %ensemble average
+\newcommand{\ket}[1]{\left| #1 \right>} % for Dirac bras
+\newcommand{\bra}[1]{\left< #1 \right|} % for Dirac kets
+\newcommand{\braket}[2]{\left< #1 \vphantom{#2} \right|
+ \left. #2 \vphantom{#1} \right>} % for Dirac brackets
+\newcommand{\matrixel}[3]{\left< #1 \vphantom{#2#3} \right|
+ #2 \left| #3 \vphantom{#1#2} \right>} % for Dirac matrix elements
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\author{Peter Brown}
+\title{Symmetries and Exact Diagonalization}
+
+\begin{document}
+
+\maketitle
+
+Suppose we have a cluster of $N$ sites at positions $(X_i,Y_i)$, $i \in \{0,...N-1\}$ which lie on a periodic lattice and some lattice Hamiltonian describing spins, bosons or fermions. We are interested in some property of this Hamiltonian, such as the ground state energy, conductivity, or correlations between different sites. One approach to determining these properties is to write the Hamiltonian down in a certain basis and then diagonalize it on a computer. If the cluster of sites has a discrete spatial symmetry (such as translation, rotation, reflection, or inversion symmetry), we can take advantage of this to reduce the size of the matrices we need to diagonalize.
+
+In the simplest case, suppose we have a symmetry represented by an operator $R$ such that $R^m = \mathbb{I}$. One example of this situation is four-fold rotation on a square lattice.  Then we have $[H,R] = 0$, which implies $H$ and $R$ are simultaneously diagonalizable. In fact, if we choose a basis such that $R$ is diagonal, $H$ is guaranteed to be block diagonal. We will find that such a basis is easy to construct once we have explicitly written down $R$.
+
+We will also encounter more complicated cases where we have several distinct symmetry operations which do not commute. For example, rotation and reflection symmetry on a square lattice. This situation will naturally lead us towards discussing the symmetry group of a cluster. We will find that we can still find a basis which respects our symmetry group and in which $H$ is block diagonal. The blocks of $H$ are associated with different irreducible representations of the symmetry group.
+
+
+\section{Symmetry Transformations}
+Suppose our transformation acts on real space coordinates as a linear operator, $T$.
+\begin{equation}
+\begin{pmatrix}
+X^t_i \\ Y^t_i 
+\end{pmatrix}
+=
+T
+\begin{pmatrix}
+X_i \\ Y_i
+\end{pmatrix}.
+\end{equation}
+
+We can also think about this transformation as a function acting on site indices, $f_t(i)$, where $f_t(i)=j$ if and only if $X^t_i = X_j$ and $Y^t_i = Y_j$.
+
+ In more mathematical language, we would say that $f_t$ is a bijection from the set $\{0,...,n-1\}$ to itself, and hence a member of $S_n$, the $n$th symmetric group. Often functions like this are written
+\begin{equation}
+\begin{pmatrix}
+0 & 1 & ... & n-1 \\
+f_t(0) & f_t(1) & ... & f_t(n-1)
+\end{pmatrix}
+.\end{equation}
+
+For example, suppose we have a collection of four sites arranged in a square, numbered $0,1,2,3$ going from the left to right and top to bottom. Suppose that $T$ is a counterclockwise transformation by $\pi/2$ radians. We would write this
+\begin{equation*}
+f_t = 
+\begin{pmatrix}
+0 & 1 & 2 & 3 \\
+2 & 0 & 3 & 1
+\end{pmatrix}.
+\end{equation*}
+
+We are interested in the \emph{cycles} of sites that transform into one another as we apply our transformation repeatedly. Let a cycle be an ordered list $c = (i_0,i_1,...i_{n-1})$ where $i_k = f_t(i_{k-1})$, $f_t(i_{n_1}) = i_0$, and $f_t(j) = j$ for any $j$ which doesn't appear in the cycle. We can write our transformation as a collection of disjoint cycles. In the example above, there is only one cycle, $f_t = (0,2,3,1)$. 
+
+Consider a $3 \times 3$ square, where
+\begin{equation*}
+f_t = 
+\begin{pmatrix}
+0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
+6 & 3 & 0 & 7 & 4 & 1 & 8 & 5 & 2
+\end{pmatrix}.
+\end{equation*}
+
+This transformation has three cycles, so we can think roughly
+\begin{equation*}
+f_t = (0,6,8,2) \times (1,3,7,5) \times (4).
+\end{equation*}
+
+We can think of a cycle of length $2$ as a \emph{swap} operation, because it exchanges two sites. Any cycle can be conveniently written as a product of swap operations.
+
+\begin{theorem}[Cycles decomposed to swap operators]
+Any cycle can be written as a collection of two site swap operators, according to
+\begin{equation}
+(i_0,i_1,...i_{n-1}) = (i_0,i_1) \times (i_1,i_2) \times ... \times (i_{n-3}, i_{n-2}) \times (i_{n-2}, i_{n-1})
+\end{equation} 
+For example, we can write $(0,1,2) = (0,1) \times (1,2)$.
+\end{theorem}
+
+\begin{theorem}[Swap operators decomposed to nearest-nieghbor swap operators]
+We can check that
+\begin{eqnarray}
+(n,n+m) &=& (n,n+1) \times (n+1,n+2) \times ... \\
+&&\times (n+m-1,n+m) \times (n+m-2,n+m-1) \times ...\\
+&& \times (n,n+1).
+\end{eqnarray}
+\end{theorem}
+
+At this point, we want to start thinking about how the transformation operator $R_T$ related to this transform $T$ operates on our quantum states. 
+Now we construct $R$ by decomposing our cycles into swap operators, our swap operators into nearest neighbor swap operators, and using the expression we found for nearest neighbor swap operators. Suppose our transformation is composed of $N$ cycles $c_n$, where the $n$th cycle has length $m_n$, then we can write
+
+\begin{eqnarray}
+f_t = \prod_{n=0}^N c_n &=&\prod_{n=0}^N (i^n_0,i^n_1,...,i^n_{m_n}) \\
+&=& \prod_{n=0}^N \left[(i^n_0,i^n_1) \times ... \times (i^n_{m_n-1} i^n_{m_n})\right]\\
+&=& \prod_{n=0}^N \left \{\left[(i^n_0,i^n_0+1)\times ... \times (i^n_0,i^n_0+1)\right] \times \left[ (i^n_1,i^n_1+1)\times ... \times (i^n_1,i^n_1+1)\right] \times ... \right\} \\
+R_T &=& \prod_{n=0}^N \left\{\left[\text{Swap}(i^n_0,i^n_0+1) \times ... \times \text{Swap}(i^n_0,i^n_0+1)\right] \times ... \right\}.
+\end{eqnarray}
+
+I later realized it is possible to write down a general formula for swapping states $i$ and $j$ directly, without doing the final decomposition into nearest neighbor swap operators. In this case, the second to last expression in the above expansion can be used directly to calculate the transformation matrix.
+
+\section{Quantum Swap Operators}
+
+\subsection{Spin Systems}
+Suppose we have a single spin with basis states $\{\ket{\uparrow},\ket{\downarrow}\}$. Define the spin operators according to 
+\begin{equation}
+S^+ = 
+\begin{pmatrix}
+0 & 1\\
+0 & 0
+\end{pmatrix}, \
+S^- =
+\begin{pmatrix}
+0 & 0\\
+1 & 0
+\end{pmatrix}, \
+S^z =
+\begin{pmatrix}
+1 & 0\\
+0 & -1
+\end{pmatrix}.
+\end{equation}
+
+Consider a system of two spins in the tensor product ordered basis $\{\ket{\uparrow \uparrow},\ket{\uparrow \downarrow},\ket{\downarrow \uparrow},\ket{\downarrow \downarrow}\}$. The operator that swaps these two spins can be written by inspections
+\begin{equation}
+\text{Swap} =
+\begin{pmatrix}
+1 & 0 & 0 & 0\\
+0 & 0 & 1 & 0\\
+0 & 1 & 0 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix} = S^+ \otimes S^- + S^- \otimes S^+ + \frac{1}{2} \left(\mathbb{I}_{4 \times 4} + S^z \otimes S^z \right),
+\end{equation}
+
+
+which leads us to the swap operator for sites $m$ and $m+1$ in a system of $n$ spins
+\begin{eqnarray}
+\text{Swap$(m,m+1)$} &=& \mathbb{I}_1 \otimes ... \otimes \mathbb{I}_{m-1} \otimes \text{Swap} \otimes \mathbb{I}_{m+2} \otimes ... \otimes \mathbb{I}_{n}\\
+\text{Swap$(i,j)$} &=& S^+_i S^-_j + S^-_i S^+_j + \frac{1}{2} \left(\mathbb{I} + S^z_i S^z_j \right).
+\end{eqnarray}
+
+\subsection{Bosons}
+Use tensor product basis of Fock states. So the basis for a single site is $\{\ket{0},\ket{1},...\ket{N}\}$ where we truncate to at most $N$ bosons in the same state. For two sites, the basis is ordered 
+\begin{equation}
+\{\ket{0}\otimes \ket{0}, \ket{0}\otimes\ket{1},...\ket{0}\otimes\ket{N},\ket{1}\otimes\ket{1},...\ket{N}\otimes\ket{N}\}.
+\end{equation}
+
+TODO: What is swap operator?
+
+\subsection{Fermions}
+In the Fermionic case, specifying the number of particles in a certain state does not fully specify that state. This is due to the Fermionic statistics, $\{c_{k\sigma},c_{k'\sigma'}\} = 0$, which enforce a minus sign when we flip two spins. So, for example, $c^\dag_{2\uparrow}c^\dag_{1\downarrow} \ket{0} = -c^\dag_{1\downarrow} c^\dag_{2\uparrow} \ket{0}$.
+
+There is still a lot of utility in using binary numbers of express our states, but we must additionally choose an ordering for our Fermion operators. One natural choice is to place our Fermion operators in order of the site number, with the highest number to the left. Using this convention, we would say the binary number $1010$ specifies the state $c_3^\dag c_1^\dag \ket{0}$.
+
+It is instructive to consider first the case of a single spinless fermion in the basis $\{\ket{0},c^\dag \ket{0}\}$. In this space we have operators
+\begin{equation}
+c^\dag =
+\begin{pmatrix}
+0 & 0\\
+1 & 0
+\end{pmatrix}, \
+c =
+\begin{pmatrix}
+0 & 1\\
+0 & 0
+\end{pmatrix}, \ \text{ and }
+P =
+\begin{pmatrix}
+1 & 0\\
+0 & -1
+\end{pmatrix},
+\end{equation}
+where $P$ measures the parity of the number of Fermions in a given state.
+
+Suppose that we want to consider a space of two fermions. Now we must choose a two Fermion basis. One easy way of doing this is defining a normal ordering of our fermions operators. Once we agree on a normal ordering, we need only specify the number of Fermions on each site as a binary number. Let us first label our fermionic creation operators with integers, and order them by placing operators with higher indices further to the left. For two Fermions we have basis $\{\ket{0},c^\dag_2 \ket{0},c^\dag_1 \ket{0},c^\dag_2 c^\dag_1 \ket{0}\}$. The order of $c^\dag_2$ and $c^\dag_1$ is inspired by the natural ordering of tensor product states. Explicitly, our basis is
+\begin{eqnarray}
+\mathcal{B} &=& \{00, 01, 10, 11\} \\
+&=& \{\ket{0}, c_2^\dag \ket{0}, c_1^\dag \ket{0}, c_2^\dag c_1^\dag \ket{0} \}
+\end{eqnarray}
+In this two Fermion basis our operators are
+
+\begin{eqnarray}
+c^\dag_1 &=&
+\begin{pmatrix}
+0 & 0 & 0 & 0\\
+0 & 0 & 0 & 0\\
+1 & 0 & 0 & 0\\
+0 & -1 & 0 & 0
+\end{pmatrix}
+= c^\dag \otimes P\\
+c^\dag_2 &=&
+\begin{pmatrix}
+0 & 0 & 0 & 0\\
+1 & 0 & 0 & 0\\
+0 & 0 & 0 & 0\\
+0 & 0 & 1 & 0
+\end{pmatrix}
+= \mathbb{I}_{2\times2} \otimes c^\dag\\
+P_{1 \otimes 2} &=&
+\begin{pmatrix}
+1 & 0 & 0 & 0\\
+0 & -1 & 0 & 0\\
+0 & 0 & -1 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix}
+= P \otimes P\\
+\text{Swap}(2,1) &=&
+\begin{pmatrix}
+1 & 0 & 0 & 0\\
+0 & 0 & 1 & 0\\
+0 & 1 & 0 & 0\\
+0 & 0 & 0 & -1
+\end{pmatrix}
+= c^\dag_2 c_1 - c_2 c^\dag_1 + \left(\mathbb{I} - c^\dag_1 c_1 - c^\dag_2 c_2\right).
+\end{eqnarray}
+
+Generalizing these results to a chain of $N$ fermions, we find
+
+\begin{eqnarray}
+\mathcal{B} &=& \{0...0, \ 0...01, \ 0...010, \ 0...011, \ ..., \ 1...100, \ 1...101, \ 1...110, \ 1...1 \} \\
+&=& \{\ket{0}, \ c^\dag_N \ket{0}, \ c^\dag_{N-1} \ket{0}, \ c^\dag_{N} c^\dag_{N-1} \ket{0}, \ c^\dag_{N-3}\ \ket{0}, \ c^\dag_N c^\dag_{N-3} \ket{0} ,\\
+&& ...,\ c^\dag_N...c^\dag_3 \ket{0}, \ c^\dag_N...c^\dag_3 c^\dag_1 \ket{0},\ \ c^\dag_N...c^\dag_3 c^\dag_2 \ket{0}, \ c^\dag_N...c^\dag_1 \ket{0}\} \nonumber \\
+c^\dag_n &=& \mathbb{I}_{2\times2}\otimes ... \otimes \mathbb{I}_{2\times2} \otimes c^\dag \otimes P \otimes... \otimes P\\
+\text{Swap}(i,i+1) &=& \mathbb{I}_{2\times2} \otimes ... \otimes \mathbb{I}_{2\times2} \otimes \text{Swap}(1,2) \otimes \mathbb{I}_{2\times2} \otimes ... \otimes \mathbb{I}_{2\times2}\\
+\text{Swap}(i,j) &=& c^\dag_i c_j - c_i c^\dag_j + \left(\mathbb{I} - c^\dag_i c_i - c^\dag_j c_j \right)
+\end{eqnarray}
+where we have $n-1$ identity matrices to the left of $c^\dag$, $N-n$ parity matrices $P$ to the right of $c^\dag$,and $i>j$. 
+
+If we instead choose to order our Fermion states with \emph{lower} states to the left, we would find $c^\dag$ as above, but with the identity and parity operators swapped in the tensor product.
+
+\begin{eqnarray}
+\mathcal{B} &=& \{0...0, \ 0...01, \ 0...010, \ 0...011, \ ..., \ 1...100, \ 1...101, \ 1...110, \ 1...1 \} \\
+&=& \{\ket{0}, \ c^\dag_N \ket{0}, \ c^\dag_{N-1} \ket{0}, \ c^\dag_{N-1} c^\dag_{N} \ket{0}, \ c^\dag_{N-3}\ \ket{0}, \ c^\dag_{N-3} c^\dag_{N} \ket{0} ,\\
+&& ...,\ c^\dag_1...c^\dag_{N-2} \ket{0}, \ c^\dag_1...c^\dag_{N-2} c^\dag_N \ket{0},\ \ c^\dag_1...c^\dag_{N-2} c^\dag_{N-1} \ket{0}, \ c^\dag_1...c^\dag_N \ket{0}\} \nonumber \\
+c^\dag_n &=& P\otimes ... \otimes P \otimes c^\dag \otimes \mathbb{I}_{2\times2} \otimes... \otimes \mathbb{I}_{2\times2}\\
+\text{Swap}(i,i+1) &=& \mathbb{I}_{2\times2} \otimes ... \otimes \mathbb{I}_{2\times2} \otimes \text{Swap}(1,2) \otimes \mathbb{I}_{2\times2} \otimes ... \otimes \mathbb{I}_{2\times2}\\
+\text{Swap}(i,j) &=& c^\dag_i c_j - c_i c^\dag_j + \left(\mathbb{I} - c^\dag_i c_i - c^\dag_j c_j \right).
+\end{eqnarray}
+
+Now we want to consider the situation where we have $N$ sites and two spin states. In the spinless case we signified a basis state with a single binary number. We are free to do the same in the spinful case, but we have some freedom as to how we construct this number. One option is to produce on binary number for the spin up occupations, another for the spin downs, and two concatenate these to form a single composite number.
+
+Using a single binary number to describe the occupations of the spinful system suggests that we are regarding it as a spinless system having twice the number of sites as before ($2N$ instead of $N$). The spin indices can be thought of extra site indices because at the anti-commutator level the two behave in the same way. If we specify a mapping from our two indices (spin and site) onto a single logical index we can construct creation operators and swap operators as in the spinless case. As in that case, we must also choose how to order the creation operators in our basis states.
+
+We can define one normal ordering for creation operators by placing any up-spins to the left of any down-spins, and then higher site indices to the left of lower indices of the same spin state, e.g. $c^\dag_{5\uparrow}c^\dag_{3\uparrow}c^\dag_{2\uparrow}c^\dag_{1\uparrow}c^\dag_{2\downarrow}c^\dag_{1\downarrow} \ket{0}$. This ordering of creation operators suggests we regard all spin-up sites as having a larger index than any spin down site. This suggests we take our two-index to one-index mapping to be $(i, \uparrow) \rightarrow i + N$ and $(i, \downarrow) \rightarrow i$. This amounts to writing $c^\dag_{i\uparrow} = \tilde c^\dag_{N+i}$ and $c^\dag_{i\downarrow} = \tilde c^\dag_i$, where $\tilde c^\dag$ our the operators in the $2N$ site space. Using these two conventions, we find
+\begin{eqnarray}
+\mathcal{B} &=& \{0...0, \ 0...01, \ 0...010, \ 0...011, \ ..., \ 1...100, \ 1...101, \ 1...110, \ 1...1 \}\\
+&=& \{\ket{0},\ c^\dag_{N\uparrow} \ket{0}, \ c^\dag_{N-1\uparrow} \ket{0}, c^\dag_{N\uparrow} c^\dag_{N-1\uparrow} \ket{0},\ ...,\\
+&& c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{3\downarrow} \ket{0},\ c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{3\downarrow} c^\dag_{1\downarrow} \ket{0}, \nonumber \\
+&& c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{3\downarrow}c^\dag_{2\downarrow} \ket{0}, c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{1\downarrow} \ket{0} \} \nonumber \\
+c^\dag_{i\uparrow} &=& \mathbb{I}_{2^{N+i-1}\times2^{N+i-1}}\otimes c^\dag \otimes P_{2^{N-i}\times2^{N-i}}\\
+c^\dag_{i\downarrow} &=& \mathbb{I}_{2^{i-1}\times2^{i-1}} \otimes c^\dag \otimes P_{2^{2N-i}\times2^{2N-i}}\\
+\text{Swap}(i,j) &=&\text{Swap}(N+i,N+j) \ \times \ \text{Swap}(i,j)
+\end{eqnarray}
+
+We can define another normal ordering by placing higher site indices to the left, and then spin up indices to the left of spin down indices for the same site, e.g. $c^\dag_{5\uparrow}c^\dag_{3\uparrow}c^\dag_{2\uparrow}c^\dag_{2\downarrow}c^\dag_{1\uparrow}c^\dag_{1\downarrow} \ket{0}$. This again suggests a mapping from two-site indices to one-site indices, $(i, \uparrow) \rightarrow 2i$, $(i, \downarrow) \rightarrow 2i - 1$. This amounts to writing $c^\dag_{i\uparrow} = \tilde c^\dag_{2i}$ and $c^\dag_{i\downarrow} = \tilde c^\dag_{2i-1}$. With this ordering of fermion operators and choice of index mapping we have
+\begin{eqnarray}
+\mathcal{B} &=& \{0...0, \ 0...01, \ 0...010, \ 0...011, \ ..., \ 1...100, \ 1...101, \ 1...110, \ 1...1 \}\\
+&=& \{\ket{0},...\}\\
+c^\dag_{i\uparrow} &=& \mathbb{I}_{2^{2i-1}\times2^{2i-1}}\otimes c^\dag \otimes P_{2^{2N-2i}\times2^{2N-2i}}\\
+c^\dag_{i\downarrow} &=& \mathbb{I}_{2^{2i-2}\times2^{2i-2}} \otimes c^\dag \otimes P_{2^{2N-2i-1}\times2^{2N-2i-1}}\\
+\text{Swap}(i,j) &=&\text{Swap}(2i-1,2j-1) \ \times \ \text{Swap}(2i,2j)
+\end{eqnarray}
+
+What happens if we instead reverse our normal ordering so that \emph{smaller} numbers go to the left of larger number? Then we have to swap the order of $P$ and $\mathbb{I}$ in our tensor products, as we did in the spinless fermion case.
+
+We are free to make many other choices of index mappings and creation operator orderings. We could even take the spin-ordering where we took all spin-ups to the left of any spin-downs but choose the mapping $(i, \uparrow) \rightarrow 2i$, $(i, \downarrow) \rightarrow 2i - 1$. But if we make this choice, it is not clear how to map our system back to the spinless fermions. We would need to do more work to find the representations of our creations operators.
+
+For a Fermion system with $N$ sites and $s$ spin states, the Hilbert space scales as $2^{sN}$. In many systems of interest, including Hubbard systems, the total number in each spin state is conserved. If we restrict our attention to the subspace with $N_s$ Fermions in spin state $s$, then the size of the state space is reduced to 
+\begin{equation}
+\prod_s{N\choose{N_s}} = \prod_s \frac{N!}{N_s!(N-N_s)!} < 2^{sN}.
+\end{equation}
+
+We would like to write matrix elements for the operators $c^\dag_i c_j$ in this space (clearly the matrix elements for $c^\dag_i$ and $c_j$ on their own are zero). However, this is not a neat tensor product expression. To the best of my knowledge, it requires doing many loops. This can be made efficient in a low level language (e.g. C), but is slow in Matlab or Python.
+
+% For an introduction to Fermi Hubbard exact diagonalization techniques see \href{}{here}.
+
+\section{Block Diagonalizing $H$}
+
+\subsection{Cyclic Symmetry Groups (A Test Case)}
+
+\begin{theorem}[Eigenstates of $R$]
+\label{cyclic-eigenstates}
+Let $z = e^{2\pi i/m}$, then $\{z^0,...z^{m-1}\}$ are the mth roots of unity. Suppose $\ket{\psi}$ is any state that is not an eigenstate of $R$, then we can construct $\ket{\psi}_k$, which is either an eigenstate of $R$ with eigenvalue $z^k$, or $0$: 
+\begin{eqnarray}
+\ket{\psi}_k &=& \sum_{n=0}^{m-1} R^n e^{-i \frac{2\pi}{m}kn} \ket{\psi} \\
+&=& R_k \ket{\psi}\\
+R_k &=& \sum_{n=0}^{m-1} R^n e^{-i \frac{2\pi}{m}kn}\\
+R \ket{\psi}_k &=& e^{i \frac{2\pi}{m}k} \ket{\psi}_k.
+\end{eqnarray}
+But properly normalizing $\ket{\psi}_k$ for a general state is challenging.
+\end{theorem}
+
+\begin{theorem}[$R$ and minimum cycle length]
+Suppose $\ket{\psi}$ is an arbitrary state, then $R^l \ket{\psi} = \ket{\psi}$ for some values of $l$. The smallest value of $l$ that satisfies this relationship must be a divisor of $m$. 
+
+For example, if $m=4$, then for any state we pick, either $R \ket{\psi} = \ket{\psi}$, $R^2 \ket{\psi} =   \ket{\psi}$, or $R^4 \ket{\psi} = \ket{\psi}$. We can split our space into states that are invariant under $R$, states that transform back to themselves after two rotations, and states that only transform back to themselves after 4 rotations.
+
+For $m=5$, we need only consider $R \ket{\psi} = \ket{\psi}$ and $R^5 \ket{\psi} =   \ket{\psi}$.
+\end{theorem}
+
+% \begin{theorem}[Normalizing $\ket{\psi}_k$]
+% Suppose $\ket{\psi}$ is an arbitrary state and $l$ is the smallest number such that $R^l \ket{\psi} = \ket{\psi}$. As we saw before, this means $l|m$, so suppose we have integer $p$ such that $pl = m$. Then we have,
+% \[
+% _k\braket{\psi}{\psi}_k = p^2l,
+% \]
+% or our normalized eigenvector is 
+% \[\frac{1}{p\sqrt{l}} \ket{\psi}_k
+% \]
+% \end{theorem}
+% \begin{proof}
+% Using the fact $R^l \ket{\psi} = \ket{\psi}$ we have
+% \[
+% \ket{\psi}_k = \sum_{n=0}^{l-1}\left(\sum_{j = 0}^{p-1} e^{-i \frac{2\pi}{m}k(n+jl)}\right) R^n\ket{\psi}
+% \]
+% \end{proof}
+
+\begin{theorem}[Projecting onto subspaces]
+\label{proj}
+Suppose that we have our initial basis for the full space $\ket{\psi_j}$ with $j = 1,...,N$ and a basis $\ket{\psi^k_i}$ with $i = 1,...,M$ for the subspace of eigenstates of $R$ with eigenvalue $e^{i \frac{2\pi}{m}k}$. $M$ is significantly smaller than $N$ in general. We would like to find the operator $P$ which projects a general state to our symmetrized basis. The operator $R_k$ is already very close to this, but there are three difficulties. The first is that $R_k$ is not normalized. The second is that $R_k$ contains duplicate columns, so although it projects any arbitrary state to the correct subspace, it is not written in the correct basis. The third is that $R_k$ contains columns that are all zeros.
+
+These issues are easily remedied. The unique, non-zero columns of $R_k$ are exactly the basis vectors $\ket{\psi^k_i}$. Construct $\tilde{R}_k$ from $R_k$ by removing duplicate columns of $R_k$. If a given column is duplicated, we keep only the first instance. Thus, $\tilde{R}_k$ is an $N \times M$ matrix. Next, we must normalize $\tilde{R}_k$. To this end, define a diagonal matrix by 
+\begin{equation}
+N_{ii} = 1/\sqrt{\sum_j \tilde{R_k}_{ji} \tilde{R_k}_{ji}*}
+\end{equation}
+, which is the norm of the $i$th column of $\tilde{R}_k$. Then our projection matrix is
+\begin{equation}
+P_k = N \tilde{R}_k.
+\end{equation}
+
+As usual, the Hamiltonian projected on this subspace is $P H P^\dag$.
+
+\end{theorem}
+
+\subsection{General Symmetry Groups}
+The approach of the previous section can be cast in the language of representation theory. This is a significant step up in mathematical machinery, but it allows one to handle more general symmetry groups, in particular symmetry groups which contain several non-commuting symmetry operations (such as reflections and rotation). We will see that the previous section essentially constructed the irreducible representations of the cyclic group, $C_n$, and exploited the orthogonality of irreducible representations. (This approach is described \href{http://www.phys.hawaii.edu/~yepez/Spring2013/lectures/Lecture8_Hubbard_Model_Notes.pdf}{here} in more detail.)
+
+\begin{definition}[Representation]
+A representation is a map from a group $G$ to a set of invertible $n$-dimensional matrices which preserves the group operation
+\begin{eqnarray}
+M &:& G \rightarrow \text{GL}(n, \mathbb{R})\\
+M(g_1 g_2) &=& M(g_1) M(g_2).
+\end{eqnarray}
+
+Here $\text{GL}(n, \mathbb{R})$ is the set of invertible $n$-dimensional matrices, which is called the \emph{general-linear group}.
+\end{definition}
+
+\begin{theorem}[Block Diagonalizing Hamiltonian]
+\label{proj-props}
+In general, the technique for block diagonalizing a Hamiltonian is to find a set of projector operators, $\{P_i\}$, satisfying the following
+\begin{enumerate}
+\item $\sum_i P_i = \mathbb{I}$
+\item $P_i P_j = \delta_{ij} P_i$
+\item $P_i \mathcal{H} P_j^t = 0, \ i \neq j$
+\end{enumerate}
+\end{theorem}
+
+\begin{theorem}[Projectors from Irreducible Representations]
+Suppose that our Hamiltonian has some discrete symmetry group $G = \{g_1, ... g_n\}$ with associated operators $M(g_i) = M_i$ that implement each symmetry operation on our Hamiltonian, i.e. $[M_i,\mathcal{H}] = 0$.
+
+So, for example if we have a square lattice, then this has symmetry group $G = D_4$ which the Dihedral group of index 4, which has 8 elements. $D_4 = \{e, R, R^2 R^3, \sigma_v, R\sigma_v, R^2\sigma_v,R^3\sigma_v\}$, where $e$ is the identity, $R$ represents counterclockwise rotation, and $\sigma_v$ represents reflection about a vertical line. We can implement the matrices $M(R)$ and $M(\sigma_v)$ using the techniques described above.
+
+Any linear combination of symmetry matrices commutes with the Hamiltonian, and we can create a projector from this operator using the same technique as theorem \ref{proj}. That is, suppose we define symmetry operator
+\begin{equation}
+S = \sum_{g \in G} c_g M(g)
+\end{equation}
+
+then we get $\tilde S$ by zero columns and duplicate columns from $S$. Finally we normalize $\tilde S$ according to
+\begin{equation}
+N_{ij} = 1/\sqrt{\sum_{j} S_{ji} S_{ji}*}
+\end{equation}
+and define the projector
+\begin{equation}
+P = N \tilde S.
+\end{equation}
+
+Now, we would like to construct a class of these projectors satisfying the properties of theorem \ref{proj-props}. The main challenge is to figure out how many possible orthogonal projectors we can make. And the answer is provided by representation theory and in particular the concept of irreducible representations of a group.
+
+We can partition a group into a set of \emph{conjugacy classes}. We say that two elements $g_1,g_2 \in G$ are in the same conjugacy class if and only if there is a third element $h \in G$ such that $h g_1 h^{-1} = g_2$. Further, for a given conjugacy class and a given representation (i.e. a choice of matrices $M(g)$ representing our group), we define the \emph{character} of any element by
+\begin{equation}
+\chi_g = \text{Tr}(M(g)).
+\end{equation}
+From the cyclical property of the trace, we see that for any two elements in the same conjugacy class
+\begin{equation}
+\chi_{g_2} = \text{Tr}(g_2) = \text{Tr}(hg_1h^{-1}) =\text{Tr}(g_1) = \chi_{g_1}.
+\end{equation}
+
+For the group $D_4$ that we described above, the conjugacy classes are 
+\begin{equation}
+\{e\}, \{R, R^3\},\{R^2\}, \{\sigma_v, R^2 \sigma_v\}, \{R \sigma_v, R^3 \sigma_v\}
+\end{equation}
+
+Although it is not obvious from what I've described here, the set of characters of a group representation are in some sense a complete characterization of that representation. This is why irreducible representations are typically expressed in terms of a \emph{character table}. This table lists all possible choices of characters for each conjugacy class for all irreducible representations of a given group. Each row represents a single irreducible representation, and each column represents a single conjugacy class. 
+
+For example, the character table for $D_4$ is 
+
+\begin{equation}
+\begin{bmatrix}
+& \{e\} & \{R, R^3\} & \{R^2\} & \{\sigma_v, R^2 \sigma_v\} & \{R \sigma_v, R^3 \sigma_v\}\\
+A_1 & 1 & 1 & 1 & 1 & 1\\
+A_2 & 1 & 1 &1 & -1 & 1\\
+B_1 & 1 & -1 & 1 & 1 & -1\\
+B_2 & 1 & -1 & 1 & -1 & 1\\
+E & 2 & 0 & - 2 & 0 & 0
+\end{bmatrix}
+\end{equation}
+
+Now, the different irreducible representations of $G$ have the property that they are orthogonal. Therefore, if define symmetry operators for each irreducible representation $\alpha = A_1, A_2, ...$ according to
+\begin{equation}
+S^{\alpha} = \sum_g \chi_g(\alpha) M^\alpha(g)
+\end{equation}
+
+then we are guaranteed the orthogonality property from theorem \ref{proj-props}.
+
+In theorem \ref{cyclic-eigenstates} we essentially constructed the character table for a cyclic group $\mathbb{Z}_n$. Restating our findings in this new language, we found that every element was its own conjugacy class, and that the for the $k$th representation $A_k$ ($k \in \{0,...n_1\}$) the character of the $m$th element, $g = R^m$, was $\chi_{R^m} = e^{-i \frac{2\pi}{n} km}$.
+
+For a group with both rotational and translational symmetry, the full symmetry group is the semi-direct product of a point group (such as $D_4$ for this example) and the spatial translation group ($\mathbb{Z}_n \oplus \mathbb{Z}_n$ for an $n \times n$ square lattice). We would write this 
+\begin{equation}
+G = (\mathbb{Z}_n \oplus \mathbb{Z}_n) \rtimes D_4
+\end{equation}
+
+which for $n=4$ is a group with 128 elements.
+
+There is an algorithm for calculating character tables called \emph{Burnside's Algorithm}, which has been implemented in \href{https://www.gap-system.org/}{GAP (Groups, Algorithms, Programming - a System for Computational Discrete Algebra)}.
+
+\end{theorem}
+
+To diagonalize our Hamiltonian efficiently we are always interested in producing as small diagonal blocks as possible. In some cases, the full symmetry group does not produce the smallest blocks. Indeed, when working with a lattice with $D_4$ symmetry, the subspace corresponding to the two dimensional representation (labeled $E$ above) is much larger than the others (roughly half the dimension of the full space). Considering only the rotational symmetry, we have the cyclic symmetry group $\mathbb{Z}_4$, and this produces four blocks of roughly equal dimension.
+
+\section{Fermi-Hubbard}
+
+\begin{theorem}
+Suppose we have a hopping Hamiltonian which is the same for each spin state. We will work with the two-spin basis we defined earlier, and the ``spinless'' fermions basis for each individual spin state,
+\begin{eqnarray*}
+\mathcal{B}_2 &=& \{ c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{3\downarrow} \ket{0},\ c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{3\downarrow} c^\dag_{1\downarrow} \ket{0}, \nonumber \\
+&& c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{3\downarrow}c^\dag_{2\downarrow} \ket{0}, c^\dag_{N\uparrow}...c^\dag_{1\uparrow}c^\dag_{N\downarrow}...c^\dag_{1\downarrow} \ket{0} \} \nonumber\\
+\mathcal{B}_\sigma &=& \{\ket{0}, \ c^\dag_{N\sigma} \ket{0}, \ c^\dag_{N-1\sigma} \ket{0}, \ c^\dag_{N\sigma} c^\dag_{N-1\sigma} \ket{0}, \ c^\dag_{N-3\sigma}\ \ket{0}, \ c^\dag_{N\sigma} c^\dag_{N-3\sigma} \ket{0} ,\\
+&& ...,\ c^\dag_{N\sigma}...c^\dag_{3\sigma} \ket{0}, \ c^\dag_{N\sigma}...c^\dag_{3\sigma} c^\dag_{1\sigma} \ket{0},\ \ c^\dag_{N\sigma}...c^\dag_{3\sigma} c^\dag_{2\sigma} \ket{0}, \ c^\dag_{N\sigma}...c^\dag_{1\sigma} \ket{0}\} \nonumber.
+\end{eqnarray*}
+
+If the hopping Hamiltonian for a single spin state written in basis $\mathcal{B}_\sigma$ is $\mathcal{H}$, then the full hopping Hamiltonian in the 2-spin basis is
+\begin{equation}
+\mathcal{H}_\text{full} = \mathbb{I} \otimes \mathcal{H} + \mathcal{H} \otimes \mathbb{I},
+\end{equation}
+which fully accounts for Fermion statistics as long as $\mathcal{H}$ does.
+
+Similarly, if the rotation operator on the single spin space is $R$, then the rotation operator on the full space is
+\begin{equation}
+R_\text{full} = \mathbb{I} \otimes R \cdot R \otimes \mathbb{I} = R \otimes R.
+\end{equation}
+
+To generate a hopping Hamiltonian on $N$ sites, we need only generate the much smaller Hamiltonian for a single spin state, then take tensor products. Furthermore, since the interaction term is diagonal, we need only generate a single vector. 
+
+Both of these facts limits the amount of work required considerably compared with looping over every entry in the Hamiltonian.
+\end{theorem}
+
+\end{document}

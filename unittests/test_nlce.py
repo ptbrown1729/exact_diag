@@ -1,0 +1,275 @@
+from __future__ import print_function
+import os
+import time
+import datetime
+import numpy as np
+#import cPickle as pickle # no longer neede for python3
+import pickle
+
+import ed_geometry as geom
+from ed_nlce import *
+
+########################################
+# general settings
+########################################
+jx = 0.5
+jy = 0.5
+jz = 0.5
+hx = 0.0
+hy = 0.0
+hz = 0.0
+temps = np.logspace(-1, 0.5, 50)
+
+max_cluster_order = 7
+display_results = 1
+today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
+
+if display_results:
+    import matplotlib.pyplot as plt
+
+########################################
+# diagonalize full cluster
+########################################
+fname = 'four_by_four_heisenberg_ed.pkl'
+if not os.path.isfile(fname):
+    print("did not find file %s, diagonalizing hamiltonian" % fname)
+    parent_geometry = geom.Geometry.createSquareGeometry(4, 4, 0, 0, 0, 0)
+    parent_geometry.permute_sites(parent_geometry.get_sorting_permutation())
+
+    model = tvi.spinSystem(parent_geometry, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+
+    # x-translation
+    xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
+    xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, model.geometry)
+    xtransl_op = model.get_xform_op(xtransl_cycles)
+    xtransl_op = xtransl_op
+
+    # y-translations
+    ytransl_fn = symm.getTranslFn(np.array([[0], [1]]))
+    ytransl_cycles, max_cycle_len_transly = symm.findSiteCycles(ytransl_fn, model.geometry)
+    ytransl_op = model.get_xform_op(ytransl_cycles)
+    ytransl_op = ytransl_op
+
+    # symmetry projectors
+    symm_projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
+                                                      max_cycle_len_transly, print_results=1)
+
+    # Calculate eigenvalues and expectation values for each symmetry sector
+    eig_vals_sectors = []
+    energy_exp_sectors = np.zeros((len(symm_projs), len(temps)))
+    energy_sqr_exp_sectors = np.zeros((len(symm_projs), len(temps)))
+    szsz_exp_sectors = np.zeros((len(symm_projs), len(temps)))
+    szsz_op_full = model.getTwoSiteOp(0, 1, model.geometry.nsites, model.pauli_z, model.pauli_z, format="boson")
+    for ii, proj in enumerate(symm_projs):
+        print("symmetry subspace %d/%d" % (ii + 1, len(symm_projs)))
+        H = model.createH(projector=proj, print_results=1)
+        eig_vals, eig_vects = model.diagH(H, print_results=1)
+        eig_vals_sectors.append(eig_vals)
+        szsz_op_sector = proj.dot(szsz_op_full.dot(proj.conj().transpose()))
+
+        t_start = time.clock()
+        for jj in range(0, len(temps)):
+            energy_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, temps[jj], print_results=0)
+            energy_sqr_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, temps[jj],
+                                                                        print_results=0)
+            szsz_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, szsz_op_sector, eig_vals, temps[jj], print_results=0)
+            t_end = time.clock()
+            print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
+    eigs_all = np.sort(np.concatenate(eig_vals_sectors))
+
+    # Calculate full eigenvalues and expectation values, combining results from sectors
+    energies_full = np.zeros(len(temps))
+    entropies_full = np.zeros(len(temps))
+    specific_heat_full = np.zeros(len(temps))
+    szsz_full = np.zeros(len(temps))
+    for jj, temp in enumerate(temps):
+        energies_full[jj] = model.thermal_avg_combine_sectors(energy_exp_sectors[:, jj], eig_vals_sectors,
+                                                              temp) / model.geometry.nsites
+        Z = np.sum(np.exp(- eigs_all / temp))
+        # for entropy calculation, need full energy, so must multiply energy by number of sites again
+        entropies_full[jj] = 1. / model.geometry.nsites * (np.log(Z) + energies_full[jj] * model.geometry.nsites / temp)
+        # for specific heat, need full energy instead of energy per site
+        ham_sqr = model.thermal_avg_combine_sectors(energy_sqr_exp_sectors[:, jj], eig_vals_sectors, temp)
+        specific_heat_full[jj] = 1. / (temp ** 2 * model.geometry.nsites) * (
+            ham_sqr - (energies_full[jj] * model.geometry.nsites) ** 2)
+        # assuming symmetry for whichever sites we choose
+        szsz_full[jj] = model.thermal_avg_combine_sectors(szsz_exp_sectors[:, jj], eig_vals_sectors, temp)
+
+    data = [model, eigs_all, energies_full, entropies_full, specific_heat_full, szsz_full, temps]
+    with open(fname, 'wb') as f:
+        pickle.dump(data, f)
+else:
+    print("found and loaded file %s" % fname)
+    with open(fname, 'rb') as f:
+        data = pickle.load(f)
+    model = data[0]
+    eigs_all = data[1]
+    energies_full = data[2]
+    entropies_full = data[3]
+    specific_heat_full = data[4]
+    szsz_full = data[5]
+
+########################################
+# generate all clusters up to certain order on the infinite lattice
+########################################
+
+# TODO: make it so can load smaller order data too ...
+fname_clusters = 'cluster_data_order=%d.dat' % max_cluster_order
+
+if os.path.isfile(fname_clusters):
+    print("found a loaded cluster data from file %s" % fname_clusters)
+    with open(fname_clusters, 'rb') as f:
+        data_clusters = pickle.load(f)
+    cluster_multiplicities = data_clusters[1]
+    clusters_list = data_clusters[2]
+    sub_cluster_mult = data_clusters[3]
+    order_start_indices = data_clusters[4]
+else:
+    print("cluster data file %s does not exist. Generating clusters." % fname_clusters)
+    clusters_list, cluster_multiplicities, sub_cluster_mult, order_start_indices = \
+        get_all_clusters_with_subclusters(max_cluster_order)
+    cluster_multiplicities = cluster_multiplicities[None, :]
+
+    data_clusters = [max_cluster_order, cluster_multiplicities, clusters_list, sub_cluster_mult, order_start_indices]
+    with open(fname_clusters, 'wb') as f:
+        pickle.dump(data_clusters, f)
+
+# save cluster data
+
+# initialize variables which will store expectation values
+energies = np.zeros((len(clusters_list), len(temps)))
+entropies = np.zeros((len(clusters_list), len(temps)))
+specific_heats = np.zeros((len(clusters_list), len(temps)))
+szsz_corr = np.zeros((len(clusters_list), len(temps)))
+
+for ii, cluster in enumerate(clusters_list):
+    print("%d/%d" % (ii + 1, len(clusters_list)))
+    model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+    H = model.createH(print_results=1)
+    eig_vals, eig_vects = model.diagH(H, print_results=1)
+
+
+    t_start = time.clock()
+    for jj, T in enumerate(temps):
+        # calculate properties for each temperature
+        energies[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, T, 0)
+        Z = np.sum(np.exp(-eig_vals / T))
+        entropies[ii, jj] = (np.log(Z) + energies[ii, jj] / T)
+        specific_heats[ii, jj] = 1. / T ** 2 * \
+                                    (model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, T, 0) - energies[ii, jj] ** 2)
+        # sum over pairs
+        szsz_corr[ii, jj] = 0
+        for aa in range(0, model.geometry.nsites):
+            for bb in range(aa + 1, model.geometry.nsites):
+                szsz_op = model.getTwoSiteOp(aa, bb, model.geometry.nsites, model.pauli_z, model.pauli_z, format="boson")
+                szsz_exp = model.get_exp_vals_thermal(eig_vects, szsz_op, eig_vals, T)
+                szsz_corr[ii, jj] = szsz_corr[ii, jj] + szsz_exp
+
+    t_end = time.clock()
+    print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
+
+# nlce computation
+# TODO: this in a nicer way ...
+energy_nlce, orders_energy, weight_energy = \
+    get_nlce_exp_val(energies[0:order_start_indices[max_cluster_order], :],
+                     sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
+                     cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
+                     order_start_indices[0:max_cluster_order + 1], 1)
+
+energy_nlce_euler_resum, energy_euler_orders = euler_resum(orders_energy, 1)
+
+entropy_nlce, orders_entropy, weight_entropy = \
+    get_nlce_exp_val(entropies[0:order_start_indices[max_cluster_order], :],
+                     sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
+                     cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
+                     order_start_indices[0:max_cluster_order + 1], 1)
+
+entropy_nlce_euler_resum, entropy_euler_orders = euler_resum(orders_entropy, 1)
+
+specific_heat_nlce, orders_specific_heat, weight_specific_heat = \
+    get_nlce_exp_val(specific_heats[0:order_start_indices[max_cluster_order], :],
+                     sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
+                     cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
+                     order_start_indices[0:max_cluster_order + 1], 1)
+
+spheat_nlce_euler_resum, spheat_euler_orders = euler_resum(orders_specific_heat, 1)
+
+szsz_nlce, orders_szsz, weight_szsz = \
+    get_nlce_exp_val(szsz_corr[0:order_start_indices[max_cluster_order], :],
+                     sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
+                     cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
+                     order_start_indices[0:max_cluster_order + 1], 1)
+
+szsz_nlce_euler_resum, szsz_euler_orders = euler_resum(orders_szsz, 1)
+
+data_nlce = [clusters_list, sub_cluster_mult, order_start_indices,
+        energies, orders_energy, weight_energy, energy_nlce_euler_resum, energy_euler_orders,
+        entropies, weight_entropy, specific_heats, weight_specific_heat, entropy_nlce_euler_resum, entropy_euler_orders,
+        energy_nlce, entropy_nlce, specific_heat_nlce, spheat_nlce_euler_resum, spheat_euler_orders,
+        szsz_nlce, orders_szsz, weight_szsz, szsz_nlce_euler_resum, szsz_euler_orders,
+        temps]
+
+fname_nlce = "nlce_results_order_to=%d.pkl" % max_cluster_order
+with open(fname_nlce, 'wb') as f:
+    pickle.dump(data_nlce, f)
+
+########################################
+# plot results
+########################################
+if display_results:
+    fig_handle = plt.figure()
+    nrows = 2
+    ncols = 2
+
+    plt.subplot(nrows, ncols, 1)
+    plt.semilogx(temps, energies_full)
+    leg = ['4x4 cluster pbc']
+    for ii in range(4, orders_energy.shape[0]):
+        plt.semilogx(temps, np.sum(orders_energy[0 : ii + 1, ...], 0))
+        order_str = 'nlce order = %d' % (ii + 1)
+        leg.append(order_str)
+    leg.append('euler resum')
+    plt.semilogx(temps, energy_nlce_euler_resum)
+
+    plt.grid()
+    plt.xlabel('Temperature (J)')
+    plt.ylabel('Energy/site (J)')
+    plt.title('Energy/site')
+    plt.ylim([-2, 0.25])
+    plt.legend(leg)
+
+    plt.subplot(nrows, ncols, 2)
+    plt.semilogx(temps, entropies_full)
+    for ii in range(4, orders_energy.shape[0]):
+        plt.semilogx(temps, np.sum(orders_entropy[0 : ii + 1, ...], 0))
+    plt.semilogx(temps, entropy_nlce_euler_resum)
+    plt.grid()
+    plt.xlabel('Temperature (J)')
+    plt.ylabel('Entropy/site ()')
+    plt.ylim([0, 2])
+    # plt.title('Entropy/site')
+
+    plt.subplot(nrows, ncols, 3)
+    plt.semilogx(temps, specific_heat_full)
+    for ii in range(4, orders_energy.shape[0]):
+        plt.semilogx(temps, np.sum(orders_specific_heat[0 : ii + 1, ...], 0))
+    plt.semilogx(temps, spheat_nlce_euler_resum)
+    plt.grid()
+    plt.xlabel('Temperature (J)')
+    plt.ylabel('Specific heat/site ()')
+    plt.ylim([0, 2])
+    # plt.title('Specific heat / site')
+
+    plt.subplot(nrows, ncols, 4)
+    #plt.semilogx(temps, szsz_full)
+    for ii in range(4, orders_energy.shape[0]):
+        plt.semilogx(temps, np.sum(orders_szsz[0: ii + 1, ...], 0))
+    plt.semilogx(temps, szsz_nlce_euler_resum)
+    plt.grid()
+    plt.xlabel('Temperature (J)')
+    plt.ylabel('SzSz mean ()')
+    plt.ylim([-1, 1])
+
+    fig_name = "nlce_results" + today_str + ".png"
+    fig_handle.savefig(fig_name)
+    plt.show()

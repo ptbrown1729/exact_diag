@@ -144,8 +144,6 @@ class fermions_test(unittest.TestCase):
         offset = 0.25 * U * gm.nsites
         eig_vals = eig_vals + offset
 
-
-
     # hubbard
     def test_hubbard_atomic_limit(self):
         """

@@ -9,7 +9,7 @@ import ed_base
 
 class spinSystem(ed_base.ed_base):
 
-    nbasis = 2
+    #nbasis = 2
     nspecies = 1
     # index that "looks" the same as the spatial index from the perspective of constructing operators. E.g. for
     # fermions we have spatial index + spin index, but it is convenient to treat this like an enlarged set of
@@ -20,13 +20,13 @@ class spinSystem(ed_base.ed_base):
     nminus = 0.5 * np.array([[1, -1], [-1, 1]])
     swap_op = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
-    def __init__(self, geometry, jx=0.0, jy=0.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0):
+    def __init__(self, geometry, jx=0.0, jy=0.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0, spin=0.5):
         """
         This class implements a spin system with the following Hamiltonian:
-        H = \sum_<i, j, \alpha=x,y,z> 0.5 * j_alpha * \sigma_i^\alpha \cdot \sigma_j^\alpha -
+        H = \sum_<i, j, \alpha=x,y,z> 0.5 * j_alpha * \sigma_i^\alpha * \sigma_j^\alpha -
             \sum_{i, \alpha=x,y,z} 0.5 * h_\alpha * \sigma_i^\alpha
-        If instead we want to write this in terms of spin operators, S_i^\alpha = 0.5 * \sigma_i^\alpha
-        H = \sum_<i, j, \alpha=x,y,z> 2 * j_\alpha * S_i^\alpha \cdot \S_j^\alpha -
+        If write this in terms of spin operators instead of Pauli matrices, S_i^\alpha = 0.5 * \sigma_i^\alpha
+        H = \sum_<i, j, \alpha=x,y,z> 2 * j_\alpha * S_i^\alpha * \S_j^\alpha -
              \sum_{i, \alpha=x,y,z} h_\alpha * S_i^\alpha
         :param geometry:
         :param jx:
@@ -40,6 +40,13 @@ class spinSystem(ed_base.ed_base):
         # TODO: update this to allow easy use of Heisenberg or Rydberg
         # TODO: finish updating class to work appropriately with this...
         # TODO: update base class to assume we have the geometry field, which will make the signature of fns such as get_xform_op the same for the derived classes.
+        self.nbasis = int(2 * spin + 1)
+        self.splus = self.get_splus(spin)
+        self.sminus = self.get_sminus(spin)
+        self.sz = self.get_sz(spin)
+        self.sy = self.get_sy(spin)
+        self.sx = self.get_sx(spin)
+
         ed_base.ed_base.__init__(self, geometry)
         self.jx = self.get_interaction_mat(jx)
         self.jy = self.get_interaction_mat(jy)
@@ -52,6 +59,47 @@ class spinSystem(ed_base.ed_base):
             self.rydberg_detunings = self.get_rydberg_detunes(self.jz)
             self.hz = self.hz + self.rydberg_detunings
 
+    def get_splus(self, spin):
+        """
+        S^+ |s m> = sqrt( (s-m) * (s+m+1) ) |s (m+1)>
+        :param spin:
+        :return:
+        """
+        ms = np.arange(spin - 1, -spin - 1, -1)
+        return sp.diags(np.sqrt((spin - ms) * (spin + ms + 1)), -1)
+
+    def get_sminus(self, spin):
+        """
+        S^- |s m> = sqrt( (s+m) * (s_m+1) ) |s (m-1)>
+        :param spin:
+        :return:
+        """
+        ms = np.arange(spin, -spin, -1)
+        return sp.diags(np.sqrt((spin + ms) * (spin - ms + 1)), 1)
+
+    def get_sx(self, spin):
+        """
+        s^x = 0.5 * (s^+ + s^-)
+        :param spin:
+        :return:
+        """
+        return 0.5 * (self.get_splus(spin) + self.get_sminus(spin))
+
+    def get_sy(self, spin):
+        """
+        s^y = 0.5 * (s^+ - s^-)
+        :param spin:
+        :return:
+        """
+        return 0.5 * (self.get_splus(spin) - self.get_sminus(spin)) / 1j
+
+    def get_sz(self, spin):
+        """
+        S^z |s m> = m |s m>
+        :param spin:
+        :return:
+        """
+        return sp.diags(np.arange(spin, -spin - 1, -1))
 
     def get_interaction_mat_c6(self, C6, cutoff_dist=1.5):
         """
@@ -79,9 +127,13 @@ class spinSystem(ed_base.ed_base):
         if isinstance(j, (int, float)):
             j_mat = j * self.geometry.adjacency_mat * self.geometry.phase_mat
         elif isinstance(j, np.ndarray):
-            if j.size != self.geometry.nsites:
-                raise Exception('j was a numpy array, but size did not match geometry.')
-            j_mat = j
+            if j.shape == (self.geometry.nsites, self.geometry.nsites):
+                j_mat = j
+            elif j.size == self.geometry.nsites:
+                j_mat = np.diag(j[:-1], 1) + np.diag(j[-1], -1)
+                j_mat[0, self.geometry.nsites - 1] = j[-1]
+            else:
+                raise Exception('j should be nsites x nsites matrix or a list of size nsites')
         else:
             raise Exception('j was not integer, float, or numpy array.')
 
@@ -180,7 +232,7 @@ class spinSystem(ed_base.ed_base):
         """
         #TODO: if I do twisted boundary conditions can I still only sum over ii > jj?
         nsites = self.geometry.nsites
-        nstates = 2**nsites
+        nstates = self.nbasis ** nsites
 
         if print_results:
             tstart = time.clock()
@@ -195,13 +247,19 @@ class spinSystem(ed_base.ed_base):
             if self.hx[ii] != 0:
                 # THESE factors of two related to the fact I've written things in terms of the pauli matrices, instead
                 # of spin matrix = 0.5 * pauli_matrices
-                H = H - 0.5 * self.hx[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_x, format="boson") * \
+                # H = H - 0.5 * self.hx[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_x, format="boson") * \
+                #     projector.conj().transpose()
+                H = H - self.hx[ii] * projector * self.get_single_site_op(ii, 0, self.sx, format="boson") * \
                     projector.conj().transpose()
             if self.hy[ii] != 0:
-                H = H - 0.5 * self.hy[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_y, format="boson") * \
+                # H = H - 0.5 * self.hy[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_y, format="boson") * \
+                #     projector.conj().transpose()
+                H = H - self.hy[ii] * projector * self.get_single_site_op(ii, 0, self.sy, format="boson") * \
                     projector.conj().transpose()
             if self.hz[ii] != 0:
-                H = H - 0.5 * self.hz[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_z, format="boson") * \
+                # H = H - 0.5 * self.hz[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_z, format="boson") * \
+                #     projector.conj().transpose()
+                H = H - self.hz[ii] * projector * self.get_single_site_op(ii, 0, self.sz, format="boson") * \
                     projector.conj().transpose()
 
         # interaction terms
@@ -215,16 +273,25 @@ class spinSystem(ed_base.ed_base):
 
                         # factors of 2 =>  0.5 * \sum sigma*sigma = 2 * \sum s*s
                         if jx != 0:
-                            H = H + 0.5 * jx * projector * \
-                                self.get_two_site_op(ii, 0, jj, 0, self.pauli_x, self.pauli_x, format="boson") * \
+                            # H = H + 0.5 * jx * projector * \
+                            #     self.get_two_site_op(ii, 0, jj, 0, self.pauli_x, self.pauli_x, format="boson") * \
+                            #     projector.conj().transpose()
+                            H = H + 2 * jx * projector * \
+                                self.get_two_site_op(ii, 0, jj, 0, self.sx, self.sx, format="boson") * \
                                 projector.conj().transpose()
                         if jy != 0:
-                            H = H + 0.5 * jy * projector * \
-                                self.get_two_site_op(ii, 0, jj, 0, self.pauli_y, self.pauli_y, format="boson") * \
+                            # H = H + 0.5 * jy * projector * \
+                            #     self.get_two_site_op(ii, 0, jj, 0, self.pauli_y, self.pauli_y, format="boson") * \
+                            #     projector.conj().transpose()
+                            H = H + 2 * jy * projector * \
+                                self.get_two_site_op(ii, 0, jj, 0, self.sy, self.sy, format="boson") * \
                                 projector.conj().transpose()
                         if jz != 0:
-                            H = H + 0.5 * jz * projector * \
-                                self.get_two_site_op(ii, 0, jj, 0, self.pauli_z, self.pauli_z, format="boson") * \
+                            # H = H + 0.5 * jz * projector * \
+                            #     self.get_two_site_op(ii, 0, jj, 0, self.pauli_z, self.pauli_z, format="boson") * \
+                            #     projector.conj().transpose()
+                            H = H + 2 * jz * projector * \
+                                self.get_two_site_op(ii, 0, jj, 0, self.sz, self.sz, format="boson") * \
                                 projector.conj().transpose()
 
         if print_results:

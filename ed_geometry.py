@@ -31,7 +31,7 @@ class Geometry():
 
         if self.lattice is not None:
             # if periodic system
-            self.xdist_mat, self.ydist_mat, latt_vect1_sep, latt_vect2_sep  = \
+            self.xdist_mat, self.ydist_mat, latt_vect1_sep, latt_vect2_sep = \
                 self.lattice.get_reduced_distance(self.xlocs, self.ylocs)
 
             self.adjacency_mat = (np.round(np.sqrt(np.square(self.xdist_mat) +
@@ -293,7 +293,7 @@ class Geometry():
             # It doesn't matter which site we select first, but we need to choose the next site in some way based on
             # this first site.
         else:
-            raise Exception
+            raise Exception("sorting_mode must be 'top_alternating', 'top_left', 'bottom_right' or 'adjacency' but was %s" % sorting_mode)
 
         return sorted_indices
 
@@ -423,7 +423,7 @@ class Geometry():
 
     def validate_adjacency_mat(self):
         """
-        Check that connectmat is sensible
+        Check that adjacency_mat is sensible
         :return: bool
         """
         if not np.array_equal(self.adjacency_mat, np.transpose(self.adjacency_mat)):
@@ -439,7 +439,7 @@ class Geometry():
 
     def validate_phase_mat(self):
         """
-        check that self.phase_mat is sensible
+        check that phase_mat is sensible
         :return:
         """
         if not np.sum(np.round(np.abs(self.phase_mat - self.phase_mat.conj().transpose()), self._round_decimals) == 0) == self.phase_mat.size :
@@ -504,8 +504,7 @@ class Geometry():
 class Lattice():
     _round_decimals = 14
 
-    def __init__(self, lattice_vect1, lattice_vect2, basis_vects=[np.array([[0.], [0.]])],
-                 periodicity_vect1=np.array([[0.],[0.]]), periodicity_vect2=np.array([[0.], [0.]]),
+    def __init__(self, lattice_vect1, lattice_vect2, basis_vects=[[0,0]], periodicity_vect1=[0, 0], periodicity_vect2=[0, 0],
                  phase1=0., phase2=0.):
         """
 
@@ -530,11 +529,12 @@ class Lattice():
         self.lattice_vect2 = ensure_column_vect(lattice_vect2).astype(float)
         self.reciprocal_latt_vect1, self.reciprocal_latt_vect2 = get_reciprocal_vects(self.lattice_vect1, self.lattice_vect2)
 
-        self.basis_vects = [ ensure_column_vect(v) for v in basis_vects ]
+        self.basis_vects = [ensure_column_vect(v) for v in basis_vects]
 
         self.periodicity_vect1 = ensure_column_vect(periodicity_vect1).astype(float)
         self.periodicity_vect2 = ensure_column_vect(periodicity_vect2).astype(float)
-        self.reciprocal_periodicity_vect1, self.reciprocal_periodicity_vect2 = get_reciprocal_vects(self.periodicity_vect1, self.periodicity_vect2)
+        self.reciprocal_periodicity_vect1, self.reciprocal_periodicity_vect2 = \
+            get_reciprocal_vects(self.periodicity_vect1, self.periodicity_vect2)
 
         self.phase1 = phase1
         self.phase2 = phase2
@@ -937,14 +937,14 @@ if __name__ == "__main__":
     phi2 = 0
     bc_open1 = 0
     bc_open2 = 1
-    geom = Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc_open1, bc_open2)
-    geom.dispGeometry()
+    gm = Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc_open1, bc_open2)
+    gm.dispGeometry()
 
     # permute 8 x 1 chain
     permutation = [3, 2, 1, 0, 4, 7, 6, 5]
     #permutation = range(geom.nsites - 1, -1, -1)
-    geom.permute_sites(permutation)
-    geom.dispGeometry()
+    gm.permute_sites(permutation)
+    gm.dispGeometry()
 
     # 10 site square
     nr = 3

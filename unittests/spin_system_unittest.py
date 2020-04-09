@@ -19,6 +19,7 @@ class TestSpinSys(unittest.TestCase):
 
         reference: J. Phys. A: Math. Gen 33 6683 (2000).
         "Finite-size scaling in the transverse Ising model on a square lattice" by C J Hamer
+        https://doi.org/10.1088/0305-4470/33/38/303
 
         :return:
         """

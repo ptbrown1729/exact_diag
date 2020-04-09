@@ -157,7 +157,8 @@ class ed_base:
         :param neigs: Optional, number of eigenvalues to compute.
         :param use_sparse:
         :param print_results:
-        :return:
+        :return eigvals:
+        :return eigvects:
         """
         if print_results:
             tstart = time.clock()
@@ -308,9 +309,9 @@ class ed_base:
         else:
             raise Exception()
 
-        return sp.kron(sp.kron(sp.eye(2 ** site_index_logical), op, "coo"), endmat, "coo")
+        return sp.kron(sp.kron(sp.eye(self.nbasis ** site_index_logical), op, "coo"), endmat, "coo")
 
-    def get_two_site_op(self, site1, species1, site2, spin2, op1, op2, format="fermion"):
+    def get_two_site_op(self, site1, species1, site2, species2, op1, op2, format="fermion"):
         """
         Compute product of operators on two separate sites. First must sort the operators so that the first operator
         is the lower site.
@@ -324,7 +325,7 @@ class ed_base:
         """
         n_logical_sites = self.geometry.nsites * self.nspecies
         site1_index_logical = self.spinful2spinlessIndex(site1, self.geometry.nsites, species1)
-        site2_index_logical = self.spinful2spinlessIndex(site2, self.geometry.nsites, spin2)
+        site2_index_logical = self.spinful2spinlessIndex(site2, self.geometry.nsites, species2)
 
         if site1_index_logical == site2_index_logical:
             # most obvious form, but is slower because requires multiplication
@@ -356,12 +357,12 @@ class ed_base:
                 for ii in range(0, siteB - siteA - 1):
                     middlemat = sp.kron(middlemat, self.parity_op, "coo")
             elif format == "boson":
-                middlemat = sp.eye(2 ** (siteB - siteA - 1))
+                middlemat = sp.eye(self.nbasis ** (siteB - siteA - 1))
             else:
                 raise Exception()
                 # TODO: can I generate this parity matrix without a loop? Would it be faster?
-            return (sp.kron(sp.kron(sp.kron(sp.eye(2 ** siteA), opA, "coo"), middlemat, "coo"),
-                            sp.kron(opB, sp.eye(2 ** (n_logical_sites - siteB - 1)), "coo"), "coo"))
+            return (sp.kron(sp.kron(sp.kron(sp.eye(self.nbasis ** siteA), opA, "coo"), middlemat, "coo"),
+                            sp.kron(opB, sp.eye(self.nbasis ** (n_logical_sites - siteB - 1)), "coo"), "coo"))
 
     def get_sum_op(self, op, species, format="fermion", print_results=0):
         """

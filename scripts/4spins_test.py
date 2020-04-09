@@ -7,6 +7,8 @@ import numpy as np
 import ed_geometry as geom
 import ed_spins
 
+spin = 2.5
+
 nx = 4
 ny = 1
 phi1 = 0
@@ -21,7 +23,7 @@ j2 = 0.23623627
 j3 = 0.8434783478
 # -1 to account for difference in definitions
 js = -np.array([[0, j1, j2, j3], [j1, 0, j2, j3], [j2, j2, 0, j3], [j3, j3, j3, 0]])
-ss = ed_spins.spinSystem(gm, jx=js, jy=js, jz=js, spin=1.5)
+ss = ed_spins.spinSystem(gm, jx=js, jy=js, jz=js, spin=spin)
 hamiltonian = ss.createH()
 
 eig_vals, eig_vects = ss.diagH(hamiltonian)
@@ -29,10 +31,10 @@ eig_vals, eig_vects = ss.diagH(hamiltonian)
 # verify these are equal to expected result
 # E = j1 * [s1*(s1+1) + s2*(s2+1)] + j2 * s3*(s3+1) + j3 * s4*(s4+1) + (j2-j1)*s12*(s12+1) + (j3-j2)*s123*(s123+1) - j3 * s1234 * (s1234 + 1)
 eigs_analytic = []
-s1 = 1.5
-s2 = 1.5
-s3 = 1.5
-s4 = 1.5
+s1 = spin
+s2 = s1
+s3 = s1
+s4 = s1
 s12s = np.arange(np.abs(s1 - s2), s1 + s2 + 1)
 
 for s12 in s12s:

@@ -1,5 +1,6 @@
 """
-Compare exact diagonalization of Heisenberg model to 
+Compare exact diagonalization of 4-spin Heisenberg model with couplings  J1 = J12; J2 = J13 = J23; J3 = J14 - J24 = J34
+to handle calculated result.
 """
 
 import numpy as np

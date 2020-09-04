@@ -1,0 +1,13 @@
+# latex files
+*.blg
+*.bbl
+*.log
+*.out
+*.aux
+*.pdf
+
+# .bib backup
+*.bib.bak
+
+# pycharm project files
+.idea

@@ -417,12 +417,32 @@ E & 2 & 0 & - 2 & 0 & 0
 \end{bmatrix}
 \end{equation}
 
+Character tables have several nice orthogonal properties. First, for the rows we have the property
+\begin{eqnarray}
+\frac{1}{|G|} \sum_{g \in G} \chi_i(g) \chi_i^*(g) &=& \delta_{ij}. \label{eq:row_orthogonality}
+\end{eqnarray}
+Second, the columns have the property
+\begin{eqnarray}
+\sum_j \chi_i(g) \chi_j^*(h) &=& |C(g)| \text{ if $h$ is conjugate to $g$, else $0$} \label{eq:column_orthogonality}
+\end{eqnarray}
+
 Now, the different irreducible representations of $G$ have the property that they are orthogonal. Therefore, if define symmetry operators for each irreducible representation $\alpha = A_1, A_2, ...$ according to
 \begin{equation}
-S^{\alpha} = \sum_g \chi_g(\alpha) M^\alpha(g)
+S_i =\frac{n_i}{|G|} \sum_g \chi^*_i(g) M(g),
 \end{equation}
+where $n_i$ is the order of rep $i$. We think about this operator in the following way: the $M(g)$ form a reducible representation of $G$. We imagine block diagonalizing these into irreducible representations. For example, if we consider a sector of $M(g)$ given by a 1D representation of $G$, then $M(g)$ on this sector is given by $\chi_\alpha(g)$, and so $S_i = |G| \delta_{i\alpha}$ on this sector by eq.~\ref{eq:row_orthogonality}. This process is called the \emph{canonical} or \emph{isotypical} decomposition.
 
-then we are guaranteed the orthogonality property from theorem \ref{proj-props}.
+We know several nice properties of the $M(g)$. In the on-site basis these have the property
+\begin{eqnarray}
+M(g)_{ij} &=& \epsilon_i \delta_{\sigma(i) j},
+\end{eqnarray}
+where $\epsilon_i = \pm 1$ and $\sigma$ is a permutation $\{1, ..., N\} \to \{1, ..., N\}$. This implies the matrices $M(g)$ are orthogonal, i.e. $M(g)^t = M(g)^{-1} = M(g^{-1})$.
+
+Orthogonality of the $M(g)$ implies the $S_i$ are Hermitian, $S_i = S_i^\dag$.
+
+The rows of $S_i$ give the states of our desired symmetry subspace. To obtain the final projector we want, we need all of the columns to be orthonormal. If the projector corresponds to an irreducible representation of order 1, then all we need to do is (1) throw away any zero rows, (2) for each each basis vector $\ket{j}$, retain only the first row where $P_ij \neq 0$. The other row vectors with non-zero $P_{ij}$ will be the same as this one up to a constant factor and so are redundant (3) normalize the rows.
+
+Point (2) relies on the fact that for 1D irreducible reps, $S_i M(h) \ket{b} = c S_i \ket{b}$, $\all h \in G$. However, for higher dimensional irr reps, this is no longer true. For higher dimensional reps, we must replace (2) find a set of orthonormal vectors which are a basis for the $S_i M(h) \ket{b}$. Ihe dimension of this basis should be the same as the degree of the irr rep. These vectors can be obtained via the Gram-Schmidt process, or equivalently a $QR$ decomposition of $S_i$. Then, the set of all these vectors (looping over each $\ket{c} \neq M(h) \ket{b}$ for any $h$ for any of the previously considered $\ket{b}$') can be reassbled as the rows of the desired projection matrix $P_i$.
 
 In theorem \ref{cyclic-eigenstates} we essentially constructed the character table for a cyclic group $\mathbb{Z}_n$. Restating our findings in this new language, we found that every element was its own conjugacy class, and that the for the $k$th representation $A_k$ ($k \in \{0,...n_1\}$) the character of the $m$th element, $g = R^m$, was $\chi_{R^m} = e^{-i \frac{2\pi}{n} km}$.
 

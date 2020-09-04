@@ -1,4 +1,3 @@
-from __future__ import print_function
 import time
 import numpy as np
 import scipy.sparse as sp
@@ -21,7 +20,7 @@ def getRotFn(n_rotations, cx=0, cy=0):
     # should I do the rounding after computing the values? Or possibly should rely on getTransformedSites.
     # That seems like the right philosophical approach to me...
     rotation_mat = np.round(np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]), _round_decimals)
-    rotation_fn = lambda Xs, Ys: rotation_mat.dot(np.concatenate((Xs[None, :] - cx, Ys[None, :] - cy), 0)) + np.array([[cx], [cy]])
+    rotation_fn = lambda Xs, Ys: rotation_mat.dot(np.concatenate((Xs[None, :] - cx, Ys[None, :] - cy), axis=0)) + np.array([[cx], [cy]])
 
     return rotation_fn
 
@@ -103,18 +102,26 @@ def getTransformedSites(transform_fn, sites, geom_obj):
 
     # use periodicity vectors to get reduced locations, to avoid problems where two equivalent locations
     # will not evaluate as equal
-    xlocs_red, ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(geom_obj.xlocs, geom_obj.ylocs, "centered")
-    xlocs_red = np.round(xlocs_red, _round_decimals)
-    ylocs_red = np.round(ylocs_red, _round_decimals)
+    if geom_obj.lattice is not None:
+        xlocs_red, ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(geom_obj.xlocs, geom_obj.ylocs, "centered")
+        xlocs_red = np.round(xlocs_red, _round_decimals)
+        ylocs_red = np.round(ylocs_red, _round_decimals)
+    else:
+        xlocs_red = np.round(geom_obj.xlocs, _round_decimals)
+        ylocs_red = np.round(geom_obj.ylocs, _round_decimals)
 
     # still need to use actual locations for transform function
     TransCoors = transform_fn(geom_obj.xlocs, geom_obj.ylocs)
     trans_xlocs = TransCoors[0, :]
     trans_ylocs = TransCoors[1, :]
     # also reduce the transformed locations
-    trans_xlocs_red, trans_ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(trans_xlocs, trans_ylocs, "centered")
-    trans_xlocs_red = np.round(trans_xlocs_red, _round_decimals)
-    trans_ylocs_red = np.round(trans_ylocs_red, _round_decimals)
+    if geom_obj.lattice is not None:
+        trans_xlocs_red, trans_ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(trans_xlocs, trans_ylocs, "centered")
+        trans_xlocs_red = np.round(trans_xlocs_red, _round_decimals)
+        trans_ylocs_red = np.round(trans_ylocs_red, _round_decimals)
+    else:
+        trans_xlocs_red = np.round(trans_xlocs, _round_decimals)
+        trans_ylocs_red = np.round(trans_ylocs, _round_decimals)
     #TransCoors = np.concatenate([trans_xcoords_red, trans_ycoords_red], 0)
     #TransCoors = np.round(TransCoors, round_decimals)
     TransSites = np.zeros(len(sites))
@@ -181,55 +188,102 @@ def findSiteCycles(transform_fn, geom_obj):
 # Functions to determine how states transform
 # #################################################
 
-def getTransReducedProj(projop_full2full, print_results=0):
+def get_reduced_projector(p_full, dim, print_results=False):
     """
     Create an operator which projects onto a certain subspace which has definite transformation properties with
-    respet to a given transformation operator.
+    respect to a given transformation operator.
 
     Typically this function is called on the output of the getCyclicProj function, which produces projop_full2full
 
-    :param projop_full2full: Needs to be a csc sparse matrix. Takes a state in the full space and projects it onto
+    :param p_full: Needs to be a csc sparse matrix. Takes a state in the full space and projects it onto
     a state of a given symmetry. Returns a state in the initial basis. Does not reduce the size of the space.
     projOp_full2full * vector does not necessarily produce a normalized vector.
-    :param print_results: Boolean indicating whether or not to print information to the terminal
-    :return:
-    proj_full2reduced: sparse csr matrix. symm_proj is defined such that symm_proj*Op*symm_proj.transpose() is the operator Op in the
+    :param dim: dimension of the irreducible representation in question
+    :param bool print_results: Boolean indicating whether or not to print information to the terminal
+
+    :return proj_full2reduced: sparse csr matrix. symm_proj is defined such that symm_proj*Op*symm_proj.transpose() is the operator Op in the
     projected subspace
     """
     if print_results:
         tstart = time.time()
 
-    if not sp.isspmatrix_csc(projop_full2full):
+    if not sp.isspmatrix_csc(p_full):
         print("warning, projop_full2full was not csc. Converted it to csc")
-        projop_full2full = projop_full2full.tocsc()
+        p_full = p_full.tocsc()
 
-    # first, round to avoid any finite precision issues
+    # round to avoid any finite precision issues
     # TODO: check if this works _round_decimals value
-    projop_full2full.data[np.abs(projop_full2full.data) < 1e-10] = 0
-    projop_full2full.eliminate_zeros()
-    # next, remove any empty columns
-    projop_full2full.indptr = np.unique(projop_full2full.indptr)
-    projop_full2full = sp.csc_matrix((projop_full2full.data, projop_full2full.indices, projop_full2full.indptr),
-                                     shape=(projop_full2full.shape[0], len(projop_full2full.indptr) - 1))
+    p_full.data[np.abs(p_full.data) < 1e-10] = 0
+    p_full.eliminate_zeros()
+
+    # remove any empty columns
+    # p_full.indptr = np.unique(p_full.indptr)
+    # p_full = sp.csc_matrix((p_full.data, p_full.indices, p_full.indptr),
+    #                        shape=(p_full.shape[0], len(p_full.indptr) - 1))
+
+    indptr_red = np.unique(p_full.indptr)
+    p_full_noz = sp.csc_matrix((p_full.data, p_full.indices, indptr_red),
+                           shape=(p_full.shape[0], len(indptr_red) - 1))
     # TODO: is it more efficient to do this after normalizing? This function is fast, not limiting the ED speed.
 
-    # next, find unique columns. We only need to check if the first indices are unique to find the unique columns.
-    # Stucture of the problem tells us_interspecies that if these are the same then so are the entire columns.
-    FirstIndices = projop_full2full.indices[projop_full2full.indptr[0:-1]]
-    _, indices = np.unique(FirstIndices, return_index=True)
-    proj_full2reduced_unnormed = projop_full2full[:, indices]
-    # Finally, normalize each column
-    norms = np.sqrt(np.asarray(
-        proj_full2reduced_unnormed.multiply(proj_full2reduced_unnormed.conj()).sum(axis=0))).flatten()
-    proj_full2reduced = proj_full2reduced_unnormed * sp.diags(np.reciprocal(norms), 0, format="csc")
+    # find orthonormal columns of full rank
+    first_indices = p_full.indices[p_full_noz.indptr[:-1]]
+    if dim == 1:
+        # We only need to check if the first indices are unique to find the unique columns.
+        # For dim=1, if these are the same then so are the entire columns
+        _, unique_indices = np.unique(first_indices, return_index=True)
+        p_red = p_full_noz[:, unique_indices]
+    else:
+        unique, unique_indices, unique_inverse = np.unique(first_indices, return_index=True, return_inverse=True)
+        # first_indices = unique[unique_inverse]
+        # unique = first_indices[unique_indices]
+
+        # get collection of all columns that have the same first non-zero index
+        unique_inv_sorted = np.argsort(unique_inverse)
+
+        # todo: this works for D3 but now fails for C4V
+        # construct reduced projector matrix
+        nvecs = np.sum(unique_inverse == unique_inverse[0])
+        rank = int(p_full_noz.shape[1] * dim / nvecs) # todo: can rank be less than this?
+        p_red = sp.csc_matrix((p_full_noz.shape[0], rank))
+        # loop over subspaces represented by
+        for ii in range(int(len(unique_inv_sorted) / nvecs)):
+            # non-zero rows for this subspace
+            rows = p_full_noz.indices[p_full_noz.indptr[unique_inv_sorted[nvecs * ii]]:
+                                      p_full_noz.indptr[unique_inv_sorted[nvecs * ii] + 1]]
+            # get relevant matrices, only keep nonzero rows and columns for this subpsace
+            rrs, uis = np.meshgrid(rows, unique_inv_sorted[nvecs * ii : nvecs * ii + nvecs])
+            mat = p_full_noz[rrs, uis].todense()
+            # get orthonormal basis for this space from Gram-Schmidt processes via QR decomposition
+            q, r = np.linalg.qr(mat)
+            # except QR decomposition is not unique, and numpy will include other columns which are not in the span of
+            # our states. These columns don't matter for the QR, as they correspond to zero rows in R. So can get rid
+            # of column ii in Q if row ii in R is all zeros
+            q_red = q[:, np.sum(np.abs(np.round(r, 12)), axis=1) != 0]
+
+            # put these back in the correct rows for the final projector
+            uis_out, rrs_out = np.meshgrid(np.arange(dim * ii, dim * (ii + 1)), rows)
+            p_red[rrs_out, uis_out] = q_red
+
+
+    # normalize each column
+    norms = np.sqrt(np.asarray(p_red.multiply(p_red.conj()).sum(axis=0))).flatten()
+    p_red = p_red * sp.diags(np.reciprocal(norms), 0, format="csc")
 
     if print_results:
         tend = time.time()
         print("Finding projector took %0.2f s" % (tend - tstart))
 
-    return proj_full2reduced.conj().transpose()
+    p_red = p_red.conj().transpose()
+    return p_red
 
-def getCyclicProj(xform_op, nxform_to_close, eigval_index=0, print_results=0):
+def get_symmetry_projectors(character_table, conjugacy_classes, print_results=False):
+    # todo: finish
+    # todo: can make all other functions wrappers of this one
+    projs = [get_reduced_projector(np.sum([np.sum([c * op for op in cclass]) for c, cclass in zip(chars, conjugacy_classes)]),print_results) for chars in character_table]
+    return projs
+
+def getCyclicProj(xform_op, nxform_to_close, eigval_index=0, print_results=False):
     """
     Get operators which project states onto eigenstates of transop with eigenvalues which are roots of unity.
 
@@ -259,7 +313,7 @@ def getCyclicProj(xform_op, nxform_to_close, eigval_index=0, print_results=0):
         print("Finding projector took %0.2f s" % (tend - tstart))
     return projop_full2full
 
-def getZnProjectors(xform_op, n_xforms, print_results=0):
+def getZnProjectors(xform_op, n_xforms, print_results=False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
     symmetry transformation if the symmetry group is a cyclic group. Examples of appropriate
@@ -291,7 +345,7 @@ def getZnProjectors(xform_op, n_xforms, print_results=0):
 
     projs = []
     for ii in range(0, n_xforms):
-        projs.append(getTransReducedProj(getCyclicProj(xform_op, n_xforms, ii), print_results))
+        projs.append(get_reduced_projector(getCyclicProj(xform_op, n_xforms, ii), 1, print_results))
 
     # test projector size
     proj_ndims = np.asarray([p.shape[0] for p in projs]).sum()
@@ -302,7 +356,7 @@ def getZnProjectors(xform_op, n_xforms, print_results=0):
     ks = 2 * np.pi * np.arange(0, n_xforms) / n_xforms
     return projs, ks
 
-def get2DTranslationProjectors(translation_op1, n_translations1, translation_op2, n_translations2, print_results = 0):
+def get2DTranslationProjectors(translation_op1, n_translations1, translation_op2, n_translations2, print_results=False):
     """
 
     :param translation_op1:
@@ -345,7 +399,7 @@ def get2DTranslationProjectors(translation_op1, n_translations1, translation_op2
 
     return all_projs, ks1, ks2
 
-def getCnProjectors(xform_op, n_xforms, print_results=0):
+def getCnProjectors(xform_op, n_xforms, print_results=False):
     """
     A wrapper function for getZnProjectors. See that function for documentation.
 
@@ -358,7 +412,7 @@ def getCnProjectors(xform_op, n_xforms, print_results=0):
     projs, ks = getZnProjectors(xform_op, n_xforms, print_results)
     return projs
 
-def getC4VProjectors(fourfold_rotation_op, reflection_op, print_results=0):
+def getC4VProjectors(fourfold_rotation_op, reflection_op, print_results=False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
     symmetry transformation if the symmetry group is C_4V or D_4, the 4th dihedral group.
@@ -390,32 +444,32 @@ def getC4VProjectors(fourfold_rotation_op, reflection_op, print_results=0):
     # Project onto subspaces associated with each irreducible representation of C_4v
     id = sp.eye(reflection_op.shape[0], format="csc")
 
-    proj_A1 = getTransReducedProj(id + fourfold_rotation_op + fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 + reflection_op +
-                                  fourfold_rotation_op ** 2 * reflection_op +
-                                  fourfold_rotation_op * reflection_op + fourfold_rotation_op ** 3 * reflection_op,
-                                  print_results)
+    proj_A1 = get_reduced_projector(id + fourfold_rotation_op + fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 + reflection_op +
+                                    fourfold_rotation_op ** 2 * reflection_op +
+                                    fourfold_rotation_op * reflection_op + fourfold_rotation_op ** 3 * reflection_op,
+                                    1, print_results)
 
-    proj_A2 = getTransReducedProj(id + fourfold_rotation_op + fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 -
-                                  reflection_op - fourfold_rotation_op ** 2 * reflection_op -
-                                  fourfold_rotation_op * reflection_op - fourfold_rotation_op ** 3 * reflection_op,
-                                  print_results)
+    proj_A2 = get_reduced_projector(id + fourfold_rotation_op + fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 -
+                                    reflection_op - fourfold_rotation_op ** 2 * reflection_op -
+                                    fourfold_rotation_op * reflection_op - fourfold_rotation_op ** 3 * reflection_op,
+                                    1, print_results)
 
-    proj_B1 = getTransReducedProj(id - fourfold_rotation_op - fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 +
-                                  reflection_op + fourfold_rotation_op ** 2 * reflection_op - fourfold_rotation_op * reflection_op
-                                  - fourfold_rotation_op ** 3 * reflection_op,
-                                  print_results)
+    proj_B1 = get_reduced_projector(id - fourfold_rotation_op - fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 +
+                                    reflection_op + fourfold_rotation_op ** 2 * reflection_op - fourfold_rotation_op * reflection_op
+                                    - fourfold_rotation_op ** 3 * reflection_op,
+                                    1, print_results)
 
-    proj_B2 = getTransReducedProj(id - fourfold_rotation_op - fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 -
-                                  reflection_op - fourfold_rotation_op ** 2 * reflection_op +
-                                  fourfold_rotation_op * reflection_op + fourfold_rotation_op ** 3 * reflection_op,
-                                  print_results)
+    proj_B2 = get_reduced_projector(id - fourfold_rotation_op - fourfold_rotation_op ** 3 + fourfold_rotation_op ** 2 -
+                                    reflection_op - fourfold_rotation_op ** 2 * reflection_op +
+                                    fourfold_rotation_op * reflection_op + fourfold_rotation_op ** 3 * reflection_op,
+                                    1, print_results)
 
-    proj_E = getTransReducedProj(2 * id - 2 * fourfold_rotation_op ** 2, print_results)
+    proj_E = get_reduced_projector(2 * id - 2 * fourfold_rotation_op ** 2, 2, print_results)
 
     projs = [proj_A1, proj_A2, proj_B1, proj_B2, proj_E]
     return projs
 
-def getD2Projectors(twofold_rotation_op, reflection_op, print_results = 0):
+def getD2Projectors(twofold_rotation_op, reflection_op, print_results=False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
     symmetry transformation if the symmetry group is C_2v = D_2, the 2nd dihedral group.
@@ -439,22 +493,22 @@ def getD2Projectors(twofold_rotation_op, reflection_op, print_results = 0):
     # Project onto subspaces associated with each irreducible representation of C_4v
     id = sp.eye(reflection_op.shape[0], format="csc")
 
-    proj_A = getTransReducedProj(id + twofold_rotation_op + reflection_op + twofold_rotation_op * reflection_op,
-        print_results)
+    proj_A = get_reduced_projector(id + twofold_rotation_op + reflection_op + twofold_rotation_op * reflection_op, 1,
+                                   print_results)
 
-    proj_B1 = getTransReducedProj(id + twofold_rotation_op - reflection_op - twofold_rotation_op * reflection_op,
-                                  print_results)
+    proj_B1 = get_reduced_projector(id + twofold_rotation_op - reflection_op - twofold_rotation_op * reflection_op, 1,
+                                    print_results)
 
-    proj_B2 = getTransReducedProj(id - twofold_rotation_op + reflection_op - twofold_rotation_op * reflection_op,
-                                  print_results)
+    proj_B2 = get_reduced_projector(id - twofold_rotation_op + reflection_op - twofold_rotation_op * reflection_op, 1,
+                                    print_results)
 
-    proj_B3 = getTransReducedProj(id - twofold_rotation_op - reflection_op + twofold_rotation_op * reflection_op,
-                                  print_results)
+    proj_B3 = get_reduced_projector(id - twofold_rotation_op - reflection_op + twofold_rotation_op * reflection_op, 1,
+                                    print_results)
 
     projs = [proj_A, proj_B1, proj_B2, proj_B3]
     return projs
 
-def getD3Projectors(threefold_rotation_op, reflection_op, print_results = 0):
+def getD3Projectors(threefold_rotation_op, reflection_op, print_results=False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
     symmetry transformation if the symmetry group is C_3v = D_3, the 3rd dihedral group.
@@ -482,20 +536,102 @@ def getD3Projectors(threefold_rotation_op, reflection_op, print_results = 0):
     # Project onto subspaces associated with each irreducible representation of C_4v
     id = sp.eye(reflection_op.shape[0], format="csc")
 
-    proj_A1 = getTransReducedProj(id +
-                                  threefold_rotation_op + threefold_rotation_op ** 2 +
-                                  reflection_op + reflection_op * threefold_rotation_op + reflection_op * threefold_rotation_op ** 2,
-                                  print_results)
+    proj_A1 = get_reduced_projector(id +
+                                    threefold_rotation_op + threefold_rotation_op ** 2 +
+                                    reflection_op + threefold_rotation_op * reflection_op + threefold_rotation_op ** 2 * reflection_op,
+                                    1, print_results)
 
-    proj_A2 = getTransReducedProj(id +
-                                  threefold_rotation_op + threefold_rotation_op ** 2 +
-                                  - reflection_op - reflection_op * threefold_rotation_op - reflection_op * threefold_rotation_op ** 2,
-                                  print_results)
+    proj_A2 = get_reduced_projector(id +
+                                    threefold_rotation_op + threefold_rotation_op ** 2 +
+                                    -reflection_op - threefold_rotation_op * reflection_op - threefold_rotation_op ** 2 * reflection_op,
+                                    1, print_results)
 
-    proj_E = getTransReducedProj(2 * id +
-                                 - threefold_rotation_op - threefold_rotation_op ** 2,
-                                 print_results)
+    proj_E = get_reduced_projector(2 * id +
+                                   - threefold_rotation_op - threefold_rotation_op ** 2,
+                                   2, print_results)
 
     projs = [proj_A1, proj_A2, proj_E]
     return projs
 
+def getC4V_and_3byb3(fourfold_rotation_op, reflection_op, tx_op, ty_op, print_results=False):
+    """
+    Symmetry group = semidirect product (Z3 + Z3, C4V)
+            C1 C2 C3 C4 C5 C6 C7 C8 C9
+    X.1     1  1  1  1  1  1  1  1  1
+    X.2     1 -1  1 -1  1  1 -1 -1  1
+    X.3     1 -1  1  1 -1  1 -1  1  1
+    X.4     1  1  1 -1 -1  1  1 -1  1
+    X.5     2  . -2  .  .  2  .  .  2
+    X.6     4 -2  .  .  .  1  1  . -2
+    X.7     4  .  . -2  . -2  .  1  1
+    X.8     4  .  .  2  . -2  . -1  1
+    X.9     4  2  .  .  .  1 -1  . -2
+
+    Conjugacy classes
+    # todo: need to resolve which is (C2,C7)/(C4,C8) and C6/C9
+    # right now know that if C2 is right, then so is C7
+    C1 = {e} (order=1, #=1)
+    C2 = {Refl, R^2*Refl, Tx*Refl, Tx^2*Refl,
+          Ty*R^2*Refl, Ty^2*R^2*Refl} (order=2, #=6)
+    C3 = {R^2, Tx^nTy^mR^2} (order=2, #=9)
+    C4 = {R*Refl, R^3*Refl,
+          Tx*Ty^2*R*Refl, Tx^2*Ty*R*Refl,
+          Tx*Ty*R^3*Refl, Tx^2*Ty^2*R^3*Refl} (order=2, #=6)
+    C5 = {R, R^3, Tx^n*Ty^m*R, Tx^n*Ty^m*R^3} (order=4, #=18)
+    C6 = {Tx, Tx^2, Ty, Ty^2} (order=3, #=4)
+    C7 = {Tx^n*Ty^m*Refl except (n,m) = (0,0), (1,0) and (2,0)
+          Tx^n*Ty^m*R^2*Refl except (n,m) = (0,0), (0,1), and (0, 2)} (order=6, #=12)
+    C8 = {Tx^n*Ty^m*R*Refl except (n,m) = (0,0), (1,2) and (2, 1),
+          Tx^n*Ty^m*R^3*Refl except (n,m) = (0,0), (1,1) and (2,2)} (order=6, #=12)
+    C9 = {TxTy, Tx^2Ty, TxTy^2 Tx^2Ty^2} (order=3, #=4)
+
+    """
+
+    c1 = [sp.eye(reflection_op.shape[0], format="csc")]
+    c2 = [reflection_op, fourfold_rotation_op**2 * reflection_op, tx_op * reflection_op, tx_op**2 * reflection_op,
+          ty_op * fourfold_rotation_op ** 2 * reflection_op, ty_op**2 * fourfold_rotation_op**2 * reflection_op]
+    c3 = [fourfold_rotation_op**2, tx_op * fourfold_rotation_op**2, tx_op**2 * fourfold_rotation_op,
+          ty_op * fourfold_rotation_op, ty_op**2 * fourfold_rotation_op, tx_op * ty_op * fourfold_rotation_op**2,
+          tx_op * ty_op**2 * fourfold_rotation_op, tx_op**2 * ty_op * fourfold_rotation_op, tx_op**2 * ty_op**2 * fourfold_rotation_op]
+    c4 = [fourfold_rotation_op * reflection_op, fourfold_rotation_op**3 * reflection_op,
+          tx_op * ty_op**2 * fourfold_rotation_op*reflection_op, tx_op**2 * ty_op * fourfold_rotation_op * reflection_op,
+          tx_op * ty_op * fourfold_rotation_op**3 * reflection_op, tx_op**2 * ty_op**2 * fourfold_rotation_op**3 * reflection_op]
+    c5 = [fourfold_rotation_op, fourfold_rotation_op**3,
+          tx_op * fourfold_rotation_op, tx_op**2 * fourfold_rotation_op,
+          ty_op*fourfold_rotation_op, ty_op**2 * fourfold_rotation_op,
+          tx_op * ty_op * fourfold_rotation_op, tx_op * ty_op**2 * fourfold_rotation_op,
+          tx_op**2 * ty_op * fourfold_rotation_op, tx_op**2 * ty_op**2 * fourfold_rotation_op,
+          tx_op * fourfold_rotation_op**3, tx_op ** 2 * fourfold_rotation_op**3,
+          ty_op * fourfold_rotation_op**3, ty_op ** 2 * fourfold_rotation_op**3,
+          tx_op * ty_op * fourfold_rotation_op**3, tx_op * ty_op ** 2 * fourfold_rotation_op**3,
+          tx_op ** 2 * ty_op * fourfold_rotation_op**3, tx_op ** 2 * ty_op ** 2 * fourfold_rotation_op**3]
+    c6 = [tx_op, tx_op**2, ty_op, ty_op**2]
+    c7 = [ty_op * reflection_op, ty_op * reflection_op**2,
+          tx_op * ty_op * reflection_op, tx_op * ty_op**2 * reflection_op,
+          tx_op**2 * ty_op * reflection_op, tx_op**2 * ty_op**2 * reflection_op,
+          tx_op * fourfold_rotation_op**2 * reflection_op, tx_op**2 * fourfold_rotation_op**2 * reflection_op,
+          tx_op * ty_op * fourfold_rotation_op**2 * reflection_op, tx_op * ty_op**2 * fourfold_rotation_op**2 * reflection_op,
+          tx_op**2 * ty_op * fourfold_rotation_op**2 * reflection_op, tx_op**2 * ty_op**2 * fourfold_rotation_op**2 * reflection_op]
+    c8 = [tx_op * fourfold_rotation_op * reflection_op, tx_op**2 * fourfold_rotation_op * reflection_op,
+          ty_op * fourfold_rotation_op * reflection_op, ty_op**2 * fourfold_rotation_op * reflection_op,
+          tx_op * ty_op * fourfold_rotation_op * reflection_op, tx_op**2 * ty_op**2 * fourfold_rotation_op * reflection_op,
+          tx_op * fourfold_rotation_op**3 * reflection_op, tx_op**2 * fourfold_rotation_op**3 * reflection_op,
+          ty_op * fourfold_rotation_op**3 * reflection_op, ty_op**2 * fourfold_rotation_op**3 * reflection_op,
+          tx_op * ty_op**2 * fourfold_rotation_op**3 * reflection_op, tx_op**2 * ty_op * fourfold_rotation_op**3 * reflection_op]
+    c9 = [tx_op * ty_op, tx_op**2 * ty_op, tx_op * ty_op**2, tx_op**2 * ty_op**2]
+
+    conj_classes = [c1, c2, c3, c4, c5, c6, c7, c8, c9]
+
+    char_table = np.array([[1,  1,  1,  1,  1,  1,  1,  1,  1],
+                           [1, -1,  1, -1,  1,  1, -1, -1,  1],
+                           [1, -1,  1,  1, -1,  1, -1,  1,  1],
+                           [1,  1,  1, -1, -1,  1,  1, -1,  1],
+                           [2,  0, -2,  0,  0,  2,  0,  0,  2],
+                           [4, -2,  0,  0,  0,  1,  1,  0, -2],
+                           [4,  0,  0, -2,  0, -2,  0,  1,  1],
+                           [4,  0,  0,  2,  0, -2,  0, -1,  1],
+                           [4,  2,  0,  0,  0,  1, -1,  0, -2]])
+
+    projs = [get_reduced_projector(np.sum([np.sum([c * op for op in cclass]) for c, cclass in zip(chars, conj_classes)]), print_results) for chars in char_table]
+
+    return projs

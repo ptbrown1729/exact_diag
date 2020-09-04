@@ -4,6 +4,7 @@ import psutil
 # run unit tests from the command prompt via python -m unittest hubbard_test
 
 import numpy as np
+import scipy.sparse as sp
 import ed_spins as tvi
 import ed_geometry as geom
 import ed_symmetry as symm
@@ -161,6 +162,105 @@ class TestSpinSys(unittest.TestCase):
         refl_op = spin_model.get_xform_op(refl_cycles)
 
         symm_projs = symm.getD2Projectors(rot_op, refl_op)
+
+        eig_vals_sectors = []
+        for ii, proj in enumerate(symm_projs):
+            h_sector = spin_model.createH(projector=proj)
+            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
+            eig_vals_sectors.append(eig_vals_sector)
+
+        # why only accurate to 10 decimal places?
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        max_diff = (np.round(eig_vals_full, 10) - np.round(eigs_all_sectors, 10)).max()
+
+        self.assertTrue(max_diff == 0)
+
+    # @unittest.skip("not working yet")
+    def test_d3_symm(self):
+        """
+        Test d3 symmetry by diagonalizing random spin system with and without it
+        :return:
+        """
+        adjacency_mat = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+        cluster = geom.Geometry.createNonPeriodicGeometry(xlocs=(0,0.5,1), ylocs=(0,np.sqrt(3)/2,0), adjacency_mat=adjacency_mat)
+        jx = np.random.rand()
+        jy = np.random.rand()
+        jz = np.random.rand()
+        hx = np.random.rand()
+        hy = np.random.rand()
+        hz = np.random.rand()
+
+        # diagonalize full hamiltonian
+        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        hamiltonian_full = spin_model.createH()
+        eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
+
+        # use rotationl symmetry
+        # triangle center
+        cx, cy = 0.5, 1 / 2 / np.sqrt(3)
+        rot_fn = symm.getRotFn(3, cx=cx, cy=cy)
+        rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
+        rot_op = spin_model.get_xform_op(rot_cycles)
+
+        refl_fn = symm.getReflFn(np.array([0, 1]), cx=cx, cy=cy)
+        refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, spin_model.geometry)
+        refl_op = spin_model.get_xform_op(refl_cycles)
+
+        symm_projs = symm.getD3Projectors(rot_op, refl_op)
+
+        # id = sp.eye(refl_op.shape[0], format="csc")
+        # t = 2*id - rot_op - rot_op**2
+        # e_proj_corrected = np.array([[0, 2/np.sqrt(6), -1/np.sqrt(6), 0, -1/np.sqrt(6), 0, 0, 0],
+        #                   [0, 0, 1/np.sqrt(2), 0, -1/np.sqrt(2), 0, 0, 0],
+        #                   [0, 0, 0, 2/np.sqrt(6), 0, -1/np.sqrt(6), -1/np.sqrt(6), 0],
+        #                   [0, 0, 0, 0, 0, 1/np.sqrt(2), -1/np.sqrt(2), 0]])
+        # symm_projs[-1] = sp.csr_matrix(e_proj_corrected)
+
+
+        eig_vals_sectors = []
+        for ii, proj in enumerate(symm_projs):
+            h_sector = spin_model.createH(projector=proj)
+            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
+            eig_vals_sectors.append(eig_vals_sector)
+
+        # why only accurate to 10 decimal places?
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        max_diff = (np.round(eig_vals_full, 10) - np.round(eigs_all_sectors, 10)).max()
+
+        self.assertTrue(max_diff == 0)
+
+    # @unittest.skip("not working yet")
+    def test_d3_bigger_cluster(self):
+        adjacency_mat = np.array([[0, 1, 0, 1, 0, 0], [1, 0, 1, 1, 1, 0], [0, 1, 0, 0, 1, 0], [1, 1, 0, 0, 1, 1], [0, 1, 1, 1, 0, 1], [0, 0, 0, 1, 1, 0]])
+        cluster = geom.Geometry.createNonPeriodicGeometry(xlocs=(0, 1, 2, 0.5, 1.5, 1), ylocs=(0, 0, 0, np.sqrt(3)/2, np.sqrt(3)/2, np.sqrt(3)),
+                                                          adjacency_mat=adjacency_mat)
+        jx = np.random.rand()
+        jy = np.random.rand()
+        jz = np.random.rand()
+        hx = np.random.rand()
+        hy = np.random.rand()
+        hz = np.random.rand()
+
+        # diagonalize full hamiltonian
+        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        hamiltonian_full = spin_model.createH()
+        eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
+
+        # use rotationl symmetry
+        # triangle center
+        cx, cy = 1, 1 / np.sqrt(3)
+        rot_fn = symm.getRotFn(3, cx=cx, cy=cy)
+        rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
+        rot_op = spin_model.get_xform_op(rot_cycles)
+
+        refl_fn = symm.getReflFn(np.array([0, 1]), cx=cx, cy=cy)
+        refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, spin_model.geometry)
+        refl_op = spin_model.get_xform_op(refl_cycles)
+
+        # id = sp.eye(refl_op.shape[0], format="csc")
+        # t = 2 * id - rot_op - rot_op ** 2
+
+        symm_projs = symm.getD3Projectors(rot_op, refl_op)
 
         eig_vals_sectors = []
         for ii, proj in enumerate(symm_projs):

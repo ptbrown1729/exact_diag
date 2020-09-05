@@ -277,7 +277,7 @@ class fermions_test(unittest.TestCase):
         rot_fn = symm.getRotFn(4, cx=cx, cy=cy)
         rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, model.geometry)
         rot_op = model.n_projector.dot(model.get_xform_op(rot_cycles).dot(model.n_projector.conj().transpose()))
-        symm_projs = symm.getCnProjectors(rot_op, 4)
+        symm_projs, _ = symm.getZnProjectors(rot_op, 4)
 
         eig_vals_sectors = []
         for ii, proj in enumerate(symm_projs):
@@ -318,7 +318,7 @@ class fermions_test(unittest.TestCase):
         refl_cycles, max_cycle_len_refl = symm.findSiteCycles(refl_fn, model.geometry)
         refl_op = model.n_projector.dot(model.get_xform_op(refl_cycles).dot(model.n_projector.conj().transpose()))
 
-        symm_projs = symm.getC4VProjectors(rot_op, refl_op)
+        symm_projs = symm.getD4Projectors(rot_op, refl_op)
 
         eig_vals_sectors = []
         for ii, proj in enumerate(symm_projs):

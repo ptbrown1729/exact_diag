@@ -641,7 +641,7 @@ if __name__ == "__main__":
         refl_op = model.get_xform_op(refl_cycles)
         # symmetry projectors
         # symm_projs = symm.getC4VProjectors(rot_op, refl_op)
-        symm_projs = symm.getCnProjectors(rot_op, 4, print_results=1)
+        symm_projs, _ = symm.getZnProjectors(rot_op, 4, print_results=1)
 
         # TODO calculate energy eigs for each...
         eig_vals_sectors = []

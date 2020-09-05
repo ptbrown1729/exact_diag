@@ -1,5 +1,3 @@
-from __future__  import print_function
-import math
 import time
 import numpy as np
 import scipy.sparse as sp
@@ -235,7 +233,7 @@ class spinSystem(ed_base.ed_base):
         nstates = self.nbasis ** nsites
 
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         if projector is None:
             projector = sp.eye(nstates)
@@ -295,7 +293,7 @@ class spinSystem(ed_base.ed_base):
                                 projector.conj().transpose()
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("Constructing H of size %d x %d took %0.2f s" % (H.shape[0], H.shape[0], tend - tstart))
 
         return H
@@ -350,7 +348,7 @@ class spinSystem(ed_base.ed_base):
         AFMState1 = sp.csr_matrix((np.array([1]), (np.array([AFMState1Ind]), np.array([0]))), shape=(NStates, 1))
         AFMState2 = sp.csr_matrix((np.array([1]), (np.array([AFMState2Ind]), np.array([0]))), shape=(NStates, 1))
 
-        AllPlusState = np.ones([NStates, 1]) / math.sqrt(NStates)
+        AllPlusState = np.ones([NStates, 1]) / np.sqrt(NStates)
         AllMinusState = sp.csr_matrix.dot(self.get_allsite_op(self.pauli_z), AllPlusState)
 
         SymmExcState = np.zeros([NStates, 1])

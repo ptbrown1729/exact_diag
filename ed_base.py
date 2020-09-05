@@ -1,6 +1,3 @@
-from __future__ import print_function
-import math
-import os
 import time
 import datetime
 import numpy as np
@@ -161,7 +158,7 @@ class ed_base:
         :return eigvects:
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
         if use_sparse:
             from scipy.sparse.linalg import eigsh
             # look for eigenvalues nearest the all ground state.
@@ -182,7 +179,7 @@ class ed_base:
         eigvects = eigvects[:, SortedIs]
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("Diagonalizing H of size %dx%d took %0.2f s" % (H.shape[0], H.shape[0], tend - tstart))
 
         return eigvals, eigvects
@@ -202,7 +199,7 @@ class ed_base:
         # TODO: implement this with scipy.sparse.linalg.expm??? Maybe not in this function, because that is mostly
         # useful if changing hamiltonian each timestep
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
         if initial_states.ndim == 1:
             initial_states = initial_states[:, None]
 
@@ -248,7 +245,7 @@ class ed_base:
             evolved_states = evolved_states[:, None]
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("Time evolving %d state(s) for %d time point(s) took %0.2f s" % (
                 num_init_states, times.size, tend - tstart))
 
@@ -376,20 +373,20 @@ class ed_base:
         """
         # TODO: probably shouldn't implement this in the base class, but rather in the subclasses?
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         opmat = 0
         for ii in range(0, self.geometry.nsites):
             opmat = opmat + self.get_single_site_op(ii, species, op, format=format)
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("getSumOptook %0.2f s" % (tend - tstart))
         return opmat.tocsr()
 
     def get_sum_op_q(self, species, q_vector, op, format="fermion", print_results = 0):
 
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         n_logical_sites = self.geometry.nsites * self.nspecies
         qx = q_vector[0]
@@ -401,7 +398,7 @@ class ed_base:
                        self.get_single_site_op(ii, species, op, format=format)
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_sum_op_q %0.2f s" % (tend - tstart))
 
         return sum_op_q
@@ -423,7 +420,7 @@ class ed_base:
         :return: NumPy array of size ???
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         if states.ndim == 1:
             # TODO: can rewrite with reshape...
@@ -435,7 +432,7 @@ class ed_base:
         else:
             exp_vals = np.sum(np.multiply(states.conj(), full_op.dot(states)), 0).real
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_exp_vals took %0.2f s" % (tend - tstart))
 
         return exp_vals
@@ -449,7 +446,7 @@ class ed_base:
         :return: NumPy array of size number of 1 states x number of 2 states. M[i,j] = <states1[i]|states2[j]>.
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         if states1.ndim == 1:
             states1 = states1[:, None]
@@ -469,7 +466,7 @@ class ed_base:
             Overlaps = states1.conj().transpose().dot(states2)
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_overlaps took %0.2f s" % (tend - tstart))
 
         return np.squeeze(Overlaps)
@@ -482,7 +479,7 @@ class ed_base:
         :return: NumPy array of size numvectors, giving the norms of each column of states
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         if states.ndim == 1:
             states = states[:, None]
@@ -493,7 +490,7 @@ class ed_base:
         else:
             norms = np.sum(np.multiply(states.conj(), states), 0).real
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_norms took %0.2f s" % (tend - tstart))
 
         return norms
@@ -621,7 +618,7 @@ class ed_base:
         :return: projections, NumPy array of size ????
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
         if states.ndim == 1:
             states = states[:, None]
 
@@ -634,7 +631,7 @@ class ed_base:
         for ii in range(0, len(projectors)):
             projections[ii, :] = self.get_exp_vals(states, projectors[ii].conj().transpose().dot(projectors[ii]))
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_subspace_overlaps took %0.2f s" % (tend - tstart))
         return np.squeeze(projections)
 
@@ -649,7 +646,7 @@ class ed_base:
         :return:
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         if not sp.isspmatrix_csr(diagonal_op):
             raise Exception("diagonal_op in get_subspace_projs was not csr_matrix")
@@ -674,7 +671,7 @@ class ed_base:
             projs.append(sp.csr_matrix((np.ones(Indices.size), (np.arange(0, Indices.size), Indices)),
                                        shape=(Indices.size, nstates)))
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_subspace_projs took %0.2f s" % (tend - tstart))
         return projs, eig_vals
 
@@ -694,7 +691,7 @@ class ed_base:
 
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
         # TODO: make capable of handling a vector of temperatures at once
         temps = np.asarray(temps, dtype=np.float)
         if temps.size > 1:
@@ -714,7 +711,7 @@ class ed_base:
                 thermal_exp_vals = np.sum(exp_vals) / Z
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_exp_vals_thermal for %d eigenvectors, %d x %d matrix and %d temps took %0.2f s" % (eig_vects.shape[0], op.shape[0], op.shape[0], temps.size, tend - tstart))
 
         return thermal_exp_vals
@@ -865,14 +862,14 @@ class ed_base:
 
     def get_matrix_elems(self, eig_vects, op, print_results = 0):
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         # a, entries = np.meshgrid(eig_vals, eig_vals)
         # omegas = entries - a #energy difference between eigenvalues for matrix element
         matrix_elems = eig_vects.conj().transpose().dot(op.dot(eig_vects))
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_matrix_elems for %dx%d matrix took %0.2f s" % (op.shape[0], op.shape[0],tend - tstart))
 
         return matrix_elems
@@ -888,7 +885,7 @@ class ed_base:
         :return:
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         if format == "boson":
             factor = -1
@@ -936,7 +933,7 @@ class ed_base:
         response_fn_imag_part = lambda wo, eta: np.pi / z * np.nansum(omega_fn(wo, eta, omegas, thermal_mat_elem))
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_response_fn_retarded took %0.2f s" % (tend - tstart))
 
         return response_fn_imag_part
@@ -952,7 +949,7 @@ class ed_base:
         :return:
         """
         if print_results:
-            tstart = time.clock()
+            tstart = time.process_time()
 
         # normalized lorentzian function. Area is constant with changing eta
         # expected to need a factor of 1/pi here to normalize lorentzian area to 1
@@ -991,7 +988,7 @@ class ed_base:
                                                             (np.nansum(omega_fn(wo, eta, -omegas, thermal_mat_elem_B))))
 
         if print_results:
-            tend = time.clock()
+            tend = time.process_time()
             print("get_optical_cond_fn took %0.2f s" % (tend - tstart))
 
         return response_fn_imag_part

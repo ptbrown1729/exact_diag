@@ -1,5 +1,5 @@
 import sys
-import cPickle as pickle
+import pickle
 import scipy.sparse as sp
 import numpy as np
 import time

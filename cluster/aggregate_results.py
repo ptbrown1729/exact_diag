@@ -1,6 +1,6 @@
 import sys
 import glob
-import cPickle as pickle
+import pickle
 import numpy as np
 import re
 

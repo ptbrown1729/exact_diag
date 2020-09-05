@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-import cPickle as pickle
+import pickle
 
 def plot_results(fname_data):
 

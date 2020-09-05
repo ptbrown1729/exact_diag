@@ -1,5 +1,5 @@
 import sys
-import cPickle as pickle
+import pickle
 import glob
 import re
 import numpy as np
@@ -11,13 +11,13 @@ def aggregate_subclusters(file_pattern, fname_out, fname_in):
     with open(fname_in, 'rb') as f:
         cluster_data = pickle.load(f)
     nclusters = len(cluster_data[1])
-    print "read cluster data from %s" % fname_in
+    print("read cluster data from %s" % fname_in)
 
     # load diagonalized cluster files_out
     files = glob.glob(file_pattern)
     if len(files) != nclusters:
         raise Exception('number of cluster data files_out is not equal to the number of clusters. %d data files_out and %d clusters.', len(files), nclusters)
-    print "found %d files_out matching %s" % (len(files), file_pattern)
+    print("found %d files_out matching %s" % (len(files), file_pattern))
 
     # sort these by number ... currently this is fragile because I'm assuming that there are no other
     # numbers in the file name besides for the cluster number.
@@ -48,7 +48,7 @@ def aggregate_subclusters(file_pattern, fname_out, fname_in):
     cluster_data.append(cluster_mult_mat)
     with open(fname_out, 'wb') as f:
         pickle.dump(cluster_data, f)
-    print "saved subcluster information to %s" % fname_out
+    print("saved subcluster information to %s" % fname_out)
 
 
 if __name__ == "__main__":

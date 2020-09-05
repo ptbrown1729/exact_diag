@@ -1,4 +1,4 @@
-import cPickle as pickle
+import pickle
 import os
 import sys
 from ed_nlce import *
@@ -29,4 +29,4 @@ if __name__ == "__main__":
     output_fname = sys.argv[1]
     max_cluster_order = int(sys.argv[2])
     num_clusters = generate_clusters(output_fname, max_cluster_order)
-    print num_clusters
+    print(num_clusters)

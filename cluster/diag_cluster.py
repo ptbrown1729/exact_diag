@@ -1,5 +1,5 @@
 import sys
-import cPickle as pickle
+import pickle
 import numpy as np
 import time
 
@@ -13,7 +13,7 @@ def diag_cluster(cluster_index, cluster_data_out_fname, cluster_data_in_fname):
     cluster_list = data[1]
     cluster = cluster_list[cluster_index]
 
-    print "cluster %d" % cluster_index
+    print("cluster %d" % cluster_index)
     model = tvi.spinSystem(cluster, jx=0.5, jy=0.5, jz=0.5, hx=0, hy=0, hz=0, use_ryd_detunes=0)
     hamiltonian = model.createH(print_results=True)
     eig_vals, eig_vects = model.diagH(hamiltonian, print_results=True)

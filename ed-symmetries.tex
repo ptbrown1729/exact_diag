@@ -397,6 +397,8 @@ From the cyclical property of the trace, we see that for any two elements in the
 \chi_{g_2} = \text{Tr}(g_2) = \text{Tr}(hg_1h^{-1}) =\text{Tr}(g_1) = \chi_{g_1}.
 \end{equation}
 
+Some useful notes on representation theory of finite groups can be found \href{https://www.math.uni-bielefeld.de/~ccheng/Notes/RTnotes.pdf}{here} and \href{https://web.stanford.edu/~aaronlan/assets/representation-theory.pdf}{here}. Character tables for many finite groups can be found \href{https://people.maths.bris.ac.uk/~matyd/GroupNames/index.html}{here}.
+
 For the group $D_4$ that we described above, the conjugacy classes are 
 \begin{equation}
 \{e\}, \{R, R^3\},\{R^2\}, \{\sigma_v, R^2 \sigma_v\}, \{R \sigma_v, R^3 \sigma_v\}
@@ -455,6 +457,7 @@ which for $n=4$ is a group with 128 elements.
 
 There is an algorithm for calculating character tables called \emph{Burnside's Algorithm}, which has been implemented in \href{https://www.gap-system.org/}{GAP (Groups, Algorithms, Programming - a System for Computational Discrete Algebra)}.
 
+
 \end{theorem}
 
 To diagonalize our Hamiltonian efficiently we are always interested in producing as small diagonal blocks as possible. In some cases, the full symmetry group does not produce the smallest blocks. Indeed, when working with a lattice with $D_4$ symmetry, the subspace corresponding to the two dimensional representation (labeled $E$ above) is much larger than the others (roughly half the dimension of the full space). Considering only the rotational symmetry, we have the cyclic symmetry group $\mathbb{Z}_4$, and this produces four blocks of roughly equal dimension.
@@ -485,5 +488,9 @@ To generate a hopping Hamiltonian on $N$ sites, we need only generate the much s
 
 Both of these facts limits the amount of work required considerably compared with looping over every entry in the Hamiltonian.
 \end{theorem}
+
+\nocite{*}
+\bibliographystyle{abbrv}
+\bibliography{bibliography} 
 
 \end{document}

@@ -1,6 +1,11 @@
 import time
 import datetime
+import os
+import ctypes
+import pickle
 import numpy as np
+from scipy.io import savemat, loadmat
+import scipy.sparse.linalg
 import scipy.linalg
 import scipy.sparse as sp
 import ed_geometry as geom
@@ -13,6 +18,7 @@ import ed_geometry as geom
 # because this relies on lots of get_single_site_op and get_two_site_op calls. So if I change the signature of these
 # functions, this is a problem. ACTUALLY, this comes up in get_swap_op from within get_xform_op
 
+
 class ed_base:
 
     _round_decimals = 14
@@ -21,6 +27,7 @@ class ed_base:
     nspecies = 0
     nbasis = 0
 
+    # Pauli matrices
     pauli_z = np.array([[1, 0], [0, -1]])
     pauli_y = np.array([[0, -1j], [1j, 0]])
     pauli_x = np.array([[0, 1], [1, 0]])
@@ -74,11 +81,6 @@ class ed_base:
         ...
         """
 
-        # TODO: this doesn't seem to work...
-        # r = os.system('python -c "import matplotlib.pyplot as plt; plt.figure()"')
-        # if r == 0:
-        #     import matplotlib.pyplot as plt
-
         self.check_version()
         self.geometry = geometry
         self.nstates = self.nbasis ** (self.geometry.nsites * self.nspecies)
@@ -89,27 +91,22 @@ class ed_base:
         Check which version of python is being used.
         :return:
         """
-        import sys
-        # if sys.version_info.major != 2:
-        #     raise Exception("This code was written using python 2. Detected a different version.")
 
-        import ctypes
         if ctypes.sizeof(ctypes.c_voidp) == 4:
             print("Warning: using 32-bit python. Array size is limited. Recommend switching to 64-bit")
 
-    def get_state_vects(self, print_results=0):
+    def get_state_vects(self, print_results=False):
         pass
 
     # ########################
     # Funtions to construct transformation operators
     # ########################
 
-    def get_xform_op(self, cycles, print_results=0):
+    def get_xform_op(self, cycles, print_results=False):
         """
         Get transformation operator acting on our space (in same basis as Hamiltonian). Construct this by
         decomposing the transformation into cycles, and decomposing cycles into swap operations.
-        # TODO: why do I need nsites as an argument now that I have self.geometry?
-        :param nspecies: Number of spin states. Typically = 2.
+
         :param cycles: A list of lists. Each sub-list is an ordered collection of sites, where one site transforms
         into the next under the actaion of whichever symmetry transformation we are using. Determine cycles using the
         ed_geometry package function findSiteCycles
@@ -129,16 +126,14 @@ class ed_base:
                         # TODO: I think this might be the wrong way?
                         # TODO: I think that is cancelled out by the fact the cycles are the opposite of what I expect
                         # TODO: Actually, probably by the transpose required at the end?
-                        # first_logical_site = self.spinful2spinlessIndex(cycle[jj - 1], nsites, ii)
-                        # second_logical_site = self.spinful2spinlessIndex(cycle[jj], nsites, ii)
-                        # cycle_op = self.get_swap_op(first_logical_site, second_logical_site, nsites * nspecies).tocsr() * cycle_op
                         cycle_op = self.get_swap_op(cycle[jj - 1], cycle[jj], ii).tocsr() * cycle_op
                     trans_op = cycle_op * trans_op
+
         if print_results:
             tend = time.time()
             print("get_xform_op op took %0.2f s" % (tend - tstart))  # TODO find way to print a name
+
         return trans_op.transpose()  # TODO why do I need this transpose? Related to the above issue.
-        # return trans_op
 
     # ########################
     # Build and diagonalize H
@@ -147,10 +142,10 @@ class ed_base:
     def createH(self):
         pass
 
-    def diagH(self, H, neigs=200, use_sparse=0, print_results=0):
+    def diagH(self, haml, neigs=200, use_sparse=False, print_results=False):
         """
         Diagonalize Hamiltonian, or, if using spares matrices, get NEigs eigenvalues and eigenvectors
-        :param H: Hamiltonian of the system as a sparse matrix.
+        :param haml: Hamiltonian of the system as a sparse matrix.
         :param neigs: Optional, number of eigenvalues to compute.
         :param use_sparse:
         :param print_results:
@@ -160,31 +155,31 @@ class ed_base:
         if print_results:
             tstart = time.process_time()
         if use_sparse:
-            from scipy.sparse.linalg import eigsh
+            # from scipy.sparse.linalg import eigsh
             # look for eigenvalues nearest the all ground state.
             # 'LM' is by far the fastest...but adding number to runner_offset seems to slow things back down.
             offset = 100
             # runner_offset = -Energy_AllGnd
             # eigvals_temp,eigvects_temp = eigsh(self.H+runner_offset*sp.eye(self.NStates).tocsr(),neigs,which='SM')
-            eigvals_temp, eigvects_temp = eigsh(H + offset * sp.eye(H.shape[0]).tocsr(), neigs, which='LM')
+            eigvals_temp, eigvects_temp = scipy.sparse.linalg.eigsh(haml + offset * sp.eye(haml.shape[0]).tocsr(), neigs, which='LM')
             eigvals_temp = eigvals_temp - offset
             eigvals = eigvals_temp
             eigvects = eigvects_temp
         else:
-            from numpy.linalg import eigh
-            eigvals, eigvects = eigh(H.toarray())
+            # from numpy.linalg import eigh
+            eigvals, eigvects = np.linalg.eigh(haml.toarray())
 
-        SortedIs = np.argsort(eigvals)
-        eigvals = eigvals[SortedIs].real
-        eigvects = eigvects[:, SortedIs]
+        sorted_is = np.argsort(eigvals)
+        eigvals = eigvals[sorted_is].real
+        eigvects = eigvects[:, sorted_is]
 
         if print_results:
             tend = time.process_time()
-            print("Diagonalizing H of size %dx%d took %0.2f s" % (H.shape[0], H.shape[0], tend - tstart))
+            print("Diagonalizing H of size %dx%d took %0.2f s" % (haml.shape[0], haml.shape[0], tend - tstart))
 
         return eigvals, eigvects
 
-    def quenchTimeEvolve(self, initial_states, eig_vects, eig_energies, times, print_results=0):
+    def quench_time_evolve(self, initial_states, eig_vects, eig_energies, times, print_results=False):
         """
         Do quench time evolution in subspace we've diagonalized. Take initial state and times to compute quench at
         as arguments. Return Times and resulting states, which is an NStates x NTimes array.
@@ -269,7 +264,7 @@ class ed_base:
         """
         return n_physical_sites * spin_index + spinful_site_index
 
-    def spinless2spinfullIndex(self, spinless_site_index, n_physical_sites, nspecies):
+    def spinless2spinfullIndex(self, spinless_site_index, n_physical_sites):
         """
         Convert from spinless fermion indexing to spinful fermion indexing. i.e. convert from single index to double
         index. Assumes that you are using the Fermion basis where creation operators are organized first by spin index,
@@ -277,7 +272,6 @@ class ed_base:
         left within each spin index.
         :param spinless_site_index: Int, spinless site index
         :param n_physical_sites: Int, number of physical sites
-        :param nspecies: Int, number of spins. Keep this in case becomes necessary in a future implementation of this fn.
         :return: Int, Int spinfull site index and spin index
         """
         site_index = np.mod(spinless_site_index, n_physical_sites)
@@ -287,10 +281,10 @@ class ed_base:
     def get_single_site_op(self, site_index, species_index, op, format="fermion"):
         """
         Compute operator for a single site.
-        :param site_index_logical: Int, site to compute operator on
-        :param n_logical_sites: Int, total number of sites. this will typically be the number of physical sites times the number
-        of spin states
+        :param int site_index: site to compute operator on
+        :param int species_index:
         :param op: 2x2 operator, acting on a single site. e.g. Sz
+        :param format:
         :return: sparse matrix
         """
         n_logical_sites = self.geometry.nsites * self.nspecies
@@ -298,7 +292,7 @@ class ed_base:
 
         if format == "fermion":
             endmat = sp.eye(1, 1, format="coo")
-            for ii in range(0, n_logical_sites - site_index_logical -1):
+            for ii in range(0, n_logical_sites - site_index_logical - 1):
                 endmat = sp.kron(endmat, self.parity_op, format="coo")
             # TODO: can I generate this parity matrix without a loop? Would it be faster?
         elif format == "boson":
@@ -312,12 +306,13 @@ class ed_base:
         """
         Compute product of operators on two separate sites. First must sort the operators so that the first operator
         is the lower site.
-        :param site1_index_logical: Int, first site
-        :param site2_index_logical: Int, second site
-        :param n_logical_sites: Int, total number of effective sites. This will typically be the number of real sites * number
-        of spin states
+        :param int site1: first site
+        :param species1:
+        :param site2:
+        :param species2:
         :param op1: 2x2 operator acting on site1
         :param op2: 2x2 operator acting on site2
+        :param format:
         :return:
         """
         n_logical_sites = self.geometry.nsites * self.nspecies
@@ -335,43 +330,43 @@ class ed_base:
         else:
             # For fermions the order still matters, so keep track of that.
             sites = [site1_index_logical, site2_index_logical]
-            siteA = min(sites)
-            siteB = max(sites)
-            minI = sites.index(siteA)
-            if minI == 0:
-                opA = op1
-                opB = op2
+            site_a = min(sites)
+            site_b = max(sites)
+            min_ind = sites.index(site_a)
+            if min_ind == 0:
+                op_a = op1
+                op_b = op2
                 if format == "fermion":
-                    opB = self.parity_op.dot(opB)
+                    op_b = self.parity_op.dot(op_b)
             else:
-                opA = op2
-                opB = op1
+                op_a = op2
+                op_b = op1
                 if format == "fermion":
-                    opB = opB.dot(self.parity_op)
+                    op_b = op_b.dot(self.parity_op)
 
             if format == "fermion":
                 middlemat = sp.eye(1, 1, format="coo")
-                for ii in range(0, siteB - siteA - 1):
+                for ii in range(0, site_b - site_a - 1):
                     middlemat = sp.kron(middlemat, self.parity_op, "coo")
             elif format == "boson":
-                middlemat = sp.eye(self.nbasis ** (siteB - siteA - 1))
+                middlemat = sp.eye(self.nbasis ** (site_b - site_a - 1))
             else:
                 raise Exception()
                 # TODO: can I generate this parity matrix without a loop? Would it be faster?
-            return (sp.kron(sp.kron(sp.kron(sp.eye(self.nbasis ** siteA), opA, "coo"), middlemat, "coo"),
-                            sp.kron(opB, sp.eye(self.nbasis ** (n_logical_sites - siteB - 1)), "coo"), "coo"))
+            return (sp.kron(sp.kron(sp.kron(sp.eye(self.nbasis ** site_a), op_a, "coo"), middlemat, "coo"),
+                            sp.kron(op_b, sp.eye(self.nbasis ** (n_logical_sites - site_b - 1)), "coo"), "coo"))
 
-    def get_sum_op(self, op, species, format="fermion", print_results=0):
+    def get_sum_op(self, op, species, format="fermion", print_results=False):
+        """
+        Get operator that is the sum of identical single site operators
+
+        :param op: 2x2 operator acting on each site
+        :param int species: index of species operators act on
+        :param str format: "fermion" or "
+        :param print_results:
+        :return opmat: sparse matrix representing the sum operator
         """
 
-        Get operator that counts the number of spins ups/rydberg excitations
-        :param nsites: Int, total number of real sites
-        :param species: Int, index of spin state in question
-        :param nspecies: Int, total number of spin states
-        :param Op: 2x2 operator acting on each logical site
-        :return: OpMat, sparse matrix
-        """
-        # TODO: probably shouldn't implement this in the base class, but rather in the subclasses?
         if print_results:
             tstart = time.process_time()
 
@@ -383,17 +378,24 @@ class ed_base:
             print("getSumOptook %0.2f s" % (tend - tstart))
         return opmat.tocsr()
 
-    def get_sum_op_q(self, species, q_vector, op, format="fermion", print_results = 0):
+    def get_sum_op_q(self, species, q_vector, op, format="fermion", print_results=False):
+        """
+
+        :param species:
+        :param q_vector:
+        :param op:
+        :param format:
+        :param print_results:
+        :return:
+        """
 
         if print_results:
             tstart = time.process_time()
 
-        n_logical_sites = self.geometry.nsites * self.nspecies
         qx = q_vector[0]
         qy = q_vector[1]
         sum_op_q = 0
         for ii in range(0, self.geometry.nsites):
-            # logical_site = self.spinful2spinlessIndex(ii, self.geometry.nsites, spin_index)
             sum_op_q = sum_op_q + np.exp(1j * self.geometry.xlocs[ii] * qx + 1j * self.geometry.ylocs[ii] * qy) * \
                        self.get_single_site_op(ii, species, op, format=format)
 
@@ -410,13 +412,14 @@ class ed_base:
     # General overlaps/expectation value functions
     # ##################################
 
-    def get_exp_vals(self, states, full_op, print_results=0):
+    def get_exp_vals(self, states, full_op, print_results=False):
         """
         Compute the expectation values for a number of states and a single operator. The operator and states must be
         written in the same basis. This may be the basis of the full space, or a projected subspace.
+
         :param states: NumPy array  or sparse matrix of size nbasis x nvectors. The columns represent state vectors.
         :param full_op: Sparse matrix of size nbasis x nbasis
-        :param print_results: Boolean, if true print information to terminal
+        :param bool print_results: If true print information to terminal
         :return: NumPy array of size ???
         """
         if print_results:
@@ -437,9 +440,10 @@ class ed_base:
 
         return exp_vals
 
-    def get_overlaps(self, states1, states2, print_results=0):
+    def get_overlaps(self, states1, states2, print_results=False):
         """
         Compute the overlap of two collections of states.
+
         :param states1: NumPy array or sparse matrix of size nbasis x number of 1 states
         :param states2: NumPy array or sparse matrix of size nbasis x number of 2 states
         :param print_results:
@@ -456,22 +460,22 @@ class ed_base:
 
         if sp.issparse(states1):
             states1 = states1.tocsc()
-            Overlaps = sp.csr_matrix.dot(states1.conj().transpose(), states2)
+            overlaps = sp.csr_matrix.dot(states1.conj().transpose(), states2)
 
         elif sp.issparse(states2):
             states2 = states2.tocsc()
-            Overlaps = sp.csr_matrix.dot(states2.conj().transpose(), states1).conj().transpose()
+            overlaps = sp.csr_matrix.dot(states2.conj().transpose(), states1).conj().transpose()
         else:
             # changed order for more sensible interpretation
-            Overlaps = states1.conj().transpose().dot(states2)
+            overlaps = states1.conj().transpose().dot(states2)
 
         if print_results:
             tend = time.process_time()
             print("get_overlaps took %0.2f s" % (tend - tstart))
 
-        return np.squeeze(Overlaps)
+        return np.squeeze(overlaps)
 
-    def get_norms(self, states, print_results=0):
+    def get_norms(self, states, print_results=False):
         """
         Compute the norms for a collction of states
         :param states: NumPy array or sparse matrix of size nbasis x numvectors. Columns represent state vectors.
@@ -505,9 +509,11 @@ class ed_base:
         :param site_op: single site operator
         :param species: species to use
         :param sites: if no argument is supplied, do computation at all sites
-        :return:
-        exp_vals
-        sites
+        :param projector:
+        :param format:
+
+        :return exp_vals:
+        :return sites:
         """
         if states.ndim == 1:
             states = states[:, None]
@@ -519,15 +525,29 @@ class ed_base:
             sites = range(0, self.geometry.nsites)
         sites = np.asarray(sites)
 
-        exp_vals = np.zeros(( len(sites), states.shape[1]))
+        exp_vals = np.zeros((len(sites), states.shape[1]))
         for ii, site in enumerate(sites):
-            full_op = projector * self.get_single_site_op(site, species, site_op, format=format) * projector.conj().transpose()
+            full_op = projector * self.get_single_site_op(site, species, site_op, format=format) * \
+                      projector.conj().transpose()
             exp_vals[ii, :] = self.get_exp_vals(states, full_op)
 
         return exp_vals, sites
 
-    def get_thermal_exp_sites(self, eig_vects, eig_vals, site_op, species, temps, sites=None, projector=None, format="fermion", print_results=0):
+    def get_thermal_exp_sites(self, eig_vects, eig_vals, site_op, species, temps, sites=None,
+                              projector=None, format="fermion", print_results=False):
+        """
 
+        :param eig_vects:
+        :param eig_vals:
+        :param site_op:
+        :param species:
+        :param temps:
+        :param sites:
+        :param projector:
+        :param format:
+        :param print_results:
+        :return:
+        """
         temps = np.asarray(temps, dtype=np.float)
 
         if projector is None:
@@ -544,7 +564,8 @@ class ed_base:
 
         return exp_vals, sites
 
-    def get_corr_sites(self, states, species1, species2, op1, op2, sites1=None, sites2=None, projector=None, format="fermion"):
+    def get_corr_sites(self, states, species1, species2, op1, op2, sites1=None, sites2=None,
+                       projector=None, format="fermion"):
         """
         Compute correlators between sites1 and sites2
         :param states: States to compute correlators at
@@ -568,21 +589,37 @@ class ed_base:
             projector = sp.eye(states.shape[0])
 
         if sites1 is None and sites2 is None:
-            xx, yy = np.meshgrid( range(0, self.geometry.nsites), range(0, self.geometry.nsites))
+            xx, yy = np.meshgrid(range(0, self.geometry.nsites), range(0, self.geometry.nsites))
             sites1 = xx[xx >= yy]
             sites2 = yy[xx >= yy]
         sites1 = np.asarray(sites1)
         sites2 = np.asarray(sites2)
 
-        exp_vals = np.zeros(( len(sites1), states.shape[1]))
+        exp_vals = np.zeros((len(sites1), states.shape[1]))
         for ii in range(0, sites1.size):
-            full_op = projector * self.get_two_site_op(sites1[ii], species1, sites2[ii], species2, op1, op2, format=format) * projector.conj().transpose()
+            full_op = projector * self.get_two_site_op(sites1[ii], species1, sites2[ii], species2, op1,
+                                                       op2, format=format) * projector.conj().transpose()
             exp_vals[ii, :] = self.get_exp_vals(states, full_op)
 
         return exp_vals, sites1, sites2
 
-    def get_thermal_corr_sites(self, eig_vects, eig_vals, species1, species2, op1, op2, temps, sites1=None, sites2=None, projector=None, format="fermion", print_results=0):
+    def get_thermal_corr_sites(self, eig_vects, eig_vals, species1, species2, op1, op2, temps, sites1=None, sites2=None, projector=None, format="fermion", print_results=False):
+        """
 
+        :param eig_vects:
+        :param eig_vals:
+        :param species1:
+        :param species2:
+        :param op1:
+        :param op2:
+        :param temps:
+        :param sites1:
+        :param sites2:
+        :param projector:
+        :param format:
+        :param print_results:
+        :return:
+        """
         temps = np.asarray(temps, dtype=np.float)
 
         if projector is None:
@@ -608,15 +645,17 @@ class ed_base:
     # Subspace overlaps
     # ##################################
 
-    def get_subspace_overlaps(self, states, projectors, print_results=0):
+    def get_subspace_overlaps(self, states, projectors, print_results=False):
         """
         Given a list of projectors and a matrix of states, compute the overlaps of each state with the subspace
         defined by each projector.
+
         :param states: NumPy array or sparse matrix, size nbasis x numvectors. Each column represents a state vector.
         :param projectors:
         :param print_results: Boolean, if true print results to terminal
         :return: projections, NumPy array of size ????
         """
+
         if print_results:
             tstart = time.process_time()
         if states.ndim == 1:
@@ -635,11 +674,12 @@ class ed_base:
             print("get_subspace_overlaps took %0.2f s" % (tend - tstart))
         return np.squeeze(projections)
 
-    def get_subspace_projs(self, diagonal_op, eig_vals=None, print_results=0):
+    def get_subspace_projs(self, diagonal_op, eig_vals=None, print_results=False):
         """
         Given a diagonal operator, get projection onto subspace with a given eigenvalue. For example, you can use
-        this funciton in combination with get_npairs_op to create an operator that projects onto the subspace of all
+        this function in combination with get_npairs_op to create an operator that projects onto the subspace of all
         states with a single pair of rydberg atoms.
+
         :param diagonal_op:
         :param eig_vals:
         :param print_results:
@@ -666,10 +706,10 @@ class ed_base:
 
         projs = []
         for ii in range(0, eig_vals.size):
-            Indices = np.arange(0, opvector.size)
-            Indices = Indices[opvector == eig_vals[ii]]
-            projs.append(sp.csr_matrix((np.ones(Indices.size), (np.arange(0, Indices.size), Indices)),
-                                       shape=(Indices.size, nstates)))
+            indices = np.arange(0, opvector.size)
+            indices = indices[opvector == eig_vals[ii]]
+            projs.append(sp.csr_matrix((np.ones(indices.size), (np.arange(0, indices.size), indices)),
+                                       shape=(indices.size, nstates)))
         if print_results:
             tend = time.process_time()
             print("get_subspace_projs took %0.2f s" % (tend - tstart))
@@ -679,7 +719,7 @@ class ed_base:
     # finite temperature properties
     # ##################################
 
-    def get_exp_vals_thermal(self, eig_vects, op, eig_vals, temps, print_results=0):
+    def get_exp_vals_thermal(self, eig_vects, op, eig_vals, temps, print_results=False):
         """
         Calculate thermal expectation values
         :param eig_vects:
@@ -697,26 +737,28 @@ class ed_base:
         if temps.size > 1:
             thermal_exp_vals = np.zeros(temps.size)
             for ii in range(0, temps.size):
-                thermal_exp_vals[ii] = self.get_exp_vals_thermal(eig_vects, op, eig_vals, temps[ii], print_results=print_results)
+                thermal_exp_vals[ii] = self.get_exp_vals_thermal(eig_vects, op, eig_vals, temps[ii],
+                                                                 print_results=print_results)
 
         else:
-            thermal_weights, Z = self.get_thermal_weights(eig_vals, temps, use_energies_offset=1)
+            thermal_weights, z = self.get_thermal_weights(eig_vals, temps, use_energies_offset=True)
             # try to be efficient by not bothering to compute results if weights are really zero
             if temps != 0:
                 exp_vals = self.get_exp_vals(eig_vects, op)
-                thermal_exp_vals = np.sum( np.multiply(exp_vals, thermal_weights) ) / Z
+                thermal_exp_vals = np.sum(np.multiply(exp_vals, thermal_weights)) / z
             else:
-                nstates = len( thermal_weights[thermal_weights != 0])
+                nstates = len(thermal_weights[thermal_weights != 0])
                 exp_vals = self.get_exp_vals(eig_vects[:, 0:nstates], op)
-                thermal_exp_vals = np.sum(exp_vals) / Z
+                thermal_exp_vals = np.sum(exp_vals) / z
 
         if print_results:
             tend = time.process_time()
-            print("get_exp_vals_thermal for %d eigenvectors, %d x %d matrix and %d temps took %0.2f s" % (eig_vects.shape[0], op.shape[0], op.shape[0], temps.size, tend - tstart))
+            print("get_exp_vals_thermal for %d eigenvectors, %d x %d matrix and %d temps took %0.2f s" %
+                  (eig_vects.shape[0], op.shape[0], op.shape[0], temps.size, tend - tstart))
 
         return thermal_exp_vals
 
-    def get_thermal_weights(self, energies, temps, use_energies_offset=0):
+    def get_thermal_weights(self, energies, temps, use_energies_offset=False):
         """
         Get partition function and thermal weights for a set of energies at given temperature.
         The probability have a having a given state is then thermal_weight / Z.
@@ -737,9 +779,9 @@ class ed_base:
 
         if temps.size > 1:
             thermal_weights = np.zeros((energies.size, temps.size))
-            Z = np.zeros(temps.size)
+            z = np.zeros(temps.size)
             for ii in range(0, temps.size):
-                thermal_weights[:, ii], Z[ii] = self.get_thermal_weights(energies, temps[ii], use_energies_offset)
+                thermal_weights[:, ii], z[ii] = self.get_thermal_weights(energies, temps[ii], use_energies_offset)
 
         else:
             if use_energies_offset:
@@ -749,17 +791,17 @@ class ed_base:
                 # finite temperature
                 beta = 1 / temps
                 thermal_weights = np.exp(-beta * energies)
-                Z = np.sum(thermal_weights)
+                z = np.sum(thermal_weights)
 
             else:
                 # zero temperature
                 # Check for degenerate states
                 nstates = len(energies[np.round(energies, 13) == 0])
-                thermal_weights = np.zeros( energies.size )
+                thermal_weights = np.zeros(energies.size)
                 thermal_weights[0:nstates] = 1.
-                Z = float(nstates)
+                z = float(nstates)
 
-        return thermal_weights, Z
+        return thermal_weights, z
 
     def get_partition_fn_hamiltonian(self, hamiltonian, beta):
         """
@@ -817,7 +859,7 @@ class ed_base:
             #     z_sectors[:] = np.array([np.sum(np.exp(-(ev - eigs_all[0]) / temp)) for ev in energies_sectors])
 
             for ii, e_sector in enumerate(energies_sectors):
-                _, z_sectors[ii] = self.get_thermal_weights(e_sector - min_eig, temp, use_energies_offset=0)
+                _, z_sectors[ii] = self.get_thermal_weights(e_sector - min_eig, temp, use_energies_offset=False)
 
         return z_sectors
 
@@ -834,7 +876,8 @@ class ed_base:
         """
         temps = np.asarray(temps)
 
-        # TODO: 'vectorize' this to take multiple temperatures and compute in efficient way if possible... In that case, quantity_sectors would be a nsectors x ntemps array
+        # TODO: 'vectorize' this to take multiple temperatures and compute in efficient way if possible...
+        #  In that case, quantity_sectors would be a nsectors x ntemps array
         if temps.size > 1:
 
             # so we can work on arbitrary extra dimensions, need to have at least a singleton third dimension
@@ -846,7 +889,7 @@ class ed_base:
 
             thermal_exp_vals = np.zeros(([temps.size] + shape[1:]))
             for ii in range(0, temps.size):
-                #expvals_sectors_temp = np.zeros((shape))
+                # expvals_sectors_temp = np.zeros((shape))
                 expvals_sectors_temp = expvals_sectors[:, ii, :]
                 thermal_exp_vals[ii, :] = self.thermal_avg_combine_sectors(expvals_sectors_temp, eigvals_sectors, temps[ii])
         else:
@@ -860,7 +903,7 @@ class ed_base:
 
         return thermal_exp_vals
 
-    def get_matrix_elems(self, eig_vects, op, print_results = 0):
+    def get_matrix_elems(self, eig_vects, op, print_results=False):
         if print_results:
             tstart = time.process_time()
 
@@ -870,17 +913,19 @@ class ed_base:
 
         if print_results:
             tend = time.process_time()
-            print("get_matrix_elems for %dx%d matrix took %0.2f s" % (op.shape[0], op.shape[0],tend - tstart))
+            print("get_matrix_elems for %dx%d matrix took %0.2f s" % (op.shape[0], op.shape[0], tend - tstart))
 
         return matrix_elems
 
-    def get_response_fn_retarded(self, A_matrix_elems, B_matrix_elems, eig_vals, temperature, format="boson", print_results=0):
+    def get_response_fn_retarded(self, a_matrix_elems, b_matrix_elems, eig_vals, temperature,
+                                 format="boson", print_results=False):
         """
         Create a function for computing the optical conductivity at arbitrary frequency omega_start and arbitrary broadening
         paramter eta
-        :param A_matrix_elems: the current operator in the eigenvector basis
+        :param a_matrix_elems: the current operator in the eigenvector basis
         :param eig_vals: eigenvalues corresponding to the eigenvectors
         :param temperature:
+        :param format:
         :param print_results:
         :return:
         """
@@ -896,7 +941,7 @@ class ed_base:
 
         # normalized lorentzian function. Area is constant with changing eta
         # expected to need a factor of 1/pi here to normalize lorentzian area to 1
-        lor = lambda w, eta, amp: (amp * eta / np.pi) / (eta ** 2 + np.square(w))
+        def lor(w, eta, amp): return (amp * eta / np.pi) / (eta ** 2 + np.square(w))
         temperature = float(temperature)
         eig_vals = eig_vals - eig_vals[0]
 
@@ -905,7 +950,7 @@ class ed_base:
         if temperature != 0:
             beta = 1 / temperature
             z = np.sum(np.exp(- beta * eig_vals))
-            mat_elem = np.multiply(A_matrix_elems, B_matrix_elems.transpose())
+            mat_elem = np.multiply(a_matrix_elems, b_matrix_elems.transpose())
             thermal_mat_elem = mat_elem.dot(np.diag(np.exp(- beta * eig_vals)))
             omega_fn = lambda wo, eta, es, amp: np.multiply(1 + factor * np.exp(beta * es), lor(wo + es, eta, amp))
 
@@ -917,8 +962,8 @@ class ed_base:
             # the positive frequency term has matrix element factor A_{0n}B_{n0}, and the negative frequency term
             # has A_{n0}B_{0n}
             omegas = np.concatenate((-eig_vals, eig_vals))
-            thermal_mat_elem = np.concatenate((np.multiply(A_matrix_elems[0, :], B_matrix_elems[:, 0]),
-                                               factor * np.multiply(A_matrix_elems[:, 0], B_matrix_elems[0, :])))
+            thermal_mat_elem = np.concatenate((np.multiply(a_matrix_elems[0, :], b_matrix_elems[:, 0]),
+                                               factor * np.multiply(a_matrix_elems[:, 0], b_matrix_elems[0, :])))
             omega_fn = lambda wo, eta, es, amp: lor(wo + es, eta, amp)
 
         max_imag = np.abs(thermal_mat_elem.imag).max()
@@ -938,11 +983,12 @@ class ed_base:
 
         return response_fn_imag_part
 
-    def get_response_fn_time_ordered(self, A_matrix_elems, B_matrix_elems, eig_vals, temperature, print_results=0):
+    def get_response_fn_time_ordered(self, a_matrix_elems, b_matrix_elems, eig_vals, temperature, print_results=False):
         """
         Create a function for computing the optical conductivity at arbitrary frequency omega_start and arbitrary broadening
         paramter eta
-        :param A_matrix_elems: the current operator in the eigenvector basis
+        :param a_matrix_elems: the current operator in the eigenvector basis
+        :param b_matrix_elems: the current operator in the eigenvector basis
         :param eig_vals: eigenvalues corresponding to the eigenvectors
         :param temperature:
         :param print_results:
@@ -953,7 +999,7 @@ class ed_base:
 
         # normalized lorentzian function. Area is constant with changing eta
         # expected to need a factor of 1/pi here to normalize lorentzian area to 1
-        lor = lambda wo, eta, w, amp: (amp * eta / np.pi) / (eta ** 2 + np.square(w - wo))
+        def lor(wo, eta, w, amp): return (amp * eta / np.pi) / (eta ** 2 + np.square(w - wo))
         temperature = float(temperature)
         eig_vals = eig_vals - eig_vals[0]
 
@@ -961,31 +1007,31 @@ class ed_base:
             beta = 1 / temperature
             z = np.sum(np.exp(- beta * eig_vals))
             [a, b] = np.meshgrid(eig_vals, eig_vals)
-            omegas = b - a # M_{nm} = E_n - E_m
+            omegas = b - a  # M_{nm} = E_n - E_m
 
-            thermal_mat_elem_A = np.multiply(A_matrix_elems, B_matrix_elems.transpose()).dot(
+            thermal_mat_elem_a = np.multiply(a_matrix_elems, b_matrix_elems.transpose()).dot(
                 np.diag(np.exp(- beta * eig_vals)))
-            thermal_mat_elem_B = np.multiply(A_matrix_elems.transpose(), B_matrix_elems).dot(
+            thermal_mat_elem_b = np.multiply(a_matrix_elems.transpose(), b_matrix_elems).dot(
                 np.diag(np.exp(- beta * eig_vals)))
 
             omegas = omegas.flatten()
-            thermal_mat_elem_A = thermal_mat_elem_A.flatten()
-            thermal_mat_elem_B = thermal_mat_elem_B.flatten()
+            thermal_mat_elem_a = thermal_mat_elem_a.flatten()
+            thermal_mat_elem_b = thermal_mat_elem_b.flatten()
 
             omega_fn = lambda wo, eta, w, amp: lor(wo, eta, w, amp)
 
         else:
             z = 1
             omegas = eig_vals
-            thermal_mat_elem_A = np.multiply(A_matrix_elems[:, 0], B_matrix_elems[0, :])
-            thermal_mat_elem_B = np.multiply(A_matrix_elems[0, :], B_matrix_elems[:, 0])
-            thermal_mat_elem_A = thermal_mat_elem_A.flatten()
-            thermal_mat_elem_B = thermal_mat_elem_B.flatten()
+            thermal_mat_elem_a = np.multiply(a_matrix_elems[:, 0], b_matrix_elems[0, :])
+            thermal_mat_elem_b = np.multiply(a_matrix_elems[0, :], b_matrix_elems[:, 0])
+            thermal_mat_elem_a = thermal_mat_elem_a.flatten()
+            thermal_mat_elem_b = thermal_mat_elem_b.flatten()
 
             omega_fn = lambda wo, eta, w, amp: lor(np.abs(wo), eta, w, amp)
 
-        response_fn_imag_part = lambda wo, eta: np.pi / z * (np.nansum(omega_fn(wo, eta, omegas, thermal_mat_elem_A)) -
-                                                            (np.nansum(omega_fn(wo, eta, -omegas, thermal_mat_elem_B))))
+        response_fn_imag_part = lambda wo, eta: np.pi / z * (np.nansum(omega_fn(wo, eta, omegas, thermal_mat_elem_a)) -
+                                                            (np.nansum(omega_fn(wo, eta, -omegas, thermal_mat_elem_b))))
 
         if print_results:
             tend = time.process_time()
@@ -998,27 +1044,25 @@ class ed_base:
 
     def save(self, file_name=None):
         """
-        Save class as .mat file or .pkl. Defaults to .mat
+        Save class as .mat file or .pkl. Defaults to .pkl
+
         :param file_name: String, should end in .mat or .pkl
         :return: FileName, string
         """
         if file_name is None:
             today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
-            file_name = "%s_ed.mat" % today_str
+            file_name = "%s_ed.pkl" % today_str
 
-        from os.path import splitext
-        _, Ext = splitext(file_name)
+        _, ext = os.path.splitext(file_name)
 
-        if Ext == '.mat':
-            from scipy.io import savemat
+        if ext == '.mat':
             savemat(file_name, self.__dict__)
-        elif Ext == '.pkl':
-            import cPickle as pickle
+        elif ext == '.pkl':
             with open(file_name, 'wb') as output:
                 # TODO implement savesparse. What does that mean?
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         else:
-            print("Extension %s not understood" % Ext)
+            print("Extension %s not understood" % ext)
             return ''
         print("Saved file to %s" % file_name)
         return file_name
@@ -1031,11 +1075,9 @@ class ed_base:
         """
         # TODO come up with solution for issue that all loaded values are numpy arrays.
         # This does weird things when the code here expects integers. e.g. for NSites
-        from os.path import splitext
-        _, Ext = splitext(file_name)
+        _, ext = os.path.splitext(file_name)
 
-        if Ext == '.mat':
-            from scipy.io import loadmat
+        if ext == '.mat':
             loaded = loadmat(file_name)
             self.__dict__ = {}
             for key, val in loaded.items():
@@ -1045,13 +1087,12 @@ class ed_base:
                 else:
                     print("Skipped key %s while loading to class from file" % key)
 
-        elif Ext == '.pkl':
-            import cPickle as pickle
+        elif ext == '.pkl':
             with open(file_name, 'rb') as inputFile:
                 loaded = pickle.load(inputFile)
             self.__dict__ = loaded.__dict__
         else:
-            print("Extension %s not understood" % Ext)
+            print("Extension %s not understood" % ext)
             loaded = {}
         return loaded
 

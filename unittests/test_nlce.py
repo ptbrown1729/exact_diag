@@ -1,9 +1,7 @@
-from __future__ import print_function
 import os
 import time
 import datetime
 import numpy as np
-#import cPickle as pickle # no longer neede for python3
 import pickle
 
 import ed_geometry as geom
@@ -52,29 +50,30 @@ if not os.path.isfile(fname):
 
     # symmetry projectors
     symm_projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
-                                                      max_cycle_len_transly, print_results=1)
+                                                      max_cycle_len_transly, print_results=True)
 
     # Calculate eigenvalues and expectation values for each symmetry sector
     eig_vals_sectors = []
     energy_exp_sectors = np.zeros((len(symm_projs), len(temps)))
     energy_sqr_exp_sectors = np.zeros((len(symm_projs), len(temps)))
     szsz_exp_sectors = np.zeros((len(symm_projs), len(temps)))
-    szsz_op_full = model.getTwoSiteOp(0, 1, model.geometry.nsites, model.pauli_z, model.pauli_z, format="boson")
+    szsz_op_full = model.get_two_site_op(0, 0, 1, 0, model.pauli_z, model.pauli_z, format="boson")
     for ii, proj in enumerate(symm_projs):
         print("symmetry subspace %d/%d" % (ii + 1, len(symm_projs)))
-        H = model.createH(projector=proj, print_results=1)
-        eig_vals, eig_vects = model.diagH(H, print_results=1)
+        H = model.createH(projector=proj, print_results=True)
+        eig_vals, eig_vects = model.diagH(H, print_results=True)
         eig_vals_sectors.append(eig_vals)
         szsz_op_sector = proj.dot(szsz_op_full.dot(proj.conj().transpose()))
 
-        t_start = time.clock()
+        t_start = time.process_time()
         for jj in range(0, len(temps)):
-            energy_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, temps[jj], print_results=0)
+            print("temp %d/%d" % (jj+1, len(temps)))
+            energy_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, temps[jj], print_results=False)
             energy_sqr_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, temps[jj],
-                                                                        print_results=0)
-            szsz_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, szsz_op_sector, eig_vals, temps[jj], print_results=0)
-            t_end = time.clock()
-            print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
+                                                                        print_results=False)
+            szsz_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, szsz_op_sector, eig_vals, temps[jj], print_results=False)
+        t_end = time.process_time()
+        print("Computed %d finite temperature expectation values in %0.2fs" % (len(temps), t_end - t_start))
     eigs_all = np.sort(np.concatenate(eig_vals_sectors))
 
     # Calculate full eigenvalues and expectation values, combining results from sectors
@@ -95,19 +94,21 @@ if not os.path.isfile(fname):
         # assuming symmetry for whichever sites we choose
         szsz_full[jj] = model.thermal_avg_combine_sectors(szsz_exp_sectors[:, jj], eig_vals_sectors, temp)
 
-    data = [model, eigs_all, energies_full, entropies_full, specific_heat_full, szsz_full, temps]
+    data = {"model": model, "eigs_all": eigs_all, "energies_full": energies_full,
+            "entropies_full": entropies_full, "specific_heat_full": specific_heat_full,
+            "szsz_full": szsz_full, "temps": temps}
     with open(fname, 'wb') as f:
         pickle.dump(data, f)
 else:
     print("found and loaded file %s" % fname)
     with open(fname, 'rb') as f:
         data = pickle.load(f)
-    model = data[0]
-    eigs_all = data[1]
-    energies_full = data[2]
-    entropies_full = data[3]
-    specific_heat_full = data[4]
-    szsz_full = data[5]
+    model = data['model']
+    eigs_all = data['eigs_all']
+    energies_full = data['energies_full']
+    entropies_full = data['entropies_full']
+    specific_heat_full = data['specific_heat_full']
+    szsz_full = data['szsz_full']
 
 ########################################
 # generate all clusters up to certain order on the infinite lattice
@@ -130,7 +131,9 @@ else:
         get_all_clusters_with_subclusters(max_cluster_order)
     cluster_multiplicities = cluster_multiplicities[None, :]
 
-    data_clusters = [max_cluster_order, cluster_multiplicities, clusters_list, sub_cluster_mult, order_start_indices]
+    data_clusters = {"max_cluster_order": max_cluster_order, "cluster_multiplicites": cluster_multiplicities,
+                     "clusters_list": clusters_list, "sub_cluster_mult": sub_cluster_mult,
+                     "order_start_indices": order_start_indices}
     with open(fname_clusters, 'wb') as f:
         pickle.dump(data_clusters, f)
 
@@ -145,11 +148,11 @@ szsz_corr = np.zeros((len(clusters_list), len(temps)))
 for ii, cluster in enumerate(clusters_list):
     print("%d/%d" % (ii + 1, len(clusters_list)))
     model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
-    H = model.createH(print_results=1)
-    eig_vals, eig_vects = model.diagH(H, print_results=1)
+    H = model.createH(print_results=True)
+    eig_vals, eig_vects = model.diagH(H, print_results=True)
 
 
-    t_start = time.clock()
+    t_start = time.process_time()
     for jj, T in enumerate(temps):
         # calculate properties for each temperature
         energies[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, T, 0)
@@ -161,11 +164,11 @@ for ii, cluster in enumerate(clusters_list):
         szsz_corr[ii, jj] = 0
         for aa in range(0, model.geometry.nsites):
             for bb in range(aa + 1, model.geometry.nsites):
-                szsz_op = model.getTwoSiteOp(aa, bb, model.geometry.nsites, model.pauli_z, model.pauli_z, format="boson")
+                szsz_op = model.get_two_site_op(aa, bb, model.geometry.nsites, model.pauli_z, model.pauli_z, format="boson")
                 szsz_exp = model.get_exp_vals_thermal(eig_vects, szsz_op, eig_vals, T)
                 szsz_corr[ii, jj] = szsz_corr[ii, jj] + szsz_exp
 
-    t_end = time.clock()
+    t_end = time.process_time()
     print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
 
 # nlce computation
@@ -202,12 +205,17 @@ szsz_nlce, orders_szsz, weight_szsz = \
 
 szsz_nlce_euler_resum, szsz_euler_orders = euler_resum(orders_szsz, 1)
 
-data_nlce = [clusters_list, sub_cluster_mult, order_start_indices,
-        energies, orders_energy, weight_energy, energy_nlce_euler_resum, energy_euler_orders,
-        entropies, weight_entropy, specific_heats, weight_specific_heat, entropy_nlce_euler_resum, entropy_euler_orders,
-        energy_nlce, entropy_nlce, specific_heat_nlce, spheat_nlce_euler_resum, spheat_euler_orders,
-        szsz_nlce, orders_szsz, weight_szsz, szsz_nlce_euler_resum, szsz_euler_orders,
-        temps]
+data_nlce = {"cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult, "order_start_indices": order_start_indices,
+             "energies": energies, "orders_energy": orders_energy, "weight_energy": weight_energy,
+             "energy_nlce_euler_resum": energy_nlce_euler_resum, "energy_euler_order": energy_euler_orders,
+             "entropies": entropies, "weight_entropy": weight_entropy,
+             "specific_heats": specific_heats, "weight_specific_heat": weight_specific_heat,
+             "entropy_nlce_euler_resum": entropy_nlce_euler_resum, "entropy_euler_orders": entropy_euler_orders,
+             "energy_nlce": energy_nlce, "entropy_nlce": entropy_nlce, "specific_heat_nlce": specific_heat_nlce,
+             "spheat_nlce_euler_resum": spheat_nlce_euler_resum, "spheat_euler_orders": spheat_euler_orders,
+             "szsz_nlce": szsz_nlce, "orders_szsz": orders_szsz, "weight_szsz": weight_szsz,
+             "szsz_nlce_euler_resum": szsz_nlce_euler_resum, "szsz_euler_orders": szsz_euler_orders,
+             "temps": temps}
 
 fname_nlce = "nlce_results_order_to=%d.pkl" % max_cluster_order
 with open(fname_nlce, 'wb') as f:

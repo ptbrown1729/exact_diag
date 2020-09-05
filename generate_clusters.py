@@ -2,7 +2,7 @@
 import pickle
 import os
 import sys
-from ed_clusters import *
+from ed_nlce import *
 
 def generate_clusters(fname_cluster_dat, max_cluster_order):
 
@@ -20,7 +20,9 @@ def generate_clusters(fname_cluster_dat, max_cluster_order):
     cluster_multiplicities = cluster_multiplicities[None, :]
 
     # save cluster data
-    data_clusters = [max_cluster_order, cluster_multiplicities, clusters_list, sub_cluster_mult, order_start_indices]
+    data_clusters = {"max_cluster_order": max_cluster_order, "cluster_multiplicities": cluster_multiplicities,
+                     "cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult,
+                     "order_start_indices": order_start_indices}
     with open(fname_cluster_dat, 'wb') as f:
         pickle.dump(data_clusters, f)
 
@@ -30,4 +32,4 @@ if __name__ == "__main__":
     output_fname = sys.argv[1]
     max_cluster_order = int(sys.argv[2])
     num_clusters = generate_clusters(output_fname, max_cluster_order)
-    print num_clusters
+    print(num_clusters)

@@ -1,10 +1,6 @@
 import unittest
 import psutil
-
-# run unit tests from the command prompt via python -m unittest hubbard_test
-
 import numpy as np
-import scipy.sparse as sp
 import ed_spins as tvi
 import ed_geometry as geom
 import ed_symmetry as symm
@@ -128,9 +124,9 @@ class TestSpinSys(unittest.TestCase):
 
         # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
-        max_diff = ( np.round(eig_vals_full, 10) - np.round(eigs_all_sectors, 10) ).max()
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
-        self.assertTrue(max_diff == 0)
+        self.assertAlmostEqual(max_diff, 0, 10)
 
     def test_d2_symm_3by2(self):
         """
@@ -171,9 +167,9 @@ class TestSpinSys(unittest.TestCase):
 
         # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
-        max_diff = (np.round(eig_vals_full, 10) - np.round(eigs_all_sectors, 10)).max()
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
-        self.assertTrue(max_diff == 0)
+        self.assertAlmostEqual(max_diff, 0, 10)
 
     def test_d3_symm_3sites(self):
         """
@@ -308,9 +304,9 @@ class TestSpinSys(unittest.TestCase):
 
         # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
-        max_diff = (np.round(eig_vals_full, 10) - np.round(eigs_all_sectors, 10)).max()
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
-        self.assertTrue(max_diff == 0)
+        self.assertAlmostEqual(max_diff, 0, 10)
 
     def test_translational_symm_3by3(self):
         """
@@ -352,9 +348,9 @@ class TestSpinSys(unittest.TestCase):
 
         # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
-        max_diff = (np.round(eig_vals_full, 10) - np.round(eigs_all_sectors, 10)).max()
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
-        self.assertTrue(max_diff == 0)
+        self.assertAlmostEqual(max_diff, 0, 10)
 
     def test_full_symm_3byb3(self):
         cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
@@ -401,9 +397,9 @@ class TestSpinSys(unittest.TestCase):
 
         # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
-        max_diff = (np.round(eig_vals_full, 10) - np.round(eigs_all_sectors, 10)).max()
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
-        self.assertTrue(max_diff == 0)
+        self.assertAlmostEqual(max_diff, 0, 10)
 
     def test_directions_equivalent(self):
         """

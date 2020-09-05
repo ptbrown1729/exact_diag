@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-
 import ed_geometry as geom
 import ed_nlce
 

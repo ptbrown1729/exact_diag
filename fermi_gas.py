@@ -272,7 +272,7 @@ def fg_kspace_gfns(beta, mu, ks, time=0., type="greater", dim="2d"):
 
     return gfn, dgdmu
 
-def fg_realspace_gfn(beta, mu, corr_index=[1,0], time=0., nsites=100, dim='2d', type="greater"):
+def fg_realspace_gfn(beta, mu, corr_index=(1,0), time=0., nsites=100, dim='2d', type="greater"):
     """
     Calculate real space green's functions G(t-t', r-r') by Fourier transforming momentum spacing functions.
 
@@ -441,7 +441,7 @@ def fg_compressibility(beta, mu, nsites=100, dim='2d'):
     return dndmu
 
 # correlators and response function
-def fg_corr(beta, mu, corr_index=[1, 0], nsites=100, dim='2d'):
+def fg_corr(beta, mu, corr_index=(1, 0), nsites=100, dim='2d'):
     """
     Compute the correlator <ni nj> - <n>**2 for a single component non-interacting fermi gas with a lattice dispersion.
     :param beta: Inverse temperature, in units of the hopping
@@ -572,7 +572,7 @@ def fg_singles(beta, mu_up, mu_dn, nsites=100, dim='2d'):
     singles = n_up + n_dn - 2 * n_up * n_dn
     return singles
 
-def fg_singles_corr(beta, mu_up, mu_dn, corr_index=[0, 1], nsites=100, dim='2d'):
+def fg_singles_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
     """
     Compute correlations between singles for a two-component non-interacting Fermi gas
 
@@ -646,7 +646,7 @@ def fg_doubles(beta, mu_up, mu_dn, nsites=100, dim='2d'):
 
     return d
 
-def fg_doubles_corr(beta, mu_up, mu_dn, corr_index=[0, 1], nsites=100, dim='2d'):
+def fg_doubles_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
     """
     Compute correlations between doubles for a two-component non-interacting Fermi gas
 
@@ -684,7 +684,7 @@ def fg_doubles_corr(beta, mu_up, mu_dn, corr_index=[0, 1], nsites=100, dim='2d')
 
     return doubles_corr
 
-def fg_sz_corr(beta, mu_up, mu_dn, corr_index=[0, 1], nsites=100, dim='2d'):
+def fg_sz_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
     """
     4*<S^z S^z>_c = <(n_up - n_dn)*(n_up - n_dn)> spin correlations for Fermi gas
     :param beta:
@@ -699,7 +699,7 @@ def fg_sz_corr(beta, mu_up, mu_dn, corr_index=[0, 1], nsites=100, dim='2d'):
     n_dn_corr = fg_corr(beta, mu_dn, corr_index, nsites, dim)
     return n_up_corr + n_dn_corr
 
-def fg_sx_corr(beta, mu_up, mu_dn, corr_index=[0, 1], nsites=100, dim='2d'):
+def fg_sx_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
     """
     Sx or Sy spin correlations for Fermi gas
     :param beta:

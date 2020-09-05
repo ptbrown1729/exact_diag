@@ -16,7 +16,7 @@ import ed_spins as tvi
 #    I don't know a natural way to order clusters. A few ideas for doing this, which might speed up some functions,
 #    for example doing a binary search over a sorted list instead of searching through all clusters of the same order.
 
-def get_clusters_next_order(cluster_list=None, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=0):
+def get_clusters_next_order(cluster_list=None, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=False):
     """
     Get all clusters that can be generated from a list of clusters with one fewer site.
     TODO: should I be keeping track of the number of symmetric clusters? This is the multiplicity in the thermodynamic
@@ -67,13 +67,13 @@ def get_clusters_next_order(cluster_list=None, lattice_vect1=np.array([1, 0]), l
 
     return cluster_list_next, multiplicity
 
-def get_all_clusters(max_cluster_order, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=1):
+def get_all_clusters(max_cluster_order, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=True):
     """
     Get all clusters of infinite lattice up to a given order.
     :param max_cluster_order:
     :param lattice_vect1:
     :param lattice_vect2:
-    :param use_symmetry: Boolean value. If 1, will use D4 symmetry to reduce the number of clusters
+    :param bool use_symmetry: If True, will use D4 symmetry to reduce the number of clusters
     :return: clusters, multiplicities, order_edge_indices
     order_edge_indices is a list of indices, where the iith entry is the index of the first cluster of order ii.
     multiplicities is a list of the number of times a given cluster can be embedded in an infinite lattice. It is equal
@@ -98,7 +98,7 @@ def get_all_clusters(max_cluster_order, lattice_vect1=np.array([1, 0]), lattice_
 
     return clusters, multiplicities, order_edge_indices
 
-def get_all_clusters_with_subclusters(max_cluster_order, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=1, print_progress=0):
+def get_all_clusters_with_subclusters(max_cluster_order, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=True, print_progress=False):
     """
     Obtain all sub-clusters of the infinite lattice up to a given order, including their multiplicities and sub-clusters
     :param max_cluster_order:
@@ -140,7 +140,7 @@ def get_all_clusters_with_subclusters(max_cluster_order, lattice_vect1=np.array(
 
     return full_cluster_list, cluster_multiplicities, cluster_mult_mat, order_indices_full
 
-def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluster_basis_smaller, order_indices_smaller, use_symmetry=1):
+def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluster_basis_smaller, order_indices_smaller, use_symmetry=True):
     """
     Create a matrix which maps between two different cluster bases.
     :param cluster_basis_larger: list of clusters. This list must contain all of the clusters in cluster_basis_smaller
@@ -306,7 +306,7 @@ def get_all_subclusters(parent_geometry):
     # return cluster_orders_list, sub_cluster_indices, sub_cluster_mat
     return cluster_orders_list, sub_cluster_indices, sub_cluster_mat
 
-def reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=1):
+def reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=True):
     """
     Reduce clusters to those which are geometrically and/or symmetrically distinct. In contrast to get_all_subclusters,
     in this function we regard clusters with different coordinates for their sites as identical, provided their
@@ -378,7 +378,7 @@ def reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=1):
 
     return clusters_geom_distinct, clusters_geom_multiplicity, cluster_reduction_mat
 
-def get_reduced_subclusters(parent_geometry, print_progress=0):
+def get_reduced_subclusters(parent_geometry, print_progress=False):
     """
     For a given parent geometry, produce all subclusters and the number of times each subcluster is contained in the
     parent

@@ -74,7 +74,7 @@ for ii, (phi1, phi2) in enumerate(zip(phi1s, phi2s)):
     # diagonalize all symmetry sectors
     eigvals_sectors = []
     for proj in projs:
-        H = ss.createH(gm.nsites, detune, rabi, jsmat, projector= proj, print_results = print_all)
+        H = ss.createH(gm.nsites, detune, rabi, jsmat, projector=proj, print_results=print_all)
         eigs_temp, _ = ss.diagH(H, print_results=print_all)
 
         eigvals_sectors.append(eigs_temp)

@@ -32,8 +32,8 @@ corrs_allc = np.zeros((ints.size, gm.nsites, temps.size))
 # Using particle-hole symmetry can show half-filling (one particle per spin per every other site) happens at mu = U
 for ii, U in enumerate(ints):
     sf = ed_fermions.fermions(gm, 0, t, mus=U, us_same_species=U, potentials=0, nspecies=1)
-    ham = sf.createH(print_results=1)
-    eig_vals, eig_vects = sf.diagH(ham, print_results=1)
+    ham = sf.createH(print_results=True)
+    eig_vals, eig_vects = sf.diagH(ham, print_results=True)
 
     # get single-site expectation values for ground state
     exps[ii, :, :], _ = sf.get_thermal_exp_sites(eig_vects, eig_vals, sf.n_op, 0, temps, format="boson")

@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 import ed_fermions
@@ -7,12 +6,11 @@ import ed_symmetry as symm
 import fermi_gas as fg
 import datetime
 import time
-#import cPickle as pickle
 import pickle
 
 # TODO: use translation and number to get smaller sectors to solve larger systems faster.
 
-tstart = time.clock()
+tstart = time.process_time()
 
 # set up parameters to scan
 t = 1
@@ -38,7 +36,7 @@ sf = ed_fermions.fermions(gm, 0, t, us_same_species=0, potentials=0, nspecies=1)
 
 # number subspace projectors
 n_species_op = sf.get_sum_op(sf.n_op, 0, format="boson")
-n_projs, ns = sf.get_subspace_projs(n_species_op, print_results=0)
+n_projs, ns = sf.get_subspace_projs(n_species_op, print_results=False)
 
 # translation op
 xtransl_op_full = sf.get_xform_op(xtransl_cycles)
@@ -69,7 +67,7 @@ dens = np.zeros((temps.size, ints.size, gm.nsites))
 ns = np.array([])
 ks = np.array([])
 for ii, U in enumerate(ints):
-    u_tstart = time.clock()
+    u_tstart = time.process_time()
 
     eigs = []
     # spinless fermions
@@ -78,7 +76,7 @@ for ii, U in enumerate(ints):
     # for each interaction, solve number and symmetry subspaces independently
     # TODO: could still speed this up by looping over n and k vals. Then would be able to first use one of the
     # projectors and keep that hamiltonian around. Then apply other projectors to it.
-    ham = sf.createH(print_results=1)
+    ham = sf.createH(print_results=True)
     for jj, (n, k, proj) in enumerate(zip(n_list, k_list, projector_list)):
             #ham = sf.createH(print_results=1, projector=proj)
             ham_proj = proj * ham * proj.conj().transpose()
@@ -109,13 +107,13 @@ for ii, U in enumerate(ints):
     dens[..., ii, :] = sf.thermal_avg_combine_sectors(dens_sectors[:, :, ii, :], eigs, temps)
     corrs[..., ii, :] = sf.thermal_avg_combine_sectors(corrs_sectors[:, :, ii, :], eigs, temps)
 
-    u_tend = time.clock()
+    u_tend = time.process_time()
     print("interaction %d/%d ran in %fs for %d temps" % (ii + 1, ints.size, u_tend - u_tstart, temps.size))
 
 corrs_c = corrs - dens ** 2
 sfact = np.fft.fft(corrs_c, axis=-1) / gm.nsites
 
-tend = time.clock()
+tend = time.process_time()
 print("total time was %fs" % (tend - tstart))
 
 # ###############################
@@ -125,7 +123,8 @@ now = datetime.datetime.now()
 now_str = "%04d;%02d;%02d_%02dh_%02dm" % (now.year, now.month, now.day, now.hour, now.minute)
 
 # save results
-data = [ints, temps, gm, dens, corrs, corrs_c, sfact]
+data = {"ints": ints, "temps": temps, "gm": gm, "dens": dens,
+        "corrs": corrs, "corrs_c": corrs_c, "sfact": sfact}
 fname = "%s_spinless_fermion_chain_nsites=%d_pickle.dat" % (now_str, gm.nsites)
 with open(fname, 'wb') as f:
         pickle.dump(data, f)

@@ -1,4 +1,3 @@
-from __future__ import print_function
 import time
 import datetime
 import os.path
@@ -12,10 +11,10 @@ import ed_geometry as geom
 import ed_symmetry as symm
 
 # parameters
-save_results = 0
-plot_results = 1
-t_script_start = time.clock()
-print_all = 0
+save_results = False
+plot_results = True
+t_script_start = time.process_time()
+print_all = False
 
 # define geometry
 bc1_open = 0
@@ -104,18 +103,18 @@ print(sigma_z_site_exp_gs)
 # operators related to SU(2) symmetry
 Q = np.array([np.pi, np.pi])
 # Q = np.array([0, 0])
-s_plus_all_op = ss.get_sum_op_q(0, [0,0], ss.pauli_plus, format="boson", print_results = print_all)
-s_plus_q_op = ss.get_sum_op_q(0, Q, ss.pauli_plus, format="boson", print_results = print_all)
-s_plus_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_plus, format="boson", print_results = print_all)
-s_minus_all_op = ss.get_sum_op_q(0, [0,0], ss.pauli_minus, format="boson", print_results = print_all)
-s_minus_q_op = ss.get_sum_op_q(0, Q, ss.pauli_minus, format="boson", print_results = print_all)
-s_minus_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_minus, format="boson", print_results = print_all)
-sz_q_op = ss.get_sum_op_q(0, Q, ss.pauli_z, format="boson", print_results = print_all)
-sz_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_z, format="boson", print_results = print_all)
-sy_q_op = ss.get_sum_op_q(0, Q, ss.pauli_y, format="boson", print_results = print_all)
-sy_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_y, format="boson", print_results = print_all)
-sx_q_op = ss.get_sum_op_q(0, Q, ss.pauli_x, format="boson", print_results = print_all)
-sx_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_x, format="boson", print_results = print_all)
+s_plus_all_op = ss.get_sum_op_q(0, [0,0], ss.pauli_plus, format="boson", print_results=print_all)
+s_plus_q_op = ss.get_sum_op_q(0, Q, ss.pauli_plus, format="boson", print_results=print_all)
+s_plus_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_plus, format="boson", print_results=print_all)
+s_minus_all_op = ss.get_sum_op_q(0, [0,0], ss.pauli_minus, format="boson", print_results=print_all)
+s_minus_q_op = ss.get_sum_op_q(0, Q, ss.pauli_minus, format="boson", print_results=print_all)
+s_minus_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_minus, format="boson", print_results=print_all)
+sz_q_op = ss.get_sum_op_q(0, Q, ss.pauli_z, format="boson", print_results=print_all)
+sz_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_z, format="boson", print_results=print_all)
+sy_q_op = ss.get_sum_op_q(0, Q, ss.pauli_y, format="boson", print_results=print_all)
+sy_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_y, format="boson", print_results=print_all)
+sx_q_op = ss.get_sum_op_q(0, Q, ss.pauli_x, format="boson", print_results=print_all)
+sx_mq_op = ss.get_sum_op_q(0, -Q, ss.pauli_x, format="boson", print_results=print_all)
 
 print("Gap expectation value, ground state = %0.2f" % ss.get_exp_vals(eigvects[:, 0], s_minus_q_op))
 
@@ -130,14 +129,14 @@ sx_q_matrixel = ss.get_matrix_elems(eigvects, sx_q_op, print_results=print_all)
 sx_mq_matrixel = ss.get_matrix_elems(eigvects, sx_mq_op, print_results=print_all)
 # response functions
 temperature = 0
-sp_sm_resp_fn = ss.get_response_fn_retarded(s_plus_matrixel, s_minus_matrixel, eigvals, temperature, print_results=1)
-sm_sp_resp_fn = ss.get_response_fn_retarded(s_minus_matrixel, s_plus_matrixel, eigvals, temperature, print_results=1)
+sp_sm_resp_fn = ss.get_response_fn_retarded(s_plus_matrixel, s_minus_matrixel, eigvals, temperature, print_results=True)
+sm_sp_resp_fn = ss.get_response_fn_retarded(s_minus_matrixel, s_plus_matrixel, eigvals, temperature, print_results=True)
 # eta_sz_resp_fn = ss.get_response_fn(s_plus_matrixel, sz_mq_matrixel, eigvals, temperature, print_results=print_all)
-sz_sp_resp_fn = ss.get_response_fn_retarded(sz_q_matrixel, s_plus_matrixel, eigvals, temperature, print_results=1)
-sz_sm_resp_fn = ss.get_response_fn_retarded(sz_q_matrixel, s_minus_matrixel, eigvals, temperature, print_results=1)
-sz_sz_resp_fn = ss.get_response_fn_retarded(sz_q_matrixel, sz_mq_matrixel, eigvals, temperature, print_results=1)
-sy_sz_resp_fn = ss.get_response_fn_retarded(sy_q_matrixel, sz_mq_matrixel, eigvals, temperature, print_results=1)
-sx_sz_resp_fn = ss.get_response_fn_retarded(sx_q_matrixel, sz_mq_matrixel, eigvals, temperature, print_results=1)
+sz_sp_resp_fn = ss.get_response_fn_retarded(sz_q_matrixel, s_plus_matrixel, eigvals, temperature, print_results=True)
+sz_sm_resp_fn = ss.get_response_fn_retarded(sz_q_matrixel, s_minus_matrixel, eigvals, temperature, print_results=True)
+sz_sz_resp_fn = ss.get_response_fn_retarded(sz_q_matrixel, sz_mq_matrixel, eigvals, temperature, print_results=True)
+sy_sz_resp_fn = ss.get_response_fn_retarded(sy_q_matrixel, sz_mq_matrixel, eigvals, temperature, print_results=True)
+sx_sz_resp_fn = ss.get_response_fn_retarded(sx_q_matrixel, sz_mq_matrixel, eigvals, temperature, print_results=True)
 
 broadening = 0.01
 omegas = np.linspace(-5 * np.abs(hz), 5 * np.abs(hz), 100)
@@ -215,7 +214,7 @@ print("initial time evolution state had z magnetization = %0.2f" % sigma_z_exp_e
 
 # time evolve eta + state
 times = np.linspace(0, 2 * larmor_period, 1000)
-_, evolved_states = ss.quenchTimeEvolve(excitation_state, eigvects, eigvals, times, print_results = print_all)
+_, evolved_states = ss.quench_time_evolve(excitation_state, eigvects, eigvals, times, print_results=print_all)
 
 sz_time_evolved = ss.get_exp_vals(evolved_states, sigma_z_op)
 sy_time_evolved = ss.get_exp_vals(evolved_states, sigma_y_op)

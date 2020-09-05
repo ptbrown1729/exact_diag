@@ -18,8 +18,8 @@ gm = geom.Geometry.createSquareGeometry(8, 1, 0, 0, bc1_open=0, bc2_open=1)
 sf = ed_fermions.fermions(gm, 0, t, ns=np.array([4]), us_same_species=0, potentials=0, nspecies=1)
 
 # diagonalize hamiltonian
-ham = sf.createH(projector=sf.n_projector, print_results=1)
-eig_vals, eig_vects = sf.diagH(ham, print_results=1)
+ham = sf.createH(projector=sf.n_projector, print_results=True)
+eig_vals, eig_vects = sf.diagH(ham, print_results=True)
 
 # get single-site expectation values for ground state
 exps, _ = sf.get_thermal_exp_sites(eig_vects, eig_vals, sf.n_op, 0, temps, sites=[0], projector=sf.n_projector, format="boson")
@@ -32,8 +32,8 @@ corrs_c = corrs - exps[:, 0] * exps[:, 1]
 # constant mu
 # ###############################
 sf_2 = ed_fermions.fermions(gm, 0, t, mus=mu, us_same_species=0, potentials=0, nspecies=1)
-ham2 = sf_2.createH(print_results=1)
-eig_vals2, eig_vects2 = sf_2.diagH(ham2, print_results=1)
+ham2 = sf_2.createH(print_results=True)
+eig_vals2, eig_vects2 = sf_2.diagH(ham2, print_results=True)
 
 # get single-site expectation values for ground state
 exps2, _ = sf_2.get_thermal_exp_sites(eig_vects2, eig_vals2, sf_2.n_op, 0, temps, sites=[0], format="boson")

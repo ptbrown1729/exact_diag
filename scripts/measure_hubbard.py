@@ -4,7 +4,7 @@ import os.path
 import numpy as np
 import scipy.integrate
 import scipy.sparse as sp
-import cPickle as pickle
+import pickle
 import matplotlib.pyplot as plt
 
 import ed_fermions
@@ -106,12 +106,12 @@ nsns_exp_sector = np.zeros((len(projs), len(temps)))
 
 eigs_sector = []
 for ii, proj in enumerate(projs):
-    print "started sector %d/%d" % (ii + 1,len(projs))
-    H = model.createH(projector =proj * model.n_projector, print_results=1)
-    eigs, eigvects = model.diagH(H, print_results=1)
+    print("started sector %d/%d" % (ii + 1,len(projs)))
+    H = model.createH(projector =proj * model.n_projector, print_results=True)
+    eigs, eigvects = model.diagH(H, print_results=True)
     eigs_sector.append(eigs)
 
-    t_start = time.clock()
+    t_start = time.process_time()
     for jj, temp in enumerate(temps):
         energy_exp_sec[ii, jj] = model.get_exp_vals_thermal(eigvects, H, eigs, temp)
 
@@ -149,8 +149,8 @@ for ii, proj in enumerate(projs):
         nsns_proj_op = proj * nsns_op * proj.conj().transpose()
         ns_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, ns_proj_op, eigs, temp)
         nsns_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, nsns_proj_op, eigs, temp)
-    t_end = time.clock()
-    print "Computing expectation values for %d temperatures took %0.2f" % (len(temps), t_end - t_start)
+    t_end = time.process_time()
+    print("Computing expectation values for %d temperatures took %0.2f" % (len(temps), t_end - t_start))
 
 energy_exp = np.zeros(len(temps))
 entropy_exp = np.zeros(len(temps))

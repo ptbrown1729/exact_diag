@@ -14,10 +14,10 @@ potentials = F * (np.arange(0, nsites) - 0.5 * (nsites - 1) ) + alpha * np.arang
 
 gm = geom.Geometry.createSquareGeometry(nsites, t, 0, 0, bc1_open=0, bc2_open=1)
 sf = ed_fermions.fermions(gm, 0, 1, ns=nfermions, mus=0, us_same_species=interaction, potentials=potentials, nspecies=1)
-ham = sf.createH(print_results=1, projector=sf.n_projector)
+ham = sf.createH(print_results=True, projector=sf.n_projector)
 
 # diagonalize
-eig_vals, eig_vects = sf.diagH(ham, print_results=1)
+eig_vals, eig_vects = sf.diagH(ham, print_results=True)
 # get level statistics
 diffs = eig_vals[1:] - eig_vals[0:-1]
 gap_ratios = np.divide(diffs[1:], diffs[:-1])

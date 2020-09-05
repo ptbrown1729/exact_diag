@@ -1,6 +1,6 @@
 import time
 import datetime
-import cPickle as pickle
+import pickle
 import os.path
 
 import numpy as np
@@ -14,7 +14,7 @@ import ed_symmetry as symm
 save_results = 0
 plot_results = 1
 print_all = 1
-t_script_start = time.clock()
+t_script_start = time.process_time()
 print_all = 1
 
 # define geometry
@@ -91,7 +91,7 @@ opt_cond_sectors_temps = np.zeros([len(projs), len(temps), len(omegas), len(etas
 # diagonalize all symmetry sectors
 for ii,proj in enumerate(projs):
     print "sector %d/%d" % (ii + 1, len(projs))
-    H = h.createH(projector = proj * h.n_projector, print_results = print_all)
+    H = h.createH(projector = proj * h.n_projector, print_results=print_all)
     eigs, eigvects = h.diagH(H, print_results=print_all)
 
     eigvals_sectors.append(eigs)
@@ -105,7 +105,7 @@ for ii,proj in enumerate(projs):
     # current operator commutes with translation operators
     jx_sector = proj * current_op_x * proj.conj().transpose()
     current_ops_x_sector.append(jx_sector)
-    jx_matrix_elems = h.get_matrix_elems(eigvects, jx_sector, print_results = 1)
+    jx_matrix_elems = h.get_matrix_elems(eigvects, jx_sector, print_results=True)
 
     # also get creation/annihilation operators
     # creation_op_upk = symm_proj * creation_op_up * symm_proj.conj().transpose()
@@ -115,10 +115,10 @@ for ii,proj in enumerate(projs):
 
     # loop over temperatures, get kinetic energy and optical conductivity
     for jj, temp in enumerate(temps):
-        tstart = time.clock()
-        kxe_sectors_temps[ii, jj] = h.get_exp_vals_thermal(eigvects, kx_op_sector, eigs, temp, print_results = 0)
-        opt_cond_integral_sectors_temps[ii, jj] = h.integrate_conductivity(jx_matrix_elems, eigs, temp, print_results = 0)
-        opt_cond_fn = h.get_optical_cond_fn(jx_matrix_elems, eigs, temp, print_results = 0)
+        tstart = time.process_time()
+        kxe_sectors_temps[ii, jj] = h.get_exp_vals_thermal(eigvects, kx_op_sector, eigs, temp, print_results=False)
+        opt_cond_integral_sectors_temps[ii, jj] = h.integrate_conductivity(jx_matrix_elems, eigs, temp, print_results=False)
+        opt_cond_fn = h.get_optical_cond_fn(jx_matrix_elems, eigs, temp, print_results=False)
 
         # loop over omegas for optical conductivity
         for kk in range(0, len(omegas)):
@@ -126,7 +126,7 @@ for ii,proj in enumerate(projs):
             for aa, eta in enumerate(etas):
                 print "eta %d/%d" % (aa + 1, len(etas))
                 opt_cond_sectors_temps[ii, jj, kk, aa] = opt_cond_fn(omegas[kk], eta)
-        tend = time.clock()
+        tend = time.process_time()
         print "temperature %d/%d in sector %d took %0.2f s" % (jj + 1, len(temps), ii, tend-tstart)
 
 kxe_temps = np.zeros(len(temps))
@@ -156,7 +156,7 @@ for ii in range(0, len(temps)):
 # kx_op_full = h.get_kinetic_op(h.get_hopping_mat(gm, tunn, 0), projector = h.n_projector)
 # z = np.sum(np.exp(-eig_vals))
 
-t_script_end = time.clock()
+t_script_end = time.process_time()
 print "runtime = %0.2f s" % (t_script_end - t_script_start)
 
 # save results

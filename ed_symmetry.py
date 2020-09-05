@@ -2,7 +2,6 @@ import time
 import numpy as np
 import scipy.sparse as sp
 
-_author = "Peter Brown"
 _round_decimals = 14
 
 # #################################################
@@ -518,8 +517,6 @@ def getD5Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
-
-
 def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
     """
     Symmetry group = semidirect product (Z3 + Z3, C4V)
@@ -534,12 +531,12 @@ def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
     X.8     4  .  .  2  . -2  . -1  1
     X.9     4  2  .  .  .  1 -1  . -2
 
-    SmallGroup(72, 40) in GAP. (S3 x S3) : C2
-    AKA the Wreath product of S3 and C2
+    SmallGroup(72, 40) in GAP. (S3 x S3) : C2 AKA the Wreath product of S3 and C2
+    semi_direct_prod(C3 x C3, D4)
     more info here https://people.maths.bris.ac.uk/~matyd/GroupNames/61/S3wrC2.html
 
     Conjugacy classes
-    # todo: need to resolve which is (C2,C7)/(C4,C8) and C6/C9
+    # todo: need to resolve which is (C2,C7)/(C4,C8) and C6/C9?
     # right now know that if C2 is right, then so is C7
     C1 = {e} (order=1, #=1)
     C2 = {Refl, R^2*Refl, Tx*Refl, Tx^2*Refl,
@@ -555,8 +552,6 @@ def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
     C8 = {Tx^n*Ty^m*R*Refl except (n,m) = (0,0), (1,2) and (2, 1),
           Tx^n*Ty^m*R^3*Refl except (n,m) = (0,0), (1,1) and (2,2)} (order=6, #=12)
     C9 = {TxTy, Tx^2Ty, TxTy^2 Tx^2Ty^2} (order=3, #=4)
-
-    1, 4, 4, 9, 6, 6, 12, 12, 18
     """
 
     c1 = [sp.eye(refl_op.shape[0], format="csc")]

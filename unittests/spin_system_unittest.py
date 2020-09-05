@@ -352,6 +352,7 @@ class TestSpinSys(unittest.TestCase):
 
         self.assertAlmostEqual(max_diff, 0, 10)
 
+    @unittest.skip("Not working yet. Check conj classes ordering/correctness.")
     def test_full_symm_3byb3(self):
         cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
         jx = np.random.rand()

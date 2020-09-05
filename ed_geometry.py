@@ -1,7 +1,7 @@
 import numpy as np
 import os
 
-#TODO: need to modify get reciprocal vectors for case when matrix inverse fails
+# TODO: need to modify get reciprocal vectors for case when matrix inverse fails
 
 class Geometry():
     _round_decimals = 14
@@ -64,7 +64,7 @@ class Geometry():
 
         # validate instance
         if not self.validate_instance():
-           raise Exception('Geometry instance failed validation.')
+            raise Exception('Geometry instance failed validation.')
         # TODO: it seems like there is a problem with one of the phase mats! Problem seems to be that if we have two
         # sites and they are equally far away in 'positive' and 'negative' distance, i.e. equally far away directly
         # and through the periodic entries.c., then defining their distance is ambiguous
@@ -143,11 +143,13 @@ class Geometry():
 
         latt_vect1 = np.array([[1], [0]])
         latt_vect2 = np.array([[0], [1]])
-        basis_vects = [ np.array([[0.], [0.]]) ]
+        basis_vects = [np.array([[0.], [0.]])]
         periodicity_vect1 = np.array([[nx_sites], [0]])
         periodicity_vect2 = np.array([[0], [ny_sites]])
 
-        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
+        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects,
+                                          periodicity_vect1, periodicity_vect2, phase1,
+                                          phase2, bc1_open, bc2_open)
 
     @classmethod
     def createTiltedSquareGeometry(cls, nsites_right, nsites_up, phase1=0, phase2=0, bc1_open=0, bc2_open=0):
@@ -169,7 +171,8 @@ class Geometry():
         periodicity_vect1 = np.array([[nsites_right], [nsites_up]])
         periodicity_vect2 = np.array([[-nsites_up], [nsites_right]])
 
-        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
+        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                          periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
 
     @classmethod
     def createTriangleGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=0, bc2_open=0):
@@ -199,8 +202,8 @@ class Geometry():
         periodicity_vect1 = n1_sites * latt_vect1
         periodicity_vect2 = n2_sites * latt_vect2
 
-        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2,
-                                          bc1_open, bc2_open)
+        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                          periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
 
     @classmethod
     def createHexagonalGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=0, bc2_open=0):
@@ -224,7 +227,7 @@ class Geometry():
             raise Exception('Invalid createHexagonalGeometry options specified. n2_sites = 1, '
                             'but periodic boundary conditions selected.')
 
-        latt_vect1 = np.array( [[1.5], [np.sqrt(3)/2]] )
+        latt_vect1 = np.array([[1.5], [np.sqrt(3)/2]])
         latt_vect2 = np.array([[1.5], [-np.sqrt(3)/2]])
         # i.e. origin in the center of the unit cell
         basis_vects = [np.array([[-1.], [0.]]), np.array([[-0.5], [np.sqrt(3)/2]])]
@@ -292,7 +295,8 @@ class Geometry():
             # It doesn't matter which site we select first, but we need to choose the next site in some way based on
             # this first site.
         else:
-            raise Exception("sorting_mode must be 'top_alternating', 'top_left', 'bottom_right' or 'adjacency' but was %s" % sorting_mode)
+            raise Exception("sorting_mode must be 'top_alternating', 'top_left', 'bottom_right' or"
+                            " 'adjacency' but was %s" % sorting_mode)
 
         return sorted_indices
 
@@ -314,8 +318,9 @@ class Geometry():
         """
         Determine which sites are neighbors. Two sites are neighbors if either their x or y coordinates differ by one
         (but not both).
-        :param xdist_mat: An nsites x nsites matrix where M[ii, jj] is the distance between sites ii and jj in the x-direction
-        :param ydist_reduced:
+        :param xdist_mat: An nsites x nsites matrix where M[ii, jj] is the distance between sites ii and jj in the
+         x-direction
+        :param ydist_mat:
         :return: is_x_neighbor, is_y_neighbor, is_neighbor
         """
         # TODO: this function is assuming points lie on an underlying lattice. Add lattice vectors as an argument
@@ -350,7 +355,7 @@ class Geometry():
 
         basis_change_mat = np.zeros([self.nsites, self.nsites])
         for ii, jj in enumerate(permutation):
-                basis_change_mat[ii, jj] = 1
+            basis_change_mat[ii, jj] = 1
 
         self.adjacency_mat = basis_change_mat.dot(self.adjacency_mat.dot(basis_change_mat.transpose()))
         self.phase_mat = basis_change_mat.dot(self.phase_mat.dot(basis_change_mat.transpose()))
@@ -375,14 +380,14 @@ class Geometry():
         if r == 0:
             import matplotlib.pyplot as plt
 
-            NSites = len(self.xlocs)
+            nsites = len(self.xlocs)
             fig_handle = plt.figure()
 
             plt.subplot(1, 3, 1)
             plt.scatter(self.xlocs, self.ylocs)
-            for ii in range(0, NSites):
+            for ii in range(0, nsites):
                 plt.text(self.xlocs[ii], self.ylocs[ii], ii)
-                for jj in range(0, NSites):
+                for jj in range(0, nsites):
                     if np.round(np.abs(self.adjacency_mat[ii, jj]), self._round_decimals) > 0:
                         plt.plot([self.xlocs[ii], self.xlocs[jj]], [self.ylocs[ii], self.ylocs[jj]])
             plt.axis('equal')
@@ -441,7 +446,7 @@ class Geometry():
         check that phase_mat is sensible
         :return:
         """
-        if not np.sum(np.round(np.abs(self.phase_mat - self.phase_mat.conj().transpose()), self._round_decimals) == 0) == self.phase_mat.size :
+        if not np.sum(np.round(np.abs(self.phase_mat - self.phase_mat.conj().transpose()), self._round_decimals) == 0) == self.phase_mat.size:
             # ensure symmetric under conjugate transpose
             return 0
         if not np.sum(np.round(np.abs(self.phase_mat), self._round_decimals) == 1) == self.phase_mat.size:
@@ -500,11 +505,12 @@ class Geometry():
         """
         return not self.__eq__(other)
 
+
 class Lattice():
     _round_decimals = 14
 
-    def __init__(self, lattice_vect1, lattice_vect2, basis_vects=[[0,0]], periodicity_vect1=[0, 0], periodicity_vect2=[0, 0],
-                 phase1=0., phase2=0.):
+    def __init__(self, lattice_vect1, lattice_vect2, basis_vects=[[0, 0]], periodicity_vect1=(0, 0),
+                 periodicity_vect2=(0, 0), phase1=0., phase2=0.):
         """
 
         :param lattice_vect1:
@@ -516,11 +522,6 @@ class Lattice():
         :param periodicity_vect2: Cell periodicity vector 2. Periodicity vectors 1 and 2 should not be linearly dependent
         :param phase1: Phase which is picked up along reciprocal vector 1. Useful for imposing twisted boundary conditions
         :param phase2: Phase which is picked up along reciprocal vector 2
-        :param bc1_open: Boolean value specifying whether boundary conditions along periodicity vector 1 are open or not.
-        If they are not open, then they are periodic. If the boundary conditions are open we are working with a disconnected
-        cell of the lattice, in some sense. We are not allowing hopping between cells, or in the periodic entries.c. langauge,
-        we are not allowing hopping from one side of the lattice to the other.
-        :param bc2_open: Boolean specifying boundary conditions along periodicity vector 2.
         """
         # TODO: what is the best way to represent periodicity vectors I want to ignore? Should they be zero or None?
 
@@ -559,8 +560,10 @@ class Lattice():
         # P1 = n * l1 + m * l2
         # P2 = i * l1 + j * l2
         # P1 + P2 = (n + i) * l1 + (m +j) * l
-        _, _, n, m = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect1[0, 0], self.periodicity_vect1[1, 0], mode='positive')
-        _, _, i, j = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect2[0, 0], self.periodicity_vect2[1, 0], mode='positive')
+        _, _, n, m = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect1[0, 0],
+                                    self.periodicity_vect1[1, 0], mode='positive')
+        _, _, i, j = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect2[0, 0],
+                                    self.periodicity_vect2[1, 0], mode='positive')
 
         # Every lattice point in our parallelogram can be written in the form
         # v = a * l1 + entries * l2,
@@ -661,12 +664,14 @@ class Lattice():
                 # phase_mat[ii, jj] = site_phases1[ii] * site_phases1[jj].conj() * site_phases2[ii] * site_phases2[
                 #   jj].conj()
                 amp1 = np.exp(1j * self.phase1 * (
-                    xdist_matrix[ii, jj] * self.reciprocal_periodicity_vect1[0] + ydist_matrix[ii, jj] * self.reciprocal_periodicity_vect1[1]))
+                    xdist_matrix[ii, jj] * self.reciprocal_periodicity_vect1[0] +
+                    ydist_matrix[ii, jj] * self.reciprocal_periodicity_vect1[1]))
                 amp2 = np.exp(1j * self.phase2 * (
-                    xdist_matrix[ii, jj] * self.reciprocal_periodicity_vect2[0] + ydist_matrix[ii, jj] * self.reciprocal_periodicity_vect2[1]))
+                    xdist_matrix[ii, jj] * self.reciprocal_periodicity_vect2[0] +
+                    ydist_matrix[ii, jj] * self.reciprocal_periodicity_vect2[1]))
                 phase_mat[ii, jj] = amp1 * amp2
 
-        if not (phase_mat.imag > 10 ** -self._round_decimals).any():
+        if not np.any(phase_mat.imag > 10 ** -self._round_decimals):
             phase_mat = phase_mat.real
 
         return phase_mat
@@ -756,48 +761,50 @@ class Lattice():
 # ##########################
 
 def get_reciprocal_vects(vect1, vect2):
-        """
-        Compute the reciprocal vectors. If we call the periodicity vecors a_i and the
-        reciprocal vectors b_j, then these should be defined such that dot(a_i, b_j) = delta_{ij}.
-        :return: reciprocal_vect1, reciprocal_vect2
-        """
+    """
+    Compute the reciprocal vectors. If we call the periodicity vecors a_i and the
+    reciprocal vectors b_j, then these should be defined such that dot(a_i, b_j) = delta_{ij}.
+    :return: reciprocal_vect1, reciprocal_vect2
+    """
 
-        vect1 = ensure_column_vect(vect1)
-        vect2 = ensure_column_vect(vect2)
+    vect1 = ensure_column_vect(vect1)
+    vect2 = ensure_column_vect(vect2)
 
-        if not np.array_equal(vect1, np.zeros((2, 1))) and not np.array_equal(vect2, np.zeros((2, 1))):
-            A_mat = np.concatenate([vect1.transpose(), vect2.transpose()], 0)
-            try:
-                inv_a = np.linalg.inv(A_mat)
-                reciprocal_vect1 = inv_a[:, 0][:, None]
-                reciprocal_vect2 = inv_a[:, 1][:, None]
-            except np.linalg.LinAlgError:
-                raise Exception('vect1 and vect2 are linearly independent, so their reciprocal vectors could not be computed.')
-            # TODO: could catch singular matrix error and give more informative error
-        elif np.array_equal(vect1, np.zeros((2, 1))) and not np.array_equal(vect2, np.zeros((2, 1))):
-            reciprocal_vect1 = np.zeros((2, 1))
+    if not np.array_equal(vect1, np.zeros((2, 1))) and not np.array_equal(vect2, np.zeros((2, 1))):
+        A_mat = np.concatenate([vect1.transpose(), vect2.transpose()], 0)
+        try:
+            inv_a = np.linalg.inv(A_mat)
+            reciprocal_vect1 = inv_a[:, 0][:, None]
+            reciprocal_vect2 = inv_a[:, 1][:, None]
+        except np.linalg.LinAlgError:
+            raise Exception('vect1 and vect2 are linearly independent, so their reciprocal vectors could not be computed.')
+        # TODO: could catch singular matrix error and give more informative error
+    elif np.array_equal(vect1, np.zeros((2, 1))) and not np.array_equal(vect2, np.zeros((2, 1))):
+        reciprocal_vect1 = np.zeros((2, 1))
 
-            norm2 = np.sqrt(vect2.transpose().dot(vect2))
-            reciprocal_vect2 = vect2 / norm2 ** 2
-        elif not np.array_equal(vect1, np.zeros((2, 1))) and np.array_equal(vect2, np.zeros((2, 1))):
-            reciprocal_vect2 = np.zeros((2, 1))
-            norm1 = np.sqrt(vect1.transpose().dot(vect1))
-            reciprocal_vect1 = vect1 / norm1 ** 2
-        else:
-            reciprocal_vect1 = np.zeros((2, 1))
-            reciprocal_vect2 = np.zeros((2, 1))
+        norm2 = np.sqrt(vect2.transpose().dot(vect2))
+        reciprocal_vect2 = vect2 / norm2 ** 2
+    elif not np.array_equal(vect1, np.zeros((2, 1))) and np.array_equal(vect2, np.zeros((2, 1))):
+        reciprocal_vect2 = np.zeros((2, 1))
+        norm1 = np.sqrt(vect1.transpose().dot(vect1))
+        reciprocal_vect1 = vect1 / norm1 ** 2
+    else:
+        reciprocal_vect1 = np.zeros((2, 1))
+        reciprocal_vect2 = np.zeros((2, 1))
 
 
-        return reciprocal_vect1, reciprocal_vect2
+    return reciprocal_vect1, reciprocal_vect2
 
 def reduce_vectors(vect1, vect2, xlocs, ylocs, mode='positive'):
     """
     Given an arbitrary vector and a pair of basis vectors specifying a periodicity (TODO: sharpend this defn),
     reduce the arbitrary vector to its representative in the Brillouin zone (analog). (TODO: add support for
     either using a symmetric BZ or an always positive BZ).
-    :param vect: size 2 x number of vectors, i.e. a matrix of column vectors
-    :param periodicity_vect1: size 2 x 1, i.e. a column vector
-    :param periodicity_vect2: size 2 x 1, i.e. a column vector
+    :param vect1: size 2 x 1, i.e. a column vector
+    :param vect2: size 2 x 1, i.e. a column vector
+    :param xlocs:
+    :param ylocs:
+    :param mode: "positive" or "centered"
     :return: xs_red, xs reduced to lie within the symmetry region
     :return: ys_red, ys reduced to lie within the symmetry region
     :return: n1s number of bvect1's subtracted from vects to get vects_reduced
@@ -941,7 +948,7 @@ if __name__ == "__main__":
 
     # permute 8 x 1 chain
     permutation = [3, 2, 1, 0, 4, 7, 6, 5]
-    #permutation = range(geom.nsites - 1, -1, -1)
+    # permutation = range(geom.nsites - 1, -1, -1)
     gm.permute_sites(permutation)
     gm.dispGeometry()
 

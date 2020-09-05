@@ -13,9 +13,9 @@ def generate_clusters_no_subs(fname_cluster_dat, max_cluster_order):
         cluster_list = data[1]
         return len(cluster_list)
 
-    t_start = time.clock()
+    t_start = time.process_time()
     clusters_list, cluster_multiplicities, order_start_indices = ed_nlce.get_all_clusters(max_cluster_order)
-    t_end = time.clock()
+    t_end = time.process_time()
 
     # save cluster data
     data_clusters = [max_cluster_order, clusters_list, order_start_indices, t_end - t_start]

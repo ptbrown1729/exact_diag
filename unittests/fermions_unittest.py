@@ -65,8 +65,8 @@ class TestFermions(unittest.TestCase):
         for ii, mu in enumerate(mus):
             # ED
             sf = ed_fermions.fermions(gm, 0, t, mus=mu, us_same_species=0, potentials=0, nspecies=1)
-            ham = sf.createH(print_results=0)
-            eig_vals, eig_vects = sf.diagH(ham, print_results=0)
+            ham = sf.createH(print_results=False)
+            eig_vals, eig_vects = sf.diagH(ham, print_results=False)
 
             ed_dens[ii, :], _ = sf.get_thermal_exp_sites(eig_vects, eig_vals, sf.n_op, 0, temps, sites=[0], format="boson")
 
@@ -103,8 +103,8 @@ class TestFermions(unittest.TestCase):
         for ii, mu in enumerate(mus):
             # ED
             sf = ed_fermions.fermions(gm, 0, t, mus=mu, us_same_species=0, potentials=0, nspecies=1)
-            ham = sf.createH(print_results=0)
-            eig_vals, eig_vects = sf.diagH(ham, print_results=0)
+            ham = sf.createH(print_results=False)
+            eig_vals, eig_vects = sf.diagH(ham, print_results=False)
 
             exps, _ = sf.get_thermal_exp_sites(eig_vects, eig_vals, sf.n_op, 0, temps, projector=sf.n_projector, sites = [0, 1], format="boson")
             corrs, _, _ = sf.get_thermal_corr_sites(eig_vects, eig_vals, 0, 0, sf.n_op, sf.n_op, temps,
@@ -137,7 +137,7 @@ class TestFermions(unittest.TestCase):
         gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=0, bc2_open=0)
         sf = ed_fermions.fermions(gm, 0, t, mus=mu, us_same_species=U, potentials=0, nspecies=1)
         ham = sf.createH()
-        eig_vals, eig_vects = sf.diagH(ham, print_results=0)
+        eig_vals, eig_vects = sf.diagH(ham, print_results=False)
 
         offset = 0.25 * U * gm.nsites
         eig_vals = eig_vals + offset

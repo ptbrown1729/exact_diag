@@ -15,8 +15,8 @@ def diag_cluster(cluster_index, cluster_data_out_fname, cluster_data_in_fname):
 
     print "cluster %d" % cluster_index
     model = tvi.spinSystem(cluster, jx=0.5, jy=0.5, jz=0.5, hx=0, hy=0, hz=0, use_ryd_detunes=0)
-    hamiltonian = model.createH(print_results=1)
-    eig_vals, eig_vects = model.diagH(hamiltonian, print_results=1)
+    hamiltonian = model.createH(print_results=True)
+    eig_vals, eig_vects = model.diagH(hamiltonian, print_results=True)
 
     temps = np.logspace(-1, 0.5, 50)
     # compute expectation values
@@ -25,7 +25,7 @@ def diag_cluster(cluster_index, cluster_data_out_fname, cluster_data_in_fname):
     specific_heats = np.zeros((1, len(temps)))
     szsz_corrs = np.zeros((1, len(temps)))
 
-    t_start = time.clock()
+    t_start = time.process_time()
     for jj, T in enumerate(temps):
         # calculate properties for each temperature
         energies[0, jj] = model.get_exp_vals_thermal(eig_vects, hamiltonian, eig_vals, T, 0)
@@ -42,8 +42,8 @@ def diag_cluster(cluster_index, cluster_data_out_fname, cluster_data_in_fname):
                 szsz_exp = model.get_exp_vals_thermal(eig_vects, szsz_op, eig_vals, T)
                 szsz_corrs[0, jj] = szsz_corrs[0, jj] + szsz_exp
 
-    t_end = time.clock()
-    print "Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start)
+    t_end = time.process_time()
+    print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
 
     data_out = [cluster, eig_vals, energies, entropies, specific_heats, szsz_corrs, temps, model]
     with open(cluster_data_out_fname, 'wb') as f:

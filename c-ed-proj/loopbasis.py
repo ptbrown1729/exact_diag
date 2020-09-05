@@ -65,7 +65,7 @@ if __name__=="__main__":
 	
 	start = time.time()
 	
-	print_results = 1
+	print_results = True
 	nsites = 14
 	nspins = 7
 	nstates = nchoosek(nsites, nspins)

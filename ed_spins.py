@@ -149,7 +149,7 @@ class spinSystem(ed_base.ed_base):
 
         return h_mat
 
-    def get_state_vects(self, print_results=0):
+    def get_state_vects(self, print_results=False):
         """
         Generate a description of the basis states in the full tensor product of spins space
         :param nsites: Int, total number of sites in the system
@@ -177,7 +177,7 @@ class spinSystem(ed_base.ed_base):
             print("Took %0.2f s to generate state vector labels" % (tend - tstart))
         return StateSpinLabels
 
-    def get_state_parity(self, print_results=0):
+    def get_state_parity(self, print_results=False):
         """
         Get parity of basis states
         :param nsites:
@@ -216,7 +216,7 @@ class spinSystem(ed_base.ed_base):
 
         return rydberg_detunings
 
-    def createH(self, projector=None, print_results=0):
+    def createH(self, projector=None, print_results=False):
         """
 
         :param nsites: Int, total number of sites
@@ -407,7 +407,7 @@ class spinSystem(ed_base.ed_base):
         :return: OpMat, sparse matrix
         """
         species_index = 0
-        return ed_base.ed_base.get_sum_op(self, op, species_index, format="boson", print_results = 0)
+        return ed_base.ed_base.get_sum_op(self, op, species_index, format="boson", print_results=False)
 
     def get_swap_op(self, site1, site2, species=0):
         """

@@ -584,10 +584,10 @@ if __name__ == "__main__":
             continue
         print("%d/%d" % (ii + 1, len(clusters_list)))
         model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
-        H = model.createH(print_results=1)
-        eig_vals, eig_vects = model.diagH(H, print_results=1)
+        H = model.createH(print_results=True)
+        eig_vals, eig_vects = model.diagH(H, print_results=True)
 
-        t_start = time.clock()
+        t_start = time.process_time()
         for jj, T in enumerate(temps):
             # calculate properties for each temperature
             energies[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, T, 0)
@@ -596,7 +596,7 @@ if __name__ == "__main__":
             specific_heats[ii, jj] = 1. / T ** 2 * \
                                      (
                                              model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, T, 0) - energies[ii, jj] ** 2)
-        t_end = time.clock()
+        t_end = time.process_time()
         print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
 
     # nlce computation
@@ -641,20 +641,20 @@ if __name__ == "__main__":
         refl_op = model.get_xform_op(refl_cycles)
         # symmetry projectors
         # symm_projs = symm.getC4VProjectors(rot_op, refl_op)
-        symm_projs, _ = symm.getZnProjectors(rot_op, 4, print_results=1)
+        symm_projs, _ = symm.getZnProjectors(rot_op, 4, print_results=True)
 
         # TODO calculate energy eigs for each...
         eig_vals_sectors = []
         energy_exp_sectors = np.zeros((len(symm_projs), len(temps)))
         energy_sqr_exp_sectors = np.zeros((len(symm_projs), len(temps)))
         for ii, proj in enumerate(symm_projs):
-            H = model.createH(projector=proj, print_results=1)
-            eig_vals, eig_vects = model.diagH(H, print_results=1)
+            H = model.createH(projector=proj, print_results=True)
+            eig_vals, eig_vects = model.diagH(H, print_results=True)
             eig_vals_sectors.append(eig_vals)
             for jj in range(0, len(temps)):
-                energy_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, temps[jj], print_results=0)
+                energy_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, temps[jj], print_results=False)
                 energy_sqr_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, temps[jj],
-                                                                            print_results=0)
+                                                                            print_results=False)
         eigs_all = np.sort(np.concatenate(eig_vals_sectors))
 
         energies_full = np.zeros(len(temps))
@@ -690,10 +690,10 @@ if __name__ == "__main__":
         for ii, cluster in enumerate(clusters_list_tl):
             print("%d/%d" % (ii + 1, len(clusters_list_tl)))
             model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
-            H = model.createH(print_results=1)
-            eig_vals, eig_vects = model.diagH(H, print_results=1)
+            H = model.createH(print_results=True)
+            eig_vals, eig_vects = model.diagH(H, print_results=True)
 
-            t_start = time.clock()
+            t_start = time.process_time()
             for jj, T in enumerate(temps):
                 # calculate properties for each temperature
                 energies_tl[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, T, 0)
@@ -702,7 +702,7 @@ if __name__ == "__main__":
                 specific_heats_tl[ii, jj] = 1. / T ** 2 * \
                                             (model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, T, 0) - energies_tl[
                                                 ii, jj] ** 2)
-            t_end = time.clock()
+            t_end = time.process_time()
             print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
 
         # nlce computation

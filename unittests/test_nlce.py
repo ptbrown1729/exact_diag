@@ -3,13 +3,29 @@ import time
 import datetime
 import numpy as np
 import pickle
-
+import ed_spins as tvi
 import ed_geometry as geom
-from ed_nlce import *
+import ed_symmetry as symm
+import ed_nlce as nlce
 
 ########################################
 # general settings
 ########################################
+
+today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
+max_cluster_order = 7
+display_results = True
+save_dir = "../data"
+fname_full_cluster_ed = os.path.join(save_dir, 'four_by_four_heisenberg_ed.pkl')
+fname_clusters = os.path.join(save_dir, 'cluster_data_order=%d.dat' % max_cluster_order)
+
+# create directory for saving results
+if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+
+if display_results:
+    import matplotlib.pyplot as plt
+
 jx = 0.5
 jy = 0.5
 jz = 0.5
@@ -18,23 +34,15 @@ hy = 0.0
 hz = 0.0
 temps = np.logspace(-1, 0.5, 50)
 
-max_cluster_order = 7
-display_results = 1
-today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
-
-if display_results:
-    import matplotlib.pyplot as plt
-
 ########################################
 # diagonalize full cluster
 ########################################
-fname = 'four_by_four_heisenberg_ed.pkl'
-if not os.path.isfile(fname):
-    print("did not find file %s, diagonalizing hamiltonian" % fname)
+if not os.path.isfile(fname_full_cluster_ed):
+    print("did not find file %s, diagonalizing hamiltonian" % fname_full_cluster_ed)
     parent_geometry = geom.Geometry.createSquareGeometry(4, 4, 0, 0, 0, 0)
     parent_geometry.permute_sites(parent_geometry.get_sorting_permutation())
 
-    model = tvi.spinSystem(parent_geometry, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+    model = tvi.spinSystem(parent_geometry, jx, jy, jz, hx, hy, hz, use_ryd_detunes=False)
 
     # x-translation
     xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
@@ -71,7 +79,8 @@ if not os.path.isfile(fname):
             energy_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, temps[jj], print_results=False)
             energy_sqr_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, temps[jj],
                                                                         print_results=False)
-            szsz_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, szsz_op_sector, eig_vals, temps[jj], print_results=False)
+            szsz_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, szsz_op_sector, eig_vals,
+                                                                  temps[jj], print_results=False)
         t_end = time.process_time()
         print("Computed %d finite temperature expectation values in %0.2fs" % (len(temps), t_end - t_start))
     eigs_all = np.sort(np.concatenate(eig_vals_sectors))
@@ -96,12 +105,12 @@ if not os.path.isfile(fname):
 
     data = {"model": model, "eigs_all": eigs_all, "energies_full": energies_full,
             "entropies_full": entropies_full, "specific_heat_full": specific_heat_full,
-            "szsz_full": szsz_full, "temps": temps}
-    with open(fname, 'wb') as f:
+            "szsz_full": szsz_full, "temps": temps, "run_date": today_str}
+    with open(fname_full_cluster_ed, 'wb') as f:
         pickle.dump(data, f)
 else:
-    print("found and loaded file %s" % fname)
-    with open(fname, 'rb') as f:
+    print("found and loaded file %s" % fname_full_cluster_ed)
+    with open(fname_full_cluster_ed, 'rb') as f:
         data = pickle.load(f)
     model = data['model']
     eigs_all = data['eigs_all']
@@ -115,23 +124,21 @@ else:
 ########################################
 
 # TODO: make it so can load smaller order data too ...
-fname_clusters = 'cluster_data_order=%d.dat' % max_cluster_order
-
 if os.path.isfile(fname_clusters):
     print("found a loaded cluster data from file %s" % fname_clusters)
     with open(fname_clusters, 'rb') as f:
         data_clusters = pickle.load(f)
-    cluster_multiplicities = data_clusters[1]
-    clusters_list = data_clusters[2]
-    sub_cluster_mult = data_clusters[3]
-    order_start_indices = data_clusters[4]
+    cluster_multiplicities = data_clusters["cluster_multiplicities"]
+    clusters_list = data_clusters["clusters_list"]
+    sub_cluster_mult = data_clusters["sub_cluster_mult"]
+    order_start_indices = data_clusters["order_start_indices"]
 else:
     print("cluster data file %s does not exist. Generating clusters." % fname_clusters)
     clusters_list, cluster_multiplicities, sub_cluster_mult, order_start_indices = \
-        get_all_clusters_with_subclusters(max_cluster_order)
+        nlce.get_all_clusters_with_subclusters(max_cluster_order)
     cluster_multiplicities = cluster_multiplicities[None, :]
 
-    data_clusters = {"max_cluster_order": max_cluster_order, "cluster_multiplicites": cluster_multiplicities,
+    data_clusters = {"max_cluster_order": max_cluster_order, "cluster_multiplicities": cluster_multiplicities,
                      "clusters_list": clusters_list, "sub_cluster_mult": sub_cluster_mult,
                      "order_start_indices": order_start_indices}
     with open(fname_clusters, 'wb') as f:
@@ -164,7 +171,7 @@ for ii, cluster in enumerate(clusters_list):
         szsz_corr[ii, jj] = 0
         for aa in range(0, model.geometry.nsites):
             for bb in range(aa + 1, model.geometry.nsites):
-                szsz_op = model.get_two_site_op(aa, bb, model.geometry.nsites, model.pauli_z, model.pauli_z, format="boson")
+                szsz_op = model.get_two_site_op(aa, 0, bb, 0, model.pauli_z, model.pauli_z, format="boson")
                 szsz_exp = model.get_exp_vals_thermal(eig_vects, szsz_op, eig_vals, T)
                 szsz_corr[ii, jj] = szsz_corr[ii, jj] + szsz_exp
 
@@ -174,36 +181,36 @@ for ii, cluster in enumerate(clusters_list):
 # nlce computation
 # TODO: this in a nicer way ...
 energy_nlce, orders_energy, weight_energy = \
-    get_nlce_exp_val(energies[0:order_start_indices[max_cluster_order], :],
+    nlce.get_nlce_exp_val(energies[0:order_start_indices[max_cluster_order], :],
                      sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
                      cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
                      order_start_indices[0:max_cluster_order + 1], 1)
 
-energy_nlce_euler_resum, energy_euler_orders = euler_resum(orders_energy, 1)
+energy_nlce_euler_resum, energy_euler_orders = nlce.euler_resum(orders_energy, 1)
 
 entropy_nlce, orders_entropy, weight_entropy = \
-    get_nlce_exp_val(entropies[0:order_start_indices[max_cluster_order], :],
+    nlce.get_nlce_exp_val(entropies[0:order_start_indices[max_cluster_order], :],
                      sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
                      cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
                      order_start_indices[0:max_cluster_order + 1], 1)
 
-entropy_nlce_euler_resum, entropy_euler_orders = euler_resum(orders_entropy, 1)
+entropy_nlce_euler_resum, entropy_euler_orders = nlce.euler_resum(orders_entropy, 1)
 
 specific_heat_nlce, orders_specific_heat, weight_specific_heat = \
-    get_nlce_exp_val(specific_heats[0:order_start_indices[max_cluster_order], :],
+    nlce.get_nlce_exp_val(specific_heats[0:order_start_indices[max_cluster_order], :],
                      sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
                      cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
                      order_start_indices[0:max_cluster_order + 1], 1)
 
-spheat_nlce_euler_resum, spheat_euler_orders = euler_resum(orders_specific_heat, 1)
+spheat_nlce_euler_resum, spheat_euler_orders = nlce.euler_resum(orders_specific_heat, 1)
 
 szsz_nlce, orders_szsz, weight_szsz = \
-    get_nlce_exp_val(szsz_corr[0:order_start_indices[max_cluster_order], :],
+    nlce.get_nlce_exp_val(szsz_corr[0:order_start_indices[max_cluster_order], :],
                      sub_cluster_mult[0:order_start_indices[max_cluster_order], 0:order_start_indices[max_cluster_order]],
                      cluster_multiplicities[0, 0:order_start_indices[max_cluster_order]],
                      order_start_indices[0:max_cluster_order + 1], 1)
 
-szsz_nlce_euler_resum, szsz_euler_orders = euler_resum(orders_szsz, 1)
+szsz_nlce_euler_resum, szsz_euler_orders = nlce.euler_resum(orders_szsz, 1)
 
 data_nlce = {"cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult, "order_start_indices": order_start_indices,
              "energies": energies, "orders_energy": orders_energy, "weight_energy": weight_energy,
@@ -278,6 +285,6 @@ if display_results:
     plt.ylabel('SzSz mean ()')
     plt.ylim([-1, 1])
 
-    fig_name = "nlce_results" + today_str + ".png"
+    fig_name = os.path.join(save_dir, "nlce_results" + today_str + ".png")
     fig_handle.savefig(fig_name)
     plt.show()

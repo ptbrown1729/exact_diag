@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import ed_geometry
 
-class geom_unittest(unittest.TestCase):
+
+class TestGeom(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -17,7 +18,8 @@ class geom_unittest(unittest.TestCase):
 
         xlocs, ylocs = np.meshgrid(range(3, 6), range(3, 6))
 
-        xlocs_reduced, ylocs_reduced, vect1_multiplier, vect2_multiplier = ed_geometry.reduce_vectors(vect1, vect2, xlocs, ylocs, mode='positive')
+        xlocs_reduced, ylocs_reduced, vect1_multiplier, vect2_multiplier = \
+            ed_geometry.reduce_vectors(vect1, vect2, xlocs, ylocs, mode='positive')
 
         xlocs_reduced_expected = np.array([0., 1., 2., 0., 1., 2., 0., 1., 2.])
         ylocs_reduced_expected = np.array([2., 2., 2., 3., 3., 3., 0., 4., 4.])
@@ -42,7 +44,7 @@ class geom_unittest(unittest.TestCase):
         xlocs_reduced, ylocs_reduced, vect1_multiplier, vect2_multiplier = \
             ed_geometry.reduce_vectors(vect1, vect2, xlocs, ylocs, mode='centered')
 
-        xlocs_reduced_expected = np.array([ 0.,  1., -1.,  0.,  1., -1.,  0.,  1., -1.])
+        xlocs_reduced_expected = np.array([0.,  1., -1.,  0.,  1., -1.,  0.,  1., -1.])
         ylocs_reduced_expected = np.array([-2.,  2.,  1., -1., -1., -2.,  0.,  0., -1.])
         vect1_multiplier_expected = np.array([[1., 1., 2., 1., 1., 2., 1., 1., 2.]])
         vect2_multiplier_expected = np.array([[1., 0., 0., 1., 1., 1., 1., 1., 1.]])
@@ -108,7 +110,8 @@ class geom_unittest(unittest.TestCase):
         periodicity_vect2 = np.array([-1, 3])
         phase1 = 0
         phase2 = 0
-        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2)
+        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                   periodicity_vect2, phase1, phase2)
 
         nsites, xlocs, ylocs = latt.get_unique_sites()
 
@@ -132,7 +135,8 @@ class geom_unittest(unittest.TestCase):
         periodicity_vect2 = 3 * latt_vect2
         phase1 = 0
         phase2 = 0
-        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2)
+        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                   periodicity_vect2, phase1, phase2)
 
         nsites, xlocs, ylocs = latt.get_unique_sites()
 
@@ -141,8 +145,8 @@ class geom_unittest(unittest.TestCase):
         ylocs_expected = np.array([0., np.sqrt(3)/2, 0., np.sqrt(3), np.sqrt(3)/2,
                                    0., np.sqrt(3), np.sqrt(3)/2, np.sqrt(3)])
 
-        self.assertTrue(nsites == nsites_expected and \
-                        np.round(np.abs(xlocs - xlocs_expected).max(), 12) == 0 and \
+        self.assertTrue(nsites == nsites_expected and
+                        np.round(np.abs(xlocs - xlocs_expected).max(), 12) == 0 and
                         np.round(np.abs(ylocs - ylocs_expected).max(), 12) == 0)
 
     def test_lattice_get_reduced_distance(self):
@@ -161,7 +165,8 @@ class geom_unittest(unittest.TestCase):
         phase2 = 0.
         bc1_open = 0
         bc2_open = 1
-        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2)
+        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                   periodicity_vect2, phase1, phase2)
 
         nsites, xlocs, ylocs = latt.get_unique_sites()
         # xdist_min_mat, ydist_min_mat, dist_reduced_multiplicity = \
@@ -186,7 +191,8 @@ class geom_unittest(unittest.TestCase):
         phase2 = 0.
         bc1_open = 0
         bc2_open = 1
-        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2)
+        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                   periodicity_vect2, phase1, phase2)
 
         nsites, xlocs, ylocs = latt.get_unique_sites()
         xdist_min_mat, ydist_min_mat, _, _ = \
@@ -279,6 +285,7 @@ class geom_unittest(unittest.TestCase):
         ylocs = [2., 2., 2., 1., 1., 1., 0., 0., 0.]
         gm_expected = ed_geometry.Geometry.createNonPeriodicGeometry(xlocs, ylocs)
         self.assertTrue(gm == gm_expected)
+
 
 if __name__ == "__main__":
     unittest.main()

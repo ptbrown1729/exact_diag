@@ -107,27 +107,5 @@ class TestSymm(unittest.TestCase):
         self.assertEqual(max_cycle_len, 4)
         self.assertEqual(cycles, cycles_expected)
 
-    def test_getTransReducedProj(self):
-        pass
-
-    def test_getCyclicProj(self):
-        pass
-
-    def test_getZnProjectors(self):
-        pass
-
-    def test_get2DTranslationProjectors(self):
-        pass
-
-    def test_getC4VProjectors(self):
-        pass
-
-    def test_getD2Projectors(self):
-        pass
-
-    def test_getD3Projectors(self):
-        pass
-
-
 if __name__ == "__main__":
     unittest.main()

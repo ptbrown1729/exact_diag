@@ -1,3 +1,7 @@
+"""
+Spinless Fermions with nearest-neighbor interactions. Using symmetries to reduce size of matrices we are diagonalizing.
+"""
+
 import datetime
 import time
 import pickle
@@ -9,26 +13,30 @@ import ed_geometry as geom
 import ed_symmetry as symm
 import fermi_gas as fg
 
-# TODO: use translation and number to get smaller sectors to solve larger systems faster.
 now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
+nsites = 16
 
 save_dir = "../data"
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 
-nsites = 10
-
 tstart = time.process_time()
 
 # set up parameters to scan
 t = 1
-temps = np.linspace(0, 3, 8) * t
-betas = np.divide(1, temps)
-betas[temps == 0] = np.inf
+# temps = np.linspace(0, 3, 10) * t
+temps = np.linspace(0, 3, 2) * t
 
-ints = np.linspace(0, 10, 15) * t
+with np.errstate(divide="ignore"):
+    betas = np.divide(1, temps)
+    betas[temps == 0] = np.inf
+
+# ints = np.linspace(0, 5, 60) * t
+ints = np.linspace(0, 5, 5) * t
 ints = np.concatenate((-np.flip(ints, axis=0), ints[1:]))
-# ints = np.array([0])
+
+print("spinless fermions with nearest neighbor interactions")
+print("nsites = %d, n interactions = %d, ntemps = %d" % (nsites, len(ints), len(temps)))
 
 gm = geom.Geometry.createSquareGeometry(nsites, 1, 0, 0, bc1_open=False, bc2_open=True)
 
@@ -55,11 +63,17 @@ for n, n_proj in zip(ns, n_projs):
     symm_projs, kxs = symm.getZnProjectors(xtransl_op, max_cycle_len_translx)
 
     for kx, symm_proj in zip(kxs, symm_projs):
-        curr_proj = symm_proj*n_proj
+        curr_proj = symm_proj * n_proj
         if curr_proj.size > 0:
             projector_list.append(curr_proj)
             k_list = np.concatenate((k_list, np.array([kx])))
             n_list = np.concatenate((n_list, np.array([n])))
+
+max_proj_size = np.max([p.shape[0] for p in projector_list])
+mean_proj_size = np.mean([p.shape[0] for p in projector_list])
+
+print("Subspace projectors: max size=%d, mean size=%.1f, number=%d" %
+      (max_proj_size, mean_proj_size, len(projector_list)))
 
 # loop over interactions_4 and solve for each symmetry sector
 corrs_sectors = np.zeros((len(projector_list), temps.size, ints.size, gm.nsites))
@@ -87,9 +101,9 @@ for ii, U in enumerate(ints):
         # ham = sf.createH(print_results=1, projector=proj)
         ham_proj = proj * ham * proj.conj().transpose()
         if ham_proj.shape[0] > 1000:
-            pr = 1
+            pr = True
         else:
-            pr = 0
+            pr = False
         eig_vals, eig_vects = sf.diagH(ham_proj, print_results=pr)
 
         eigs.append(eig_vals)
@@ -112,7 +126,7 @@ for ii, U in enumerate(ints):
     corrs[..., ii, :] = sf.thermal_avg_combine_sectors(corrs_sectors[:, :, ii, :], eigs, temps)
 
     u_tend = time.process_time()
-    print("interaction %d/%d ran in %fs for %d temps" % (ii + 1, ints.size, u_tend - u_tstart, temps.size))
+    print("interaction %d/%d ran in %.2fs for %d temps" % (ii + 1, ints.size, u_tend - u_tstart, temps.size))
 
 corrs_c = corrs - dens ** 2
 sfact = np.fft.fft(corrs_c, axis=-1) / gm.nsites
@@ -124,8 +138,8 @@ print("total time was %fs" % (tend - tstart))
 # plot results
 # ###############################
 # save results
-data = {"ints": ints, "temps": temps, "gm": gm, "dens": dens,
-        "corrs": corrs, "corrs_c": corrs_c, "sfact": sfact, "datetime": now_str}
+data = {"nn_interactions": ints, "temps": temps, "geometry": gm, "density": dens,
+        "correlators": corrs, "correlators_c": corrs_c, "structure_factor": sfact, "datetime": now_str}
 fname = os.path.join(save_dir, "%s_spinless_fermion_chain_nsites=%d_pickle.dat" % (now_str, gm.nsites))
 with open(fname, 'wb') as f:
         pickle.dump(data, f)
@@ -147,8 +161,9 @@ for ii in range(0, n_distinct_corrs):
     plt.imshow(4 * corrs_c[:, :, ii].transpose(), interpolation=None, cmap='RdGy', vmin=-1, vmax=1,
                extent=extent, aspect='auto')
     plt.colorbar()
-    plt.xlabel('Temperature (t)')
-    plt.ylabel('NN U/t')
+    if ii == 0:
+        plt.xlabel('Temperature (t)')
+        plt.ylabel('Nearest Neighbor U (t)')
     plt.title('d = %d' % ii)
 
 plt.suptitle('correlators, spinless fermions at half-filling\n vs. interaction and temperature, nsite = %d chain' % gm.nsites)
@@ -161,7 +176,8 @@ figh_sfact = plt.figure(figsize=(14, 9))
 
 for ii in range(0, n_distinct_corrs):
     plt.subplot(nrows, ncols, ii+1)
-    plt.imshow(4 * np.real(sfact[:, :, ii].transpose()), interpolation=None, cmap='RdGy', vmin=-1, vmax=1, extent=[temps[0], temps[-1], ints[-1], ints[0]], aspect='auto')
+    plt.imshow(4 * np.real(sfact[:, :, ii].transpose()), interpolation=None, cmap='RdGy',
+               vmin=-1, vmax=1, extent=extent, aspect='auto')
     plt.xlabel('Temperature (t)')
     plt.ylabel('NN U/t')
     plt.title('k/pi = %0.2f' % (kxs[ii]/np.pi))

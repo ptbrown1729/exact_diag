@@ -1,23 +1,42 @@
+"""
+Spinless Fermions with nearest-neighbor interactions. Not using symmetries.
+"""
+
+import datetime
+import pickle
+import os
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import ed_fermions
 import ed_geometry as geom
 import ed_symmetry as symm
 import fermi_gas as fg
-import datetime
+
 
 # TODO: use translation and number to get smaller sectors to solve larger systems faster.
 
+now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
+nsites = 12
+
+save_dir = "../data"
+if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+
+tstart = time.process_time()
+
 # set up parameters to scan
 t = 1
-temps = np.linspace(0, 4, 10) * t
+# temps = np.linspace(0, 3, 10) * t
+temps = np.linspace(0, 3, 2) * t
 betas = np.divide(1, temps)
 betas[temps == 0] = np.inf
 
-ints = np.linspace(0, 5, 60) * t
-ints = np.concatenate(( -np.flip(ints), ints[1:]))
+# ints = np.linspace(0, 5, 60) * t
+ints = np.linspace(0, 5, 5) * t
+ints = np.concatenate((-np.flip(ints), ints[1:]))
 
-gm = geom.Geometry.createSquareGeometry(10, 1, 0, 0, bc1_open=False, bc2_open=True)
+gm = geom.Geometry.createSquareGeometry(nsites, 1, 0, 0, bc1_open=False, bc2_open=True)
 
 # translational symmetry
 # xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
@@ -27,6 +46,7 @@ gm = geom.Geometry.createSquareGeometry(10, 1, 0, 0, bc1_open=False, bc2_open=Tr
 # constant mu
 # ###############################
 exps = np.zeros((ints.size, gm.nsites, temps.size))
+# dens = np.zeros((ints.size, gm.nsites, temps.size))
 corrs_all = np.zeros((ints.size, gm.nsites, temps.size))
 corrs_allc = np.zeros((ints.size, gm.nsites, temps.size))
 # Using particle-hole symmetry can show half-filling (one particle per spin per every other site) happens at mu = U
@@ -51,22 +71,13 @@ for ii, U in enumerate(ints):
 corrs_nnc = corrs_allc[:, 1, :]
 corrs_nnnc = corrs_allc[:, 2, :]
 
-# loop over interactions_4
-# corrs_all = [] # nstates x nints x nsectors ... do temperatures afterwords
-# eigs = [] # nstates
-# for ii, U in enumerate(ints):
-#
-#     # for each interaction, solve number and symmetry subspaces independently
-#     for jj in range(0, gm.nsites):
-#         sf = fermions.fermions(gm, 0, t, ns=jj, us_same_species=U, potentials=0, nspecies=1)
-#         xtransl_op = sf.get_xform_op(xtransl_cycles)
-#         xtransl_op = sf.n_projector * xtransl_op * sf.n_projector.conj().transpose()
-#         symm_projs, kxs = symm.getZnProjectors(xtransl_op, max_cycle_len_translx)
-#
-#         for symm_proj in symm_projs:
-#             ham = sf.createH(print_results=1, projector=symm_proj * sf.n_projector)
-#             eig_vals, eig_vects = sf.diagH(ham, print_results=1)
+data = {"ints": ints, "temps": temps, "gm": gm, "corrs": corrs, "corrs_c": corrs_allc, "datetime": now_str}
+fname = os.path.join(save_dir, "%s_spinless_fermion_chain_nsites=%d_pickle.dat" % (now_str, gm.nsites))
+with open(fname, 'wb') as f:
+    pickle.dump(data, f)
 
+tend = time.process_time()
+print("total time was %fs" % (tend - tstart))
 
 # ###############################
 # fermi gas
@@ -78,25 +89,30 @@ fg_corr = fg.fg_corr(betas, 0, [1, 0], nsites=gm.nsites, dim='1d')
 # ###############################
 # plot results
 # ###############################
-now = datetime.datetime.now()
-now_str = "%04d;%02d;%02d_%02dh_%02dm" % (now.year, now.month, now.day, now.hour, now.minute)
+
+dt = temps[1] - temps[0]
+du = ints[1] - ints[0]
+extent = [temps[0] - 0.5 * dt, temps[-1] + 0.5 * dt, ints[-1] + 0.5 * du, ints[0] - 0.5 * du]
 
 # correlators
 figh_nn = plt.figure()
+
 n_distinct_corrs = int(np.ceil(0.5 * gm.nsites))
-nrows = np.floor( np.sqrt(n_distinct_corrs) )
-ncols = np.ceil(n_distinct_corrs / float(nrows))
+nrows = int(np.floor(np.sqrt(n_distinct_corrs)))
+ncols = int(np.ceil(n_distinct_corrs / float(nrows)))
 
 for ii in range(0, n_distinct_corrs):
     plt.subplot(nrows, ncols, ii+1)
-    plt.imshow(4 * corrs_allc[:, ii, :], interpolation=None, cmap='RdGy', vmin=-1, vmax=1, extent=[temps[0], temps[-1], ints[-1], ints[0]], aspect='auto')
+    plt.imshow(4 * corrs_allc[:, ii, :], interpolation=None, cmap='RdGy', vmin=-1, vmax=1,
+               extent=extent, aspect='auto')
     plt.colorbar()
-    plt.xlabel('Temperature (t)')
-    plt.ylabel('NN U/t')
+    if ii == 0:
+        plt.xlabel('Temperature (t)')
+        plt.ylabel('NN U/t')
     plt.title('d = %d' % ii)
 
 plt.suptitle('correlators, spinless fermions at half-filling\n vs. interaction and temperature, nsite = %d chain' % gm.nsites)
 
-fname = "%s_spinless_fermion_chain_nsites=%d_correlators.png" % (now_str, gm.nsites)
+fname = os.path.join(save_dir, "%s_spinless_fermion_chain_nsites=%d_correlators.png" % (now_str, gm.nsites))
 figh_nn.savefig(fname)
 

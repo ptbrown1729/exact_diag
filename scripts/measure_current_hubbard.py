@@ -1,3 +1,7 @@
+"""
+Calculate conductivity for Hubbard system
+"""
+
 import time
 import datetime
 import pickle

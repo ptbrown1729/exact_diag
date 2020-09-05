@@ -1,3 +1,7 @@
+"""
+Spinless Fermions in a tilted potential
+"""
+
 import numpy as np
 import ed_fermions
 import ed_geometry as geom

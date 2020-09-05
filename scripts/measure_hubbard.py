@@ -1,9 +1,12 @@
+"""
+Diagonalize Hubbard system and record useful quantities, such as density expectation values, correlators, etc
+versus temperature.
+"""
+
 import time
 import datetime
-import os.path
+import os
 import numpy as np
-import scipy.integrate
-import scipy.sparse as sp
 import pickle
 import matplotlib.pyplot as plt
 
@@ -11,26 +14,33 @@ import ed_fermions
 import ed_geometry as geom
 import ed_symmetry as symm
 
-save_results = 1
-temps = np.linspace(0.1, 10, 100)
-today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
-fname_results = "_hubbard_meas_results" + today_str + ".dat"
+nx = 3
+ny = 3
+temps = np.linspace(0.1, 1, 10)
+save_results = True
+save_dir = "../data"
+today_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
+fname_results = today_str + "nx=%d_ny=%d_hubbard_meas_results.pkl" % (nx, ny)
 
-nx = 7
-ny = 1
-gm = geom.Geometry.createSquareGeometry(nx, ny, 0, 0, bc1_open=False, bc2_open=True)
-#gm = geom.Geometry.createTiltedSquareGeometry(3, 1, 0, 0, bc1_open=False, bc2_open=False)
+if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+
+bc1_open = False
+bc2_open = False
+gm = geom.Geometry.createSquareGeometry(nx, ny, 0, 0, bc1_open=bc1_open, bc2_open=bc2_open)
+# gm = geom.Geometry.createTiltedSquareGeometry(3, 1, 0, 0, bc1_open=False, bc2_open=False)
 
 U = -6
+# ensure half-filling
 nup = np.floor(gm.nsites / 2)
 ndn = gm.nsites - nup
-model = ed_fermions.fermions(gm, U, 1, nup, ndn)
+model = ed_fermions.fermions(gm, us_interspecies=U, ts=1, ns=[nup, ndn], nspecies=2)
 
 # translational symmetry projectors
 xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
 xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, gm)
 xtransl_op = model.n_projector * model.get_xform_op(xtransl_cycles) * model.n_projector.conj().transpose()
-if not model.geometry.lattice.bc2_open:
+if not bc2_open:
     ytransl_fn = symm.getTranslFn(np.array([[0], [1]]))
     ytransl_cycles, max_cycle_len_transly = symm.findSiteCycles(ytransl_fn, gm)
     ytransl_op = model.n_projector * model.get_xform_op(ytransl_cycles) * model.n_projector.conj().transpose()
@@ -39,17 +49,17 @@ if not model.geometry.lattice.bc2_open:
 #                                                   ytransl_op, max_cycle_len_transly)
 
 # get projectors
-if not model.geometry.lattice.bc1_open and not model.geometry.lattice.bc2_open:
+if not bc1_open and not bc2_open:
     projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
                                                       max_cycle_len_transly)
-elif not model.geometry.lattice.bc2_open:
+elif not bc2_open:
     projs, kys = symm.getZnProjectors(ytransl_op, max_cycle_len_transly)
     kxs = np.zeros(kys.shape)
-elif not model.geometry.lattice.bc1_open:
+elif not bc1_open:
     projs, kxs = symm.getZnProjectors(xtransl_op, max_cycle_len_translx)
     kys = np.zeros(kxs.shape)
 else:
-    raise Exception
+    raise Exception()
 
 # for each symmetry sector
 # logical_site_up = model.spinful2spinlessIndex(0, model.geometry.nsites, 0)
@@ -101,13 +111,13 @@ ndnndn_exp_sector = np.zeros((len(projs), len(temps)))
 nupndn_exp_sector = np.zeros((len(projs), len(temps)))
 d_exp_sector = np.zeros((len(projs), len(temps)))
 dd_exp_sector = np.zeros((len(projs), len(temps)))
-ns_exp_sector =  np.zeros((len(projs), len(temps)))
+ns_exp_sector = np.zeros((len(projs), len(temps)))
 nsns_exp_sector = np.zeros((len(projs), len(temps)))
 
 eigs_sector = []
 for ii, proj in enumerate(projs):
-    print("started sector %d/%d" % (ii + 1,len(projs)))
-    H = model.createH(projector =proj * model.n_projector, print_results=True)
+    print("started sector %d/%d" % (ii + 1, len(projs)))
+    H = model.createH(projector=proj * model.n_projector, print_results=True)
     eigs, eigvects = model.diagH(H, print_results=True)
     eigs_sector.append(eigs)
 
@@ -120,7 +130,6 @@ for ii, proj in enumerate(projs):
 
         ham_squared = model.get_exp_vals_thermal(eigvects, H.dot(H), eigs, temp)
         spheat_exp_sec[ii, jj] = 1. / (temp ** 2) * (ham_squared - (energy_exp_sec[ii, jj]) ** 2)
-
 
         sz_proj_op = proj * sz_one_op * proj.conj().transpose()
         szsz_proj_op = proj * szsz_op * proj.conj().transpose()
@@ -173,6 +182,7 @@ dd_c = np.zeros(len(temps))
 ns_exp = np.zeros(len(temps))
 nsns_exp = np.zeros(len(temps))
 nsns_c = np.zeros(len(temps))
+
 for jj, temp in enumerate(temps):
     energy_exp[jj] = model.thermal_avg_combine_sectors(energy_exp_sec[:, jj], eigs_sector, temp)
     entropy_exp[jj] = model.thermal_avg_combine_sectors(entropy_exp_sec[:, jj], eigs_sector, temp)
@@ -201,6 +211,20 @@ for jj, temp in enumerate(temps):
     ns_exp[jj] = model.thermal_avg_combine_sectors(ns_exp_sector[:, jj], eigs_sector, temp)
     nsns_exp[jj] = model.thermal_avg_combine_sectors(nsns_exp_sector[:, jj], eigs_sector, temp)
     nsns_c[jj] = nsns_exp[jj] - ns_exp[jj] ** 2
+
+data = {"model": model, "temps": temps, "U": U,
+        "energy_exp": energy_exp,
+        "entropy_exp": entropy_exp, "spheat_exp": spheat_exp,
+        "nup_exp": nup_exp, "nupnup_c": nupnup_c,
+        "ndn_exp": ndn_exp, "ndnndn_c": ndnndn_c,
+        "nupndn_c": nupndn_c,
+        "sz_exp": sz_exp, "szsz_c": szsz_c,
+        "ns_exp": ns_exp, "nsns_c": nsns_c,
+        "d_exp": d_exp, "dd_c": dd_c}
+
+fname = os.path.join(save_dir, today_str + "hubbard_results.pkl")
+with open(fname, "wb") as f:
+    pickle.dump(data, f)
 
 # print "period_start/t = %0.2f" % temp
 # print "4*<Sz(0) Sz(1)>_c = %0.3f" % szsz_c
@@ -293,18 +317,14 @@ plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
 plt.ylabel('<d d>_c')
 
-data = [model, temps, energy_exp, entropy_exp, spheat_exp,
-        sz_exp, szsz_c, nup_exp, nupnup_c, ndn_exp, ndnndn_c, nupndn_c,
-        ns_exp, nsns_c, d_exp, dd_c]
-
 if save_results:
     with open(fname_results, 'wb') as f:
         pickle.dump(data, f)
 
-    fig_name = "attractive_hubb_ed_energy" + today_str + ".png"
+    fig_name = os.path.join(save_dir, today_str + "_attractive_hubb_ed_energy.png")
     fig_handle_quantities.savefig(fig_name)
 
-    fig_name = "attractive_hubb_ed_corr" + today_str + ".png"
+    fig_name = os.path.join(save_dir, today_str + "_attractive_hubb_ed_corr.png")
     fig_handle_corrs.savefig(fig_name)
 
 plt.show()

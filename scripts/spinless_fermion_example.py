@@ -1,3 +1,7 @@
+"""
+Simple example of exact digaonalization of a spinless fermion system
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import ed_fermions

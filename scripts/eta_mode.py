@@ -1,3 +1,8 @@
+"""
+Eta mode calculations for attractive Hubbard model
+ todo: does this script work?
+"""
+
 import time
 import datetime
 import os.path

@@ -1,3 +1,8 @@
+"""
+Calculate single-particle spectral functions for Hubbard model
+todo: not finished
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 

@@ -16,7 +16,7 @@ db_name = "edresults"
 db = mysql.connector.connect(
     host = "localhost",
     user = "root",
-    passwd = "b4krl4b",
+    passwd = "",
     database = db_name
 )
 

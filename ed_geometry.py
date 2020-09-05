@@ -74,8 +74,8 @@ class Geometry():
     # #################################
 
     @classmethod
-    def createPeriodicGeometry(cls, latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2,
-                               phase1=0, phase2=0, bc1_open=0, bc2_open=0):
+    def create_lattice_geom(cls, latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2,
+                            phase1=0, phase2=0, bc1_open=True, bc2_open=True):
         """
         Create a Geometry instance by specifying an underlying lattice
 
@@ -96,10 +96,10 @@ class Geometry():
 
         nsites, xlocs, ylocs = lattice_helper.get_unique_sites()
 
-        # generate actual lattice, with desired boundary conditions
-        if bc1_open == 1:
+        # if don't want lattice to be periodic, set periodicity vectors to zero
+        if bc1_open:
             periodicity_vect1 = np.zeros((2, 1))
-        if bc2_open == 1:
+        if bc2_open:
             periodicity_vect2 = np.zeros((2, 1))
 
         lattice = Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2)
@@ -120,7 +120,7 @@ class Geometry():
         return cls(xlocs, ylocs, adjacency_mat, phase_mat)
 
     @classmethod
-    def createSquareGeometry(cls, nx_sites, ny_sites, phase1=0, phase2=0, bc1_open=0, bc2_open=0):
+    def createSquareGeometry(cls, nx_sites, ny_sites, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
         """
         Create a Geometry instance for a square cluster on a square lattice
 
@@ -133,11 +133,11 @@ class Geometry():
         :return:
         """
 
-        if nx_sites == 1 and bc1_open == 0:
+        if nx_sites == 1 and not bc1_open:
             raise Exception('Invalid createSquareGeometry options specified. nx_sites = 1, '
                             'but periodic boundary conditions selected.')
 
-        if ny_sites == 1 and bc2_open == 0:
+        if ny_sites == 1 and not bc2_open:
             raise Exception('Invalid createSquareGeometry options specified. ny_sites = 1, '
                             'but periodic boundary conditions selected.')
 
@@ -147,12 +147,12 @@ class Geometry():
         periodicity_vect1 = np.array([[nx_sites], [0]])
         periodicity_vect2 = np.array([[0], [ny_sites]])
 
-        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects,
-                                          periodicity_vect1, periodicity_vect2, phase1,
-                                          phase2, bc1_open, bc2_open)
+        return cls.create_lattice_geom(latt_vect1, latt_vect2, basis_vects,
+                                       periodicity_vect1, periodicity_vect2, phase1,
+                                       phase2, bc1_open, bc2_open)
 
     @classmethod
-    def createTiltedSquareGeometry(cls, nsites_right, nsites_up, phase1=0, phase2=0, bc1_open=0, bc2_open=0):
+    def createTiltedSquareGeometry(cls, nsites_right, nsites_up, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
         """
         Create a geometry instance for a tilted square cluster on a square lattice
 
@@ -171,11 +171,11 @@ class Geometry():
         periodicity_vect1 = np.array([[nsites_right], [nsites_up]])
         periodicity_vect2 = np.array([[-nsites_up], [nsites_right]])
 
-        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
-                                          periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
+        return cls.create_lattice_geom(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                       periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
 
     @classmethod
-    def createTriangleGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=0, bc2_open=0):
+    def createTriangleGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
         """
         Create a geometry instance for a triangular lattice on a 'square' cluster
 
@@ -188,11 +188,11 @@ class Geometry():
         :return:
         """
 
-        if n1_sites == 1 and bc1_open == 0:
+        if n1_sites == 1 and not bc1_open:
             raise Exception('Invalid createSquareGeometry options specified. nx_sites = 1, '
                             'but periodic boundary conditions selected.')
 
-        if n2_sites == 1 and bc2_open == 0:
+        if n2_sites == 1 and not bc2_open:
             raise Exception('Invalid createSquareGeometry options specified. ny_sites = 1, '
                             'but periodic boundary conditions selected.')
 
@@ -202,11 +202,11 @@ class Geometry():
         periodicity_vect1 = n1_sites * latt_vect1
         periodicity_vect2 = n2_sites * latt_vect2
 
-        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
-                                          periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
+        return cls.create_lattice_geom(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
+                                       periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
 
     @classmethod
-    def createHexagonalGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=0, bc2_open=0):
+    def createHexagonalGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
         """
         Create a geometry instance for a hexagonal lattice
 
@@ -219,11 +219,11 @@ class Geometry():
         :return:
         """
 
-        if n1_sites == 1 and bc1_open == 0:
+        if n1_sites == 1 and not bc1_open:
             raise Exception('Invalid createHexagonalGeometry options specified. n1_sites = 1, '
                             'but periodic boundary conditions selected.')
 
-        if n2_sites == 1 and bc2_open == 0:
+        if n2_sites == 1 and not bc2_open:
             raise Exception('Invalid createHexagonalGeometry options specified. n2_sites = 1, '
                             'but periodic boundary conditions selected.')
 
@@ -234,8 +234,8 @@ class Geometry():
         periodicity_vect1 = n1_sites * np.array([[3.], [0.]])
         periodicity_vect2 = n2_sites * np.array([[0.], [np.sqrt(3)]])
 
-        return cls.createPeriodicGeometry(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2,
-                                          phase1, phase2, bc1_open, bc2_open)
+        return cls.create_lattice_geom(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2,
+                                       phase1, phase2, bc1_open, bc2_open)
 
     # #################################
     # General geometry functions
@@ -941,8 +941,8 @@ if __name__ == "__main__":
     ny = 1
     phi1 = np.pi/3
     phi2 = 0
-    bc_open1 = 0
-    bc_open2 = 1
+    bc_open1 = False
+    bc_open2 = True
     gm = Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc_open1, bc_open2)
     gm.dispGeometry()
 
@@ -955,19 +955,19 @@ if __name__ == "__main__":
     # 10 site square
     nr = 3
     nv = 1
-    geom_tilted = Geometry.createTiltedSquareGeometry(nr, nv, 0, 0, 0, 0)
+    geom_tilted = Geometry.createTiltedSquareGeometry(nr, nv, 0, 0, bc1_open=False, bc2_open=False)
     geom_tilted.dispGeometry()
 
     # triangular lattice
     n1 = 4
     n2 = 4
-    geom_triangle = Geometry.createTriangleGeometry(n1, n2, 0, 0, 1, 1)
+    geom_triangle = Geometry.createTriangleGeometry(n1, n2, 0, 0, bc1_open=True, bc2_open=True)
     geom_triangle.dispGeometry()
 
     # hexagonal lattice
     n1 = 4
     n2 = 4
-    geom_hex = Geometry.createHexagonalGeometry(n1, n2, 0, 0, 0, 0)
+    geom_hex = Geometry.createHexagonalGeometry(n1, n2, 0, 0, bc1_open=False, bc2_open=False)
     geom_hex.dispGeometry()
 
     # non-periodic geometry

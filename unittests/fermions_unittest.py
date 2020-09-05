@@ -29,7 +29,7 @@ class TestFermions(unittest.TestCase):
             energy_exps[ii] = np.sum(np.divide(dispersion, np.exp(dispersion / temp) + 1))
 
         # fermions calculation
-        cluster = geom.Geometry.createSquareGeometry(nsites, 1, 0, 0, 0, 1)
+        cluster = geom.Geometry.createSquareGeometry(nsites, 1, 0, 0, bc1_open=False, bc2_open=True)
         spinless_fermions = ed_fermions.fermions(cluster, u, t, nspecies=1)
         hamiltonian = spinless_fermions.createH()
         eig_vals, eig_vects = spinless_fermions.diagH(hamiltonian)
@@ -58,7 +58,7 @@ class TestFermions(unittest.TestCase):
         mus = np.linspace(-4, 4, 30)
 
         # geometry
-        gm = geom.Geometry.createSquareGeometry(8, 1, 0, 0, bc1_open=0, bc2_open=1)
+        gm = geom.Geometry.createSquareGeometry(8, 1, 0, 0, bc1_open=False, bc2_open=True)
 
         ed_dens = np.zeros((mus.size, temps.size))
         fg_dens = np.zeros((mus.size, temps.size))
@@ -95,7 +95,7 @@ class TestFermions(unittest.TestCase):
         mus = np.linspace(-4, 4, 30)
 
         # geometry
-        gm = geom.Geometry.createSquareGeometry(8, 1, 0, 0, bc1_open=0, bc2_open=1)
+        gm = geom.Geometry.createSquareGeometry(8, 1, 0, 0, bc1_open=False, bc2_open=True)
 
         # solve at each mu
         ed_corr = np.zeros((mus.size, temps.size))
@@ -134,7 +134,7 @@ class TestFermions(unittest.TestCase):
         t = -0.5
         U = 1.
         mu = U
-        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=0, bc2_open=0)
+        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         sf = ed_fermions.fermions(gm, 0, t, mus=mu, us_same_species=U, potentials=0, nspecies=1)
         ham = sf.createH()
         eig_vals, eig_vects = sf.diagH(ham, print_results=False)
@@ -157,7 +157,7 @@ class TestFermions(unittest.TestCase):
         energy_exps = u * np.divide(np.exp(-np.divide(1.0, temps) * u), z)
 
         # ed calculation
-        cluster = geom.Geometry.createSquareGeometry(1, 1, 0, 0, 1, 1)
+        cluster = geom.Geometry.createSquareGeometry(1, 1, 0, 0, bc1_open=True, bc2_open=True)
         hubbard_model = ed_fermions.fermions(cluster, u, t, ns=np.array([1, 1]))
         hamiltonian = hubbard_model.createH()
         eig_vals, eig_vects = hubbard_model.diagH(hamiltonian)
@@ -187,9 +187,8 @@ class TestFermions(unittest.TestCase):
             # two for two spin states
             energy_exps[ii] = 2 * np.sum(np.divide(dispersion, np.exp(dispersion / temp) + 1))
 
-
         # ed calculation
-        cluster = geom.Geometry.createSquareGeometry(nsites, 1, 0, 0, bc1_open=0, bc2_open=1)
+        cluster = geom.Geometry.createSquareGeometry(nsites, 1, 0, 0, bc1_open=False, bc2_open=True)
         hubbard_model = ed_fermions.fermions(cluster, u, t)
         hamiltonian = hubbard_model.createH()
         eig_vals, eig_vects = hubbard_model.diagH(hamiltonian)
@@ -208,7 +207,7 @@ class TestFermions(unittest.TestCase):
         U = 20 * (np.random.rand() - 0.5)
         t = np.random.rand()
 
-        gm = geom.Geometry.createSquareGeometry(2, 1, 0, 0, 1, 1)
+        gm = geom.Geometry.createSquareGeometry(2, 1, 0, 0, bc1_open=True, bc2_open=True)
         model = ed_fermions.fermions(gm, U, t, ns=None)
         hamiltonian = model.createH()
         eig_vals, eig_vects = model.diagH(hamiltonian)
@@ -243,7 +242,7 @@ class TestFermions(unittest.TestCase):
         U = 20 * (np.random.rand() - 0.5)
         t = np.random.rand()
 
-        gm = geom.Geometry.createSquareGeometry(2, 1, 0, 0, bc1_open=1, bc2_open=1)
+        gm = geom.Geometry.createSquareGeometry(2, 1, 0, 0, bc1_open=True, bc2_open=True)
         model = ed_fermions.fermions(gm, U, t, ns=np.array([1, 1]))
         hamiltonian = model.createH(projector=model.n_projector)
         eig_vals, eig_vects = model.diagH(hamiltonian)
@@ -263,7 +262,7 @@ class TestFermions(unittest.TestCase):
         U = 20 * (np.random.rand() - 0.5)
         t = np.random.rand()
 
-        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         model = ed_fermions.fermions(gm, U, t, ns=np.array([1, 1]))
 
         # no symmetry
@@ -298,7 +297,7 @@ class TestFermions(unittest.TestCase):
         U = 20 * (np.random.rand() - 0.5)
         t = np.random.rand()
 
-        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         model = ed_fermions.fermions(gm, U, t, ns=np.array([1, 1]))
 
         # no symmetry
@@ -339,7 +338,7 @@ class TestFermions(unittest.TestCase):
         U = 20 * (np.random.rand() - 0.5)
         t = np.random.rand()
 
-        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         model = ed_fermions.fermions(gm, U, t, ns=np.array([1, 1]))
 
         # no symmetry
@@ -378,7 +377,7 @@ class TestFermions(unittest.TestCase):
         U = 20 * (np.random.rand() - 0.5)
         t = np.random.rand()
 
-        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        gm = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         hubbard = ed_fermions.fermions(gm, U, t, ns=np.array([1, 1]))
 
         # no symmetry

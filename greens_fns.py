@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 import warnings
 
@@ -13,7 +12,7 @@ def get_matsubara_frqs(beta, max_frq=30, format="fermion"):
     if format == "fermion":
         matsubara_frq_smallest = np.pi / beta
     elif format == "boson":
-        matsubara_frq_smallest = 2 * np.pi /beta
+        matsubara_frq_smallest = 2 * np.pi / beta
     else:
         raise Exception("format must be 'fermion' or 'boson', but %s was supplied", format)
 
@@ -32,10 +31,9 @@ def get_grnfn_imagfrq_spectralfn(matsubara_frqs, omegas, spectral_fn):
     G(i*omega_n) = 1 / (2*pi) \int A(k, w) / (i * \omega_n - w).
 
     Here we assume that the spectral function is normalized such that \int dw A(k, w) = 2*pi
+    :param matsubara_frqs:
     :param omegas: frequency data
     :param spectral_fn: spectral function evaluate at the omegas
-    :param beta: inverse temperature
-    :return: matsubara_frqs, gfn_imag_frq
     """
 
     #matsubara_frqs = get_matsubara_frqs(beta, format="fermion")
@@ -46,7 +44,7 @@ def get_grnfn_imagfrq_spectralfn(matsubara_frqs, omegas, spectral_fn):
 
     # calculate imaginary frequency green's function
     integrand = np.divide(spectral_fn_expanded, 1j * matsubara_frqs_expanded - omega_expanded)
-    gfn_imag_frq = np.trapz(integrand, omega_expanded, axis = 1) / (2 * np.pi)
+    gfn_imag_frq = np.trapz(integrand, omega_expanded, axis=1) / (2 * np.pi)
 
     return gfn_imag_frq
 
@@ -56,12 +54,11 @@ def get_grnfn_imagtime_spectralfn(taus, beta, omegas, spectral_fn, format="fermi
     G(\tau) = - \int A(k,w) * exp(-\tau * w) / ( 1 + exp(-\beta * w))
 
     Here we assume that the spectral function is normalized such that \int dw A(k, w) = 2*pi
+    :param taus:
+    :param beta: the inverse temperature
     :param omegas:
     :param spectral_fn:
-    :param beta: the inverse temperature
-    :param num_taus: number of (equally spaced) imaginary time points to evaluate the function at.
     :param format: Either "fermion" or "boson" for the appropriate type of green's function
-    :param include_beta: whether the final point calculate is beta or beta - dtau
     :return:
     """
     # taus = np.arange(0.0, num_taus)
@@ -97,6 +94,7 @@ def get_grnfn_imagfrq_spectralfn_kernel(matsubara_frqs, omegas, format="fermion"
     get_frnfn_imagfrq_spectralfn.
     :param matsubara_frqs: imaginary frequencies
     :param omegas: real frequencies
+    :param format:
     :return: kernel, a mabsubara_frqs.size x omegas.size array
     """
 
@@ -140,7 +138,8 @@ def get_grnfn_imagtime_spectralfn_kernel(taus, beta, omegas, format="fermion"):
     # normalization
     norm_factor = - 1 / (2*np.pi)
     # full kernel
-    kernel = norm_factor * np.divide(np.exp(- omegas_expanded * tau_expanded), 1 + factor * np.exp(-beta * omegas_expanded)) * frq_diffs
+    kernel = norm_factor * np.divide(np.exp(- omegas_expanded * tau_expanded),
+                                     1 + factor * np.exp(-beta * omegas_expanded)) * frq_diffs
 
     return kernel
 
@@ -151,6 +150,7 @@ def grnfn_imagtime_ft(matsubara_frqs, taus, grn_fn_imagtime, beta):
     :param matsubara_frqs: matsubara frequencies to evaluate the fourier transform at
     :param taus: imaginary time points
     :param grn_fn_imagtime: imaginary time green's function evaluated at taus
+    :param beta:
     :return: grnfn_imagefrq
     """
 
@@ -161,9 +161,9 @@ def grnfn_imagtime_ft(matsubara_frqs, taus, grn_fn_imagtime, beta):
         warnings.warn('tau = beta was not supplied to grnfn_imagtime_ft.')
 
     if np.round(taus, 14).max() > beta or np.round(taus, 14).min() < 0:
-        #raise Warning('taus supplied to grnfn_imagtime_ft contained values smaller than 0 or larger than beta. Those values will be ignored in the calculation')
-        warnings.warn('taus supplied to grnfn_imagtime_ft contained values smaller than 0 or larger than beta. '
-                      'Those values will be ignored in the calculation', RuntimeWarning)
+        warnings.warn('taus supplied to grnfn_imagtime_ft contained values smaller than 0 or'
+                      ' larger than beta. Those values will be ignored in the calculation',
+                      RuntimeWarning)
         indices_to_use = np.logical_and(np.round(taus, 14) >= 0, np.round(taus, 14) <= beta)
         grn_fn_imagtime = grn_fn_imagtime[indices_to_use]
         taus = taus[indices_to_use]
@@ -214,7 +214,8 @@ def get_noninteracting_gfn_tau(taus, epsilon_k, beta, format="fermion"):
     if format == "fermion":
         fermi_fn = np.divide(1, 1 + np.exp(beta * epsilon_k))
         # TODO: should I enforce one of the heaviside functions to be 1 at \tau = 0 ?
-        greens_fn = - np.exp(-epsilon_k * taus) * ((1 - fermi_fn ) * np.heaviside(taus, 0) - fermi_fn * np.heaviside( -1 *  taus, 0) )
+        greens_fn = - np.exp(-epsilon_k * taus) * ((1 - fermi_fn) * np.heaviside(taus, 0) -
+                                                   fermi_fn * np.heaviside(-1 * taus, 0))
     elif format == "bosone":
         raise Exception("TODO: noninteracting boson green's function calculation not implemented yet")
     else:
@@ -256,32 +257,33 @@ def get_noninteracting_spectral_fn(omegas, epsilon_k, eta):
     return spectral_fn
 
 # linear response functions
-def chi_hydro(ws, k, chi0, D0, D2=0, Gamma=np.inf):
+def chi_hydro(ws, k, chi0, d0, d2=0, gamma=np.inf):
     """
     Hydrodynamic susceptibility function
     :param ws:
     :param k:
     :param chi0:
-    :param D0:
-    :param Gamma:
+    :param d0:
+    :param d2:
+    :param gamma:
     :return:
     """
-    if Gamma != np.inf:
-        chi = np.divide(chi0, 1. - 1j * ws / (D0 * k ** 2 + D2 * k ** 4) - ws ** 2 / (Gamma * (D0 * k ** 2 + D2 * k **4) ))
+    if gamma != np.inf:
+        chi = np.divide(chi0, 1. - 1j * ws / (d0 * k ** 2 + d2 * k ** 4) - ws ** 2 / (gamma * (d0 * k ** 2 + d2 * k ** 4)))
     else:
-        chi = np.divide(chi0, 1. - 1j * ws / (D0 * k ** 2 + D2 * k ** 4))
+        chi = np.divide(chi0, 1. - 1j * ws / (d0 * k ** 2 + d2 * k ** 4))
 
     return chi
 
-def field_snap_off_w(ws, Ho, eta=0.1):
+def field_snap_off_w(ws, ho, eta=0.1):
     """
     Field frequency dependence for h(t) = theta(t) * Ho
     :param ws:
-    :param Ho:
+    :param ho:
     :param eta: broadening parameter
     :return:
     """
-    h_w = np.divide(Ho, 1j * ws + eta)
+    h_w = np.divide(ho, 1j * ws + eta)
     return h_w
 
 def phi_t(ts, ws, chi_ws):
@@ -315,8 +317,8 @@ def obs_kt(ts, ws, chi_ws, field_ws):
     return obs_kt
 
 
-if __name__=="__main__":
-    from greens_fns import *
+if __name__ == "__main__":
+    # from greens_fns import *
     import matplotlib.pyplot as plt
 
     # test using non-interacting green's function
@@ -342,26 +344,26 @@ if __name__=="__main__":
 
     # evaluate for all k's
     gfn_k_taus = np.zeros((taus.size, ks.size))
-    gfn_k_omegas = np.zeros((omegas_m.size, ks.size),dtype=np.complex)
+    gfn_k_omegas = np.zeros((omegas_m.size, ks.size), dtype=np.complex)
     spectral_fn = np.zeros((omegas.size, ks.size))
     for ii, k in enumerate(ks):
         gfn_k_taus[:, ii] = get_noninteracting_gfn_tau(taus, epsilon_k(k) - mu, beta, format="fermion")
         gfn_k_omegas[:, ii], _ = get_noninteracting_gfn_imagfrq(max_m_frq, epsilon_k(k) - mu, beta, format="fermion")
         spectral_fn[:, ii] = get_noninteracting_spectral_fn(omegas, epsilon_k(k) - mu, eta)
 
-
     # calculate greens functions from spectral function
     gfn_k_taus_from_spectralfn = np.zeros((taus_half.size, ks.size))
-    gfn_k_omegas_from_spectralfn = np.zeros((omegas_m.size, ks.size),dtype=np.complex)
+    gfn_k_omegas_from_spectralfn = np.zeros((omegas_m.size, ks.size), dtype=np.complex)
     kernel_imagtime = get_grnfn_imagtime_spectralfn_kernel(taus_half, beta, omegas, format="fermion")
     kernel_imagfrq = get_grnfn_imagfrq_spectralfn_kernel(omegas_m, omegas)
     for ii, k in enumerate(ks):
-        gfn_k_taus_from_spectralfn[:, ii] = get_grnfn_imagtime_spectralfn(taus_half, beta, omegas, spectral_fn[:, ii], format="fermion")
+        gfn_k_taus_from_spectralfn[:, ii] = get_grnfn_imagtime_spectralfn(taus_half, beta, omegas,
+                                                                          spectral_fn[:, ii], format="fermion")
         gfn_k_omegas_from_spectralfn[:, ii] = get_grnfn_imagfrq_spectralfn(omegas_m, omegas, spectral_fn[:, ii])
 
     # calculate imaginary time/frequency greens functions from fourier transform of the other
     gfn_k_taus_from_imagfrq = np.zeros((taus.size, ks.size))
-    gfn_k_omegas_from_imagtime = np.zeros((omegas_m.size, ks.size),dtype=np.complex)
+    gfn_k_omegas_from_imagtime = np.zeros((omegas_m.size, ks.size), dtype=np.complex)
     for ii, k in enumerate(ks):
         gfn_k_taus_from_imagfrq[:, ii] = grnfn_imagfrq_ft(taus, omegas_m, gfn_k_omegas[:, ii], beta)
         gfn_k_omegas_from_imagtime[:, ii] = grnfn_imagtime_ft(omegas_m, taus, gfn_k_taus[:, ii], beta)

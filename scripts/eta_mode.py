@@ -17,8 +17,8 @@ t_script_start = time.process_time()
 print_all = False
 
 # define geometry
-bc1_open = 0
-bc2_open = 1
+bc1_open = False
+bc2_open = True
 phi1 = 0
 phi2 = 0
 

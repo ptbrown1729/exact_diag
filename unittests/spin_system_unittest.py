@@ -21,7 +21,7 @@ class TestSpinSys(unittest.TestCase):
         :return:
         """
 
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         # paper definition of hamiltonian differs by a factor of two from mine
         jz_critical = -2 * 0.32424925229
         h_transverse = 2 * 1.0
@@ -41,7 +41,7 @@ class TestSpinSys(unittest.TestCase):
         reference: J. Phys. A: Math. Gen 32 51 (1999).
         "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
         hamiltonian = spin_model.createH()
         eig_vals, eig_vects = spin_model.diagH(hamiltonian)
@@ -57,7 +57,7 @@ class TestSpinSys(unittest.TestCase):
         "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
         """
 
-        cluster = geom.Geometry.createSquareGeometry(4, 4, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=False, bc2_open=False)
 
         # diagonalize full hamiltonian
         spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
@@ -96,7 +96,7 @@ class TestSpinSys(unittest.TestCase):
         Test rotation symmetry by diagonalizing random spin system with and without using it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -133,7 +133,7 @@ class TestSpinSys(unittest.TestCase):
         Test d2 symmetry by diagonalizing random spin system with and without it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 2, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 2, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -270,7 +270,7 @@ class TestSpinSys(unittest.TestCase):
         Test d4 symmetry by diagonalizing random spin system with and without it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -313,7 +313,7 @@ class TestSpinSys(unittest.TestCase):
         Test translational symmetry by diagonalizing random 3x3 spin system with and without it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -354,7 +354,7 @@ class TestSpinSys(unittest.TestCase):
 
     @unittest.skip("Not working yet. Check conj classes ordering/correctness.")
     def test_full_symm_3byb3(self):
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -409,7 +409,7 @@ class TestSpinSys(unittest.TestCase):
 
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         j1 = np.random.rand()
         j2 = np.random.rand()
         j3 = np.random.rand()

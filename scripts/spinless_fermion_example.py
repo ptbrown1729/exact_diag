@@ -14,7 +14,7 @@ mu = 0
 # ###############################
 # constant number
 # ###############################
-gm = geom.Geometry.createSquareGeometry(8, 1, 0, 0, bc1_open=0, bc2_open=1)
+gm = geom.Geometry.createSquareGeometry(8, 1, 0, 0, bc1_open=False, bc2_open=True)
 sf = ed_fermions.fermions(gm, 0, t, ns=np.array([4]), us_same_species=0, potentials=0, nspecies=1)
 
 # diagonalize hamiltonian

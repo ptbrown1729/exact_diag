@@ -560,7 +560,7 @@ if __name__ == "__main__":
     # xlocs = [1, 1, 2, 2, 3, 3, 4, 4]
     # ylocs = [1, 2, 2, 3, 3, 4, 4, 5]
     # parent_geometry = geom.Geometry.createNonPeriodicGeometry(xlocs, ylocs)
-    parent_geometry = geom.Geometry.createSquareGeometry(4, 4, 0, 0, 1, 1)
+    parent_geometry = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=True, bc2_open=True)
     parent_geometry.permute_sites(parent_geometry.get_sorting_permutation())
     clusters_list, sub_cluster_mult, order_start_indices = get_reduced_subclusters(parent_geometry)
 

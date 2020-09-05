@@ -18,8 +18,8 @@ fname_results = "_hubbard_meas_results" + today_str + ".dat"
 
 nx = 7
 ny = 1
-gm = geom.Geometry.createSquareGeometry(nx, ny, 0, 0, bc1_open=0, bc2_open=1)
-#gm = geom.Geometry.createTiltedSquareGeometry(3, 1, 0, 0, bc1_open=0, bc2_open=0)
+gm = geom.Geometry.createSquareGeometry(nx, ny, 0, 0, bc1_open=False, bc2_open=True)
+#gm = geom.Geometry.createTiltedSquareGeometry(3, 1, 0, 0, bc1_open=False, bc2_open=False)
 
 U = -6
 nup = np.floor(gm.nsites / 2)

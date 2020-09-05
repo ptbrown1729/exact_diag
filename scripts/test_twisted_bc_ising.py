@@ -24,20 +24,20 @@ nx = 3
 ny = 4
 
 # define geometry
-bc1_open = 0
-bc2_open = 1
+bc1_open = False
+bc2_open = True
 phi1 = 0
 phi2 = 0
 
 if nx > 1:
-    bc1_open = 0
+    bc1_open = False
 else:
-    bc1_open = 1
+    bc1_open = True
 
 if ny > 1:
-    bc2_open = 0
+    bc2_open = False
 else:
-    bc2_open = 1
+    bc2_open = True
 
 for ii, (phi1, phi2) in enumerate(zip(phi1s, phi2s)):
     gm = geom.Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc1_open, bc2_open)

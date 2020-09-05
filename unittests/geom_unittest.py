@@ -163,8 +163,8 @@ class TestGeom(unittest.TestCase):
         periodicity_vect2 = np.array([0, 0])
         phase1 = 0.333
         phase2 = 0.
-        bc1_open = 0
-        bc2_open = 1
+        bc1_open = False
+        bc2_open = True
         latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
                                    periodicity_vect2, phase1, phase2)
 
@@ -189,8 +189,8 @@ class TestGeom(unittest.TestCase):
         periodicity_vect2 = np.array([0, 0])
         phase1 = 0.333
         phase2 = 0.
-        bc1_open = 0
-        bc2_open = 1
+        bc1_open = False
+        bc2_open = True
         latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
                                    periodicity_vect2, phase1, phase2)
 

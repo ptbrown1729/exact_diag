@@ -581,14 +581,14 @@ if __name__ == "__main__":
     phi1 = 0
     phi2 = 0
     if nx > 1:
-        bc1_open = 0
+        bc1_open = False
     else:
-        bc1_open = 1
+        bc1_open = True
 
     if ny > 1:
-        bc2_open = 0
+        bc2_open = False
     else:
-        bc2_open = 1
+        bc2_open = True
 
     gm = geom.Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc1_open, bc2_open)
     #gm = geom.Geometry.createTiltedSquareGeometry(3, 1, phi1, phi2, bc1_open, bc2_open)

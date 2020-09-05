@@ -11,15 +11,14 @@ import ed_geometry as geom
 import ed_symmetry as symm
 
 # parameters
-save_results = 0
-plot_results = 1
-print_all = 1
+save_results = False
+plot_results = True
+print_all = True
 t_script_start = time.process_time()
-print_all = 1
 
 # define geometry
-bc1_open = 0
-bc2_open = 1
+bc1_open = False
+bc2_open = True
 phi1 = 0
 phi2 = 0
 
@@ -90,7 +89,7 @@ opt_cond_sectors_temps = np.zeros([len(projs), len(temps), len(omegas), len(etas
 
 # diagonalize all symmetry sectors
 for ii,proj in enumerate(projs):
-    print "sector %d/%d" % (ii + 1, len(projs))
+    print("sector %d/%d" % (ii + 1, len(projs)))
     H = h.createH(projector = proj * h.n_projector, print_results=print_all)
     eigs, eigvects = h.diagH(H, print_results=print_all)
 
@@ -124,10 +123,10 @@ for ii,proj in enumerate(projs):
         for kk in range(0, len(omegas)):
             # loop over broadening parameters
             for aa, eta in enumerate(etas):
-                print "eta %d/%d" % (aa + 1, len(etas))
+                print("eta %d/%d" % (aa + 1, len(etas)))
                 opt_cond_sectors_temps[ii, jj, kk, aa] = opt_cond_fn(omegas[kk], eta)
         tend = time.process_time()
-        print "temperature %d/%d in sector %d took %0.2f s" % (jj + 1, len(temps), ii, tend-tstart)
+        print("temperature %d/%d in sector %d took %0.2f s" % (jj + 1, len(temps), ii, tend-tstart))
 
 kxe_temps = np.zeros(len(temps))
 opt_cond_integrals = np.zeros(len(temps))
@@ -157,7 +156,7 @@ for ii in range(0, len(temps)):
 # z = np.sum(np.exp(-eig_vals))
 
 t_script_end = time.process_time()
-print "runtime = %0.2f s" % (t_script_end - t_script_start)
+print("runtime = %0.2f s" % (t_script_end - t_script_start))
 
 # save results
 h.runtime = t_script_end - t_script_start
@@ -179,7 +178,7 @@ if save_results:
     fname = "%04d_%02d_%02d_%02d_%02d_nsites=%d_U=%0.1f_nup=%d_ndn=%d_phi1=%0.3f_phi2=%0.3f" % (now.year, now.month, now.day, now.hour, now.minute, gm.nsites, U, n_ups, n_dns, gm.phase1, gm.phase2)
     h.save(os.path.join(fpath, fname + '.pkl'))
     h.save(os.path.join(fpath, fname + '.mat'))
-    print "saved results to %s" % os.path.join(fpath, fname + '.pkl')
+    print("saved results to %s" % os.path.join(fpath, fname + '.pkl'))
 
 if plot_results:
     import matplotlib.pyplot as plt

@@ -5,8 +5,8 @@ import ed_geometry as geom
 import ed_symmetry as symm
 import ed_fermions as hubbard
 
-bc1_open = 0
-bc2_open = 1
+bc1_open = False
+bc2_open = True
 gm = geom.Geometry.createSquareGeometry(2, 1, 0, 0, bc1_open, bc2_open)
 U = 0.0
 tunn = 1.0

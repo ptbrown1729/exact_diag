@@ -1,8 +1,8 @@
-#import cPickle as pickle
 import pickle
 import os
 import sys
 from ed_nlce import *
+
 
 def generate_clusters(fname_cluster_dat, max_cluster_order):
 
@@ -27,6 +27,7 @@ def generate_clusters(fname_cluster_dat, max_cluster_order):
         pickle.dump(data_clusters, f)
 
     return len(clusters_list)
+
 
 if __name__ == "__main__":
     output_fname = sys.argv[1]

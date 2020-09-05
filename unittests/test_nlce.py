@@ -12,7 +12,7 @@ import ed_nlce as nlce
 # general settings
 ########################################
 
-today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
+now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
 max_cluster_order = 7
 display_results = True
 save_dir = "../data"
@@ -39,7 +39,7 @@ temps = np.logspace(-1, 0.5, 50)
 ########################################
 if not os.path.isfile(fname_full_cluster_ed):
     print("did not find file %s, diagonalizing hamiltonian" % fname_full_cluster_ed)
-    parent_geometry = geom.Geometry.createSquareGeometry(4, 4, 0, 0, 0, 0)
+    parent_geometry = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=False, bc2_open=False)
     parent_geometry.permute_sites(parent_geometry.get_sorting_permutation())
 
     model = tvi.spinSystem(parent_geometry, jx, jy, jz, hx, hy, hz, use_ryd_detunes=False)
@@ -105,7 +105,7 @@ if not os.path.isfile(fname_full_cluster_ed):
 
     data = {"model": model, "eigs_all": eigs_all, "energies_full": energies_full,
             "entropies_full": entropies_full, "specific_heat_full": specific_heat_full,
-            "szsz_full": szsz_full, "temps": temps, "run_date": today_str}
+            "szsz_full": szsz_full, "temps": temps, "run_date": now_str}
     with open(fname_full_cluster_ed, 'wb') as f:
         pickle.dump(data, f)
 else:
@@ -285,6 +285,6 @@ if display_results:
     plt.ylabel('SzSz mean ()')
     plt.ylim([-1, 1])
 
-    fig_name = os.path.join(save_dir, "nlce_results" + today_str + ".png")
+    fig_name = os.path.join(save_dir, "nlce_results" + now_str + ".png")
     fig_handle.savefig(fig_name)
     plt.show()

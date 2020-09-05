@@ -13,7 +13,7 @@ class TestNLCE(unittest.TestCase):
 
         :return:
         """
-        cluster_list = [geom.Geometry.createSquareGeometry(2, 1, 0, 0, 1, 1)]
+        cluster_list = [geom.Geometry.createSquareGeometry(2, 1, 0, 0, bc1_open=True, bc2_open=True)]
         lattice_vect1 = np.array([1, 0])
         lattice_vect2 = np.array([0, 1])
         use_symmetry = 1
@@ -80,7 +80,7 @@ class TestNLCE(unittest.TestCase):
 
         :return:
         """
-        parent_geometry = geom.Geometry.createSquareGeometry(3, 3, 0, 0, 1, 1)
+        parent_geometry = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=True, bc2_open=True)
         cluster_list_next, old_clusters_contained_in_new_clusters = ed_nlce.get_subclusters_next_order(parent_geometry)
 
         expected_cluster_list = [geom.Geometry.createNonPeriodicGeometry([0], [0]),
@@ -104,7 +104,7 @@ class TestNLCE(unittest.TestCase):
 
         :return:
         """
-        parent_geometry = geom.Geometry.createSquareGeometry(2, 2, 0, 0, 1, 1)
+        parent_geometry = geom.Geometry.createSquareGeometry(2, 2, 0, 0, bc1_open=True, bc2_open=True)
         cluster_orders_list, sub_cluster_indices, sub_cluster_mat = ed_nlce.get_all_subclusters(parent_geometry)
 
         expected_sub_cluster_indices = [[], [], [], [], [0, 1], [0, 2], [1, 3], [2, 3], [0, 1, 3, 4, 6],
@@ -135,7 +135,7 @@ class TestNLCE(unittest.TestCase):
 
         :return:
         """
-        parent_geometry = geom.Geometry.createSquareGeometry(2, 2, 0, 0, 1, 1)
+        parent_geometry = geom.Geometry.createSquareGeometry(2, 2, 0, 0, bc1_open=True, bc2_open=True)
         parent_geometry.permute_sites(parent_geometry.get_sorting_permutation())
         clusters_list, sub_cluster_mult, order_start_indices = ed_nlce.get_reduced_subclusters(parent_geometry)
 

@@ -17,7 +17,7 @@ betas[temps == 0] = np.inf
 ints = np.linspace(0, 5, 60) * t
 ints = np.concatenate(( -np.flip(ints), ints[1:]))
 
-gm = geom.Geometry.createSquareGeometry(10, 1, 0, 0, bc1_open=0, bc2_open=1)
+gm = geom.Geometry.createSquareGeometry(10, 1, 0, 0, bc1_open=False, bc2_open=True)
 
 # translational symmetry
 # xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
@@ -46,7 +46,7 @@ for ii, U in enumerate(ints):
     # connected correlators
     for jj in range(0, gm.nsites):
         corrs_allc[ii, jj, :] = corrs_all[ii, jj, :] - exps[ii, 0, :] * exps[ii, jj, :]
-    print "%d/%d" % (ii + 1, ints.size)
+    print("%d/%d" % (ii + 1, ints.size))
 
 corrs_nnc = corrs_allc[:, 1, :]
 corrs_nnnc = corrs_allc[:, 2, :]

@@ -13,21 +13,24 @@ import matplotlib.pyplot as plt
 import ed_fermions
 import ed_geometry as geom
 import ed_symmetry as symm
+import fermi_gas as fg
 
 # ############################
 # settings
 # ############################
-nx = 3
+save_results = True
+save_dir = "../data"
+
+nx = 4
 ny = 3
 U = 8
 mu_up = U/2
 mu_dn = U/2
 temps = np.linspace(0.1, 3, 10)
-save_results = True
-save_dir = "../data"
 
 today_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
-fname_results = os.path.join(save_dir, today_str + "nx=%d_ny=%d_hubbard_meas_results.pkl" % (nx, ny))
+identifier_str = "hubbard_nx=%d_ny=%d_u=%0.2f" % (nx, ny, U)
+fname_results = os.path.join(save_dir, "%s_%s.pkl" % (today_str, identifier_str))
 
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
@@ -183,62 +186,78 @@ for jj, temp in enumerate(temps):
         ev_at_temp = np.array([e[jj] for e in evs])
         exp_vals[k][jj] = model.thermal_avg_combine_sectors(ev_at_temp, eigs_sector, temp)
 
+# non-interacting Fermi gas correlators for comparison
+mu_up_fg = 0
+mu_dn_fg = 0
+exp_vals_fg = {
+        "ns": fg.fg_singles(1 / temps, mu_up_fg, mu_dn_fg, dim="2d"),
+        "d": fg.fg_doubles(1 / temps, mu_up_fg, mu_dn_fg, dim="2d"),
+        "nup_nup": fg.fg_corr(1 / temps, mu_up_fg, corr_index=(1, 0), dim="2d"),
+        "ndn_ndn": fg.fg_corr(1 / temps, mu_dn_fg, corr_index=(1, 0), dim="2d"),
+        "sz_sz": fg.fg_sz_corr(1 / temps, mu_up_fg, mu_dn_fg, corr_index=(0, 1), dim="2d"),
+        "dd": fg.fg_doubles_corr(1 / temps, mu_up_fg, mu_dn_fg, corr_index=(0, 1), dim="2d"),
+        "ns_ns": fg.fg_singles_corr(1 / temps, mu_up_fg, mu_dn_fg, corr_index=(0, 1), dim="2d"),
+        }
+
+
 # store output data in dictionary
 tend = time.process_time()
 
 exp_vals.update({"model": model, "temps": temps, "U": U, "mu_up": mu_up, "mu_dn": mu_dn,
+                 "exp_vals_non_int_fg": exp_vals_fg,
                  "run_time_secs": (tend - tstart)})
 
 if save_results:
     with open(fname_results, "wb") as f:
         pickle.dump(exp_vals, f)
 
-# print "period_start/t = %0.2f" % temp
-# print "4*<Sz(0) Sz(1)>_c = %0.3f" % szsz_c
-# print "<nup(0)nup(1)>_c = %0.3f" % nupnup_c
-# print "<ndn(0)ndn(1)>_c = %0.3f" % ndnndn_c
-# print "<nup(0)ndn(1)>_c = %0.3f" % nupndn_c
-# print "<ns(0)ns(1)>_c = %0.3f" % nsns_c
-# print "<d(0) d(1)>_c = %0.3f" % dd_c
-
 # ############################
 # plot densities and energy
 # ############################
 fig_handle_quantities = plt.figure(figsize=(10, 8))
 nrows = 2
-ncols = 2
+ncols = 3
 
 plt.subplot(nrows, ncols, 1)
-plt.plot(temps, exp_vals["energy"] / model.geometry.nsites, '.-')
+plt.plot(temps, exp_vals["energy"] / model.geometry.nsites, 'b.-')
 plt.grid()
 plt.xlabel('Temp (t)')
 plt.title('Energy / site (t)')
 
 plt.subplot(nrows, ncols, 2)
-plt.plot(temps, exp_vals["entropy"] / model.geometry.nsites, '.-')
+plt.plot(temps, exp_vals["entropy"] / model.geometry.nsites, 'b.-')
 plt.grid()
 plt.xlabel('Temp (t)')
 plt.title('Entropy / site')
 
 plt.subplot(nrows, ncols, 3)
-plt.plot(temps, exp_vals["specific_heat"] / model.geometry.nsites, '.-')
+plt.plot(temps, exp_vals["specific_heat"] / model.geometry.nsites, 'b.-')
 plt.grid()
 plt.xlabel('Temp (t)')
 plt.title('Sp Heat / site')
 
 plt.subplot(nrows, ncols, 4)
-plt.plot(temps, exp_vals["nup1"], '.-')
-plt.plot(temps, exp_vals["ndn1"], '.-')
-plt.plot(temps, exp_vals["ns1"], '.-')
-plt.plot(temps, exp_vals["d1"], '.-')
+plt.plot(temps, exp_vals["nup1"], 'b.-')
+plt.plot(temps, exp_vals["ndn1"], 'k.-')
 plt.grid()
 plt.ylim([-0.05, 1.1])
-plt.legend(['nup', 'ndn', 'ns', 'd'])
+plt.legend(['nup', 'ndn'])
+plt.xlabel('Temp (t)')
+plt.title('Densities')
+
+plt.subplot(nrows, ncols, 5)
+plt.plot(temps, exp_vals["ns1"], 'b.-')
+plt.plot(temps, exp_vals["d1"], 'k.-')
+plt.plot(temps, exp_vals["exp_vals_non_int_fg"]["ns"], 'b--')
+plt.plot(temps, exp_vals["exp_vals_non_int_fg"]["d"], 'k--')
+plt.grid()
+plt.ylim([-0.05, 1.1])
+plt.legend(['ns', 'nd'])
 plt.xlabel('Temp (t)')
 plt.title('Densities')
 
 if save_results:
-    fig_name = os.path.join(save_dir, today_str + "_hubb_ed_densities.png")
+    fig_name = os.path.join(save_dir, "%s_%s_density_plot.png" % (today_str, identifier_str))
     fig_handle_quantities.savefig(fig_name)
 
 # ############################
@@ -247,18 +266,21 @@ if save_results:
 nrows = 2
 ncols = 3
 
-fig_handle_corrs = plt.figure()
+fig_handle_corrs = plt.figure(figsize=(10, 8))
 
 plt.subplot(nrows, ncols, 1)
-plt.plot(temps, exp_vals["sz_sz"] - exp_vals["sz1"] * exp_vals["sz2"], '.-')
+plt.plot(temps, exp_vals["sz_sz"] - exp_vals["sz1"] * exp_vals["sz2"], 'b.-')
+plt.plot(temps, exp_vals["exp_vals_non_int_fg"]["sz_sz"], 'b--')
 plt.grid()
 plt.ylim([-0.3, 0.1])
 plt.xlabel('Temp (t)')
 plt.title('<szsz>_c')
 
 plt.subplot(nrows, ncols, 2)
-plt.plot(temps, exp_vals["nup_nup"] - exp_vals["nup1"] * exp_vals["nup2"], '.-')
-plt.plot(temps, exp_vals["ndn_ndn"] - exp_vals["ndn1"] * exp_vals["ndn2"], '.-')
+plt.plot(temps, exp_vals["nup_nup"] - exp_vals["nup1"] * exp_vals["nup2"], 'b.-')
+plt.plot(temps, exp_vals["ndn_ndn"] - exp_vals["ndn1"] * exp_vals["ndn2"], 'k.-')
+plt.plot(temps, exp_vals["exp_vals_non_int_fg"]["nup_nup"], 'b--')
+plt.plot(temps, exp_vals["exp_vals_non_int_fg"]["ndn_ndn"], 'k--')
 plt.grid()
 plt.legend(['nup', 'ndn'])
 plt.ylim([-0.1, 0.1])
@@ -267,28 +289,30 @@ plt.title('<n_sigma n_sigma>_c')
 
 
 plt.subplot(nrows, ncols, 3)
-plt.plot(temps, exp_vals["nup_ndn"] - exp_vals["nup1"] * exp_vals["ndn1"], '.-')
+plt.plot(temps, exp_vals["nup_ndn"] - exp_vals["nup1"] * exp_vals["ndn1"], 'b.-')
 plt.grid()
 plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
 plt.title('<nup ndn>_c')
 
 plt.subplot(nrows, ncols, 4)
-plt.plot(temps, exp_vals["ns_ns"] - exp_vals["ns1"] * exp_vals["ns2"], '.-')
+plt.plot(temps, exp_vals["ns_ns"] - exp_vals["ns1"] * exp_vals["ns2"], 'b.-')
+plt.plot(temps, exp_vals["exp_vals_non_int_fg"]["ns_ns"], 'b--')
 plt.grid()
 plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
 plt.title('<ns ns>_c')
 
 plt.subplot(nrows, ncols, 5)
-plt.plot(temps, exp_vals["dd"] - exp_vals["d1"] * exp_vals["d2"], '.-')
+plt.plot(temps, exp_vals["dd"] - exp_vals["d1"] * exp_vals["d2"], 'b.-')
+plt.plot(temps, exp_vals["exp_vals_non_int_fg"]["dd"], 'b--')
 plt.grid()
 plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
 plt.title('<d d>_c')
 
 if save_results:
-    fig_name = os.path.join(save_dir, today_str + "_hubb_ed_corr.png")
+    fig_name = os.path.join(save_dir, "%s_%s_corr_plot.png" % (today_str, identifier_str))
     fig_handle_corrs.savefig(fig_name)
 
 plt.show()

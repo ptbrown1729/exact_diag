@@ -1,6 +1,6 @@
 """
-Diagonalize Hubbard system and record useful quantities, such as density expectation values, correlators, etc
-versus temperature.
+Diagonalize Hubbard system and record useful quantities, such as density expectation values,
+correlators, etc versus temperature.
 """
 
 import time
@@ -14,217 +14,184 @@ import ed_fermions
 import ed_geometry as geom
 import ed_symmetry as symm
 
+# ############################
+# settings
+# ############################
 nx = 3
 ny = 3
-temps = np.linspace(0.1, 1, 10)
+U = 8
+mu_up = U/2
+mu_dn = U/2
+temps = np.linspace(0.1, 3, 10)
 save_results = True
 save_dir = "../data"
+
 today_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
-fname_results = today_str + "nx=%d_ny=%d_hubbard_meas_results.pkl" % (nx, ny)
+fname_results = os.path.join(save_dir, today_str + "nx=%d_ny=%d_hubbard_meas_results.pkl" % (nx, ny))
 
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
+
+# ############################
+# geometry
+# ############################
+tstart = time.process_time()
 
 bc1_open = False
 bc2_open = False
 gm = geom.Geometry.createSquareGeometry(nx, ny, 0, 0, bc1_open=bc1_open, bc2_open=bc2_open)
 # gm = geom.Geometry.createTiltedSquareGeometry(3, 1, 0, 0, bc1_open=False, bc2_open=False)
 
-U = -6
-# ensure half-filling
-nup = np.floor(gm.nsites / 2)
-ndn = gm.nsites - nup
-model = ed_fermions.fermions(gm, us_interspecies=U, ts=1, ns=[nup, ndn], nspecies=2)
+model = ed_fermions.fermions(gm, us_interspecies=U, ts=1, mus=(mu_up, mu_dn), nspecies=2)
 
+# get nup projectors
+nup_op = model.get_sum_op(model.n_op, 0, format="boson")
+nup_projs, nups = model.get_subspace_projs(nup_op, print_results=False)
+
+# get ndn op
+ndn_op = model.get_sum_op(model.n_op, 1, format="boson")
+
+# get translation operators
 # translational symmetry projectors
-xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
-xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, gm)
-xtransl_op = model.n_projector * model.get_xform_op(xtransl_cycles) * model.n_projector.conj().transpose()
+if not bc1_open:
+    xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
+    xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, gm)
+    xtransl_op = model.n_projector * model.get_xform_op(xtransl_cycles) * model.n_projector.conj().transpose()
+
 if not bc2_open:
     ytransl_fn = symm.getTranslFn(np.array([[0], [1]]))
     ytransl_cycles, max_cycle_len_transly = symm.findSiteCycles(ytransl_fn, gm)
     ytransl_op = model.n_projector * model.get_xform_op(ytransl_cycles) * model.n_projector.conj().transpose()
 
-# projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx,
-#                                                   ytransl_op, max_cycle_len_transly)
+# get all projectors
+projector_list = []
+nups_list = np.array([])
+ndns_list = np.array([])
+kxs_list = np.array([])
+kys_list = np.array([])
+for nup, nup_proj in zip(nups, nup_projs):
+    ndn_sector_op = nup_proj * ndn_op * nup_proj.conj().transpose()
+    ndn_projs, ndns = model.get_subspace_projs(ndn_sector_op)
 
-# get projectors
-if not bc1_open and not bc2_open:
-    projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
-                                                      max_cycle_len_transly)
-elif not bc2_open:
-    projs, kys = symm.getZnProjectors(ytransl_op, max_cycle_len_transly)
-    kxs = np.zeros(kys.shape)
-elif not bc1_open:
-    projs, kxs = symm.getZnProjectors(xtransl_op, max_cycle_len_translx)
-    kys = np.zeros(kxs.shape)
-else:
-    raise Exception()
+    for ndn, ndn_proj in zip(ndns, ndn_projs):
+        n_proj = ndn_proj * nup_proj
 
-# for each symmetry sector
-# logical_site_up = model.spinful2spinlessIndex(0, model.geometry.nsites, 0)
-# logical_site_dn = model.spinful2spinlessIndex(0, model.geometry.nsites, 1)
-# logical_site_two_up = model.spinful2spinlessIndex(1, model.geometry.nsites, 0)
-# logical_site_two_dn = model.spinful2spinlessIndex(1, model.geometry.nsites, 1)
+        tx_sector = n_proj * xtransl_op * n_proj.conj().transpose()
+        ty_sector = n_proj * ytransl_op * n_proj.conj().transpose()
 
-sz_one_op = model.n_projector * (model.get_single_site_op(0, 0, model.n_op, format="boson")
-                                 - model.get_single_site_op(0, 1, model.n_op, format="boson")) * \
-            model.n_projector.conj().transpose()
+        # get projectors
+        if not bc1_open and not bc2_open:
+            projs, kxs, kys = symm.get2DTranslationProjectors(tx_sector, max_cycle_len_translx,
+                                                              ty_sector, max_cycle_len_transly)
+        elif bc1_open and not bc2_open:
+            projs, kys = symm.getZnProjectors(ty_sector, max_cycle_len_transly)
+            kxs = np.zeros(kys.shape)
+        elif not bc1_open and bc2_open:
+            projs, kxs = symm.getZnProjectors(tx_sector, max_cycle_len_translx)
+            kys = np.zeros(kxs.shape)
+        else:
+            projs = [1]
+            kxs = [0]
+            kys = [0]
 
-sz_two_op = model.n_projector * (model.get_single_site_op(1, 0, model.n_op, format="boson")
-                                 - model.get_single_site_op(1, 1, model.n_op, format="boson")) * \
-            model.n_projector.conj().transpose()
+        for kx, ky, symm_proj in zip(kxs, kys, projs):
+            curr_proj = symm_proj * n_proj
+            if curr_proj.size > 0:
+                projector_list.append(curr_proj)
+                kxs_list = np.concatenate((kxs_list, np.array([kx])))
+                kys_list = np.concatenate((kys_list, np.array([ky])))
+                nups_list = np.concatenate((nups_list, np.array([nup])))
+                ndns_list = np.concatenate((ndns_list, np.array([ndn])))
 
-szsz_op = sz_one_op.dot(sz_two_op)
+# ############################
+# build operators to measure
+# ############################
 
-nup_one_op = model.n_projector * model.get_single_site_op(0, 0, model.n_op, format="boson") * model.n_projector.conj().transpose()
-nup_two_op = model.n_projector * model.get_single_site_op(1, 0, model.n_op, format="boson") * model.n_projector.conj().transpose()
-nupnup_op = nup_one_op.dot(nup_two_op)
+ops = {"nup1": model.get_single_site_op(0, 0, model.n_op, format="boson"),
+       "nup2": model.get_single_site_op(1, 0, model.n_op, format="boson"),
+       "ndn1": model.get_single_site_op(0, 1, model.n_op, format="boson"),
+       "ndn2": model.get_single_site_op(1, 1, model.n_op, format="boson"),
+       }
 
-ndn_one_op = model.n_projector * model.get_single_site_op(0, 1, model.n_op, format="boson") * model.n_projector.conj().transpose()
-ndn_two_op = model.n_projector * model.get_single_site_op(1, 1, model.n_op, format="boson") * model.n_projector.conj().transpose()
-ndnndn_op = ndn_one_op.dot(ndn_two_op)
+ops.update({"nup_nup": ops["nup1"].dot(ops["nup2"]),
+            "ndn_ndn": ops["ndn1"].dot(ops["ndn2"]),
+            "nup_ndn": ops["nup1"].dot(ops["ndn2"]),
+            "d1": ops["nup1"].dot(ops["ndn1"]),
+            "d2": ops["nup2"].dot(ops["ndn2"]),
+            "sz1": ops["nup1"] - ops['ndn1'],
+            "sz2": ops["nup2"] - ops['ndn2'],
+            })
 
-nupndn_op = nup_one_op.dot(ndn_two_op)
+ops.update({"ns1": ops["nup1"] + ops["ndn1"] - 2 * ops["d1"],
+            "ns2": ops["nup2"] + ops["ndn2"] - 2 * ops["d2"]})
 
-d_one_op = model.n_projector * (model.get_single_site_op(0, 0, model.n_op, format="boson").
-                                dot(model.get_single_site_op(0, 1, model.n_op, format="boson"))) * model.n_projector.conj().transpose()
-d_two_op = model.n_projector * (model.get_single_site_op(1, 0, model.n_op, format="boson").
-                                dot(model.get_single_site_op(1, 1, model.n_op, format="boson"))) * model.n_projector.conj().transpose()
-dd_op = d_one_op.dot(d_two_op)
+ops.update({"sz_sz": ops["sz1"].dot(ops["sz2"]),
+            "dd": ops["d1"].dot(ops["d2"]),
+            "ns_ns": ops["ns1"].dot(ops["ns2"]),
+            })
 
-nsingles_one_op = nup_one_op + ndn_one_op - 2 * d_one_op
-nsingles_two_op = nup_two_op + ndn_two_op - 2 * d_two_op
-nsns_op = nsingles_one_op.dot(nsingles_two_op)
 
-# quantities
-energy_exp_sec = np.zeros((len(projs), len(temps)))
-entropy_exp_sec = np.zeros((len(projs), len(temps)))
-spheat_exp_sec = np.zeros((len(projs), len(temps)))
-# correlators
-sz_exp_sector = np.zeros((len(projs), len(temps)))
-szsz_exp_sector = np.zeros((len(projs), len(temps)))
-nup_exp_sector = np.zeros((len(projs), len(temps)))
-nupnup_exp_sector = np.zeros((len(projs), len(temps)))
-ndn_exp_sector = np.zeros((len(projs), len(temps)))
-ndnndn_exp_sector = np.zeros((len(projs), len(temps)))
-nupndn_exp_sector = np.zeros((len(projs), len(temps)))
-d_exp_sector = np.zeros((len(projs), len(temps)))
-dd_exp_sector = np.zeros((len(projs), len(temps)))
-ns_exp_sector = np.zeros((len(projs), len(temps)))
-nsns_exp_sector = np.zeros((len(projs), len(temps)))
+# ############################
+# expectation values for each symmetry/number sector
+# ############################
+nprojs = len(projector_list)
+nt = len(temps)
+nu = 1
+
+exp_vals_sectors = {"energy": [np.zeros(nt) for _ in projector_list],
+            "entropy": [np.zeros(nt) for _ in projector_list],
+            "specific_heat": [np.zeros(nt) for _ in projector_list]}
+
+for k in ops.keys():
+    exp_vals_sectors.update({k: [np.zeros(nt) for _ in projector_list]})
 
 eigs_sector = []
-for ii, proj in enumerate(projs):
-    print("started sector %d/%d" % (ii + 1, len(projs)))
-    H = model.createH(projector=proj * model.n_projector, print_results=True)
-    eigs, eigvects = model.diagH(H, print_results=True)
+H = model.createH(print_results=True)
+for ii, proj in enumerate(projector_list):
+    ndim = proj.shape[0]
+    print("started sector %d/%d of size %dx%d" % (ii + 1, len(projector_list), ndim, ndim))
+    h_sector = proj * H * proj.conj().transpose()
+    eigs, eigvects = model.diagH(h_sector)
     eigs_sector.append(eigs)
 
     t_start = time.process_time()
     for jj, temp in enumerate(temps):
-        energy_exp_sec[ii, jj] = model.get_exp_vals_thermal(eigvects, H, eigs, temp)
+        exp_vals_sectors["energy"][ii][jj] = model.get_exp_vals_thermal(eigvects, h_sector, eigs, temp)
 
-        Z_sect = np.sum(np.exp(- eigs / temp))
-        entropy_exp_sec[ii, jj] = (np.log(Z_sect) + energy_exp_sec[ii, jj] / temp)
+        partition_fn_sector = np.sum(np.exp(-eigs / temp))
+        exp_vals_sectors["entropy"][ii][jj] = \
+            (np.log(partition_fn_sector) + exp_vals_sectors["energy"][ii][jj] / temp)
 
-        ham_squared = model.get_exp_vals_thermal(eigvects, H.dot(H), eigs, temp)
-        spheat_exp_sec[ii, jj] = 1. / (temp ** 2) * (ham_squared - (energy_exp_sec[ii, jj]) ** 2)
+        ham_squared = model.get_exp_vals_thermal(eigvects, h_sector.dot(h_sector), eigs, temp)
+        exp_vals_sectors["specific_heat"][ii][jj] = \
+            1. / (temp ** 2) * (ham_squared - exp_vals_sectors["energy"][ii][jj] ** 2)
 
-        sz_proj_op = proj * sz_one_op * proj.conj().transpose()
-        szsz_proj_op = proj * szsz_op * proj.conj().transpose()
-        sz_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, sz_proj_op, eigs, temp)
-        szsz_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, szsz_proj_op, eigs, temp)
+        for k, op in ops.items():
+            op_sector = proj * op * proj.conj().transpose()
+            exp_vals_sectors[k][ii][jj] = model.get_exp_vals_thermal(eigvects, op_sector, eigs, temp)
 
-        nup_proj_op = proj * nup_one_op * proj.conj().transpose()
-        nupnup_proj_op = proj * nupnup_op * proj.conj().transpose()
-        nup_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, nup_proj_op, eigs, temp)
-        nupnup_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, nupnup_proj_op, eigs, temp)
-
-        ndn_proj_op = proj * ndn_one_op * proj.conj().transpose()
-        ndnndn_proj_op = proj * ndnndn_op * proj.conj().transpose()
-        ndn_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, ndn_proj_op, eigs, temp)
-        ndnndn_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, ndnndn_proj_op, eigs, temp)
-
-        nupndn_proj_op = proj * nupndn_op * proj.conj().transpose()
-        nupndn_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, nupndn_proj_op, eigs, temp)
-
-        d_proj_op = proj * d_one_op * proj.conj().transpose()
-        dd_proj_op = proj * dd_op * proj.conj().transpose()
-        d_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, d_proj_op, eigs, temp)
-        dd_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, dd_proj_op, eigs, temp)
-
-        ns_proj_op = proj * nsingles_one_op * proj.conj().transpose()
-        nsns_proj_op = proj * nsns_op * proj.conj().transpose()
-        ns_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, ns_proj_op, eigs, temp)
-        nsns_exp_sector[ii, jj] = model.get_exp_vals_thermal(eigvects, nsns_proj_op, eigs, temp)
     t_end = time.process_time()
     print("Computing expectation values for %d temperatures took %0.2f" % (len(temps), t_end - t_start))
 
-energy_exp = np.zeros(len(temps))
-entropy_exp = np.zeros(len(temps))
-spheat_exp = np.zeros(len(temps))
-
-sz_exp = np.zeros(len(temps))
-szsz_exp = np.zeros(len(temps))
-szsz_c = np.zeros(len(temps))
-nup_exp = np.zeros(len(temps))
-nupnup_exp = np.zeros(len(temps))
-nupnup_c = np.zeros(len(temps))
-ndn_exp = np.zeros(len(temps))
-ndnndn_exp = np.zeros(len(temps))
-ndnndn_c = np.zeros(len(temps))
-nupndn_exp = np.zeros(len(temps))
-nupndn_c = np.zeros(len(temps))
-d_exp = np.zeros(len(temps))
-dd_exp = np.zeros(len(temps))
-dd_c = np.zeros(len(temps))
-ns_exp = np.zeros(len(temps))
-nsns_exp = np.zeros(len(temps))
-nsns_c = np.zeros(len(temps))
+# final experimental values
+exp_vals = {}
+for k in exp_vals_sectors.keys():
+    exp_vals.update({k: np.zeros(nt)})
 
 for jj, temp in enumerate(temps):
-    energy_exp[jj] = model.thermal_avg_combine_sectors(energy_exp_sec[:, jj], eigs_sector, temp)
-    entropy_exp[jj] = model.thermal_avg_combine_sectors(entropy_exp_sec[:, jj], eigs_sector, temp)
-    spheat_exp[jj] = model.thermal_avg_combine_sectors(spheat_exp_sec[:, jj], eigs_sector, temp)
+    for k, evs in exp_vals_sectors.items():
+        ev_at_temp = np.array([e[jj] for e in evs])
+        exp_vals[k][jj] = model.thermal_avg_combine_sectors(ev_at_temp, eigs_sector, temp)
 
-    sz_exp[jj] = model.thermal_avg_combine_sectors(sz_exp_sector[:, jj], eigs_sector, temp)
-    szsz_exp[jj] = model.thermal_avg_combine_sectors(szsz_exp_sector[:, jj], eigs_sector, temp)
-    szsz_c[jj] = szsz_exp[jj] - sz_exp[jj] ** 2
+# store output data in dictionary
+tend = time.process_time()
 
-    nup_exp[jj] = model.thermal_avg_combine_sectors(nup_exp_sector[:, jj], eigs_sector, temp)
-    nupnup_exp[jj] = model.thermal_avg_combine_sectors(nupnup_exp_sector[:, jj], eigs_sector, temp)
-    nupnup_c[jj] = nupnup_exp[jj] - nup_exp[jj] ** 2
+exp_vals.update({"model": model, "temps": temps, "U": U, "mu_up": mu_up, "mu_dn": mu_dn,
+                 "run_time_secs": (tend - tstart)})
 
-    ndn_exp[jj] = model.thermal_avg_combine_sectors(ndn_exp_sector[:, jj], eigs_sector, temp)
-    ndnndn_exp[jj] = model.thermal_avg_combine_sectors(ndnndn_exp_sector[:, jj], eigs_sector, temp)
-    ndnndn_c[jj] = ndnndn_exp[jj] - ndn_exp[jj] ** 2
-
-    nupndn_exp[jj] = model.thermal_avg_combine_sectors(nupndn_exp_sector[:, jj], eigs_sector, temp)
-    # assuming translational invariance.
-    nupndn_c[jj] = nupndn_exp[jj] - nup_exp[jj] * ndn_exp[jj]
-
-    d_exp[jj] = model.thermal_avg_combine_sectors(d_exp_sector[:, jj], eigs_sector, temp)
-    dd_exp[jj] = model.thermal_avg_combine_sectors(dd_exp_sector[:, jj], eigs_sector, temp)
-    dd_c[jj] = dd_exp[jj] - d_exp[jj] ** 2
-
-    ns_exp[jj] = model.thermal_avg_combine_sectors(ns_exp_sector[:, jj], eigs_sector, temp)
-    nsns_exp[jj] = model.thermal_avg_combine_sectors(nsns_exp_sector[:, jj], eigs_sector, temp)
-    nsns_c[jj] = nsns_exp[jj] - ns_exp[jj] ** 2
-
-data = {"model": model, "temps": temps, "U": U,
-        "energy_exp": energy_exp,
-        "entropy_exp": entropy_exp, "spheat_exp": spheat_exp,
-        "nup_exp": nup_exp, "nupnup_c": nupnup_c,
-        "ndn_exp": ndn_exp, "ndnndn_c": ndnndn_c,
-        "nupndn_c": nupndn_c,
-        "sz_exp": sz_exp, "szsz_c": szsz_c,
-        "ns_exp": ns_exp, "nsns_c": nsns_c,
-        "d_exp": d_exp, "dd_c": dd_c}
-
-fname = os.path.join(save_dir, today_str + "hubbard_results.pkl")
-with open(fname, "wb") as f:
-    pickle.dump(data, f)
+if save_results:
+    with open(fname_results, "wb") as f:
+        pickle.dump(exp_vals, f)
 
 # print "period_start/t = %0.2f" % temp
 # print "4*<Sz(0) Sz(1)>_c = %0.3f" % szsz_c
@@ -234,97 +201,94 @@ with open(fname, "wb") as f:
 # print "<ns(0)ns(1)>_c = %0.3f" % nsns_c
 # print "<d(0) d(1)>_c = %0.3f" % dd_c
 
-fig_handle_quantities = plt.figure()
+# ############################
+# plot densities and energy
+# ############################
+fig_handle_quantities = plt.figure(figsize=(10, 8))
 nrows = 2
-ncols = 3
+ncols = 2
 
 plt.subplot(nrows, ncols, 1)
-plt.plot(temps, energy_exp / model.geometry.nsites)
+plt.plot(temps, exp_vals["energy"] / model.geometry.nsites, '.-')
 plt.grid()
 plt.xlabel('Temp (t)')
-plt.ylabel('Energy / site (t)')
+plt.title('Energy / site (t)')
 
 plt.subplot(nrows, ncols, 2)
-plt.plot(temps, entropy_exp / model.geometry.nsites)
+plt.plot(temps, exp_vals["entropy"] / model.geometry.nsites, '.-')
 plt.grid()
 plt.xlabel('Temp (t)')
-plt.ylabel('Entropy / site')
+plt.title('Entropy / site')
 
 plt.subplot(nrows, ncols, 3)
-plt.plot(temps, spheat_exp / model.geometry.nsites)
+plt.plot(temps, exp_vals["specific_heat"] / model.geometry.nsites, '.-')
 plt.grid()
 plt.xlabel('Temp (t)')
-plt.ylabel('Sp Heat / site')
+plt.title('Sp Heat / site')
 
 plt.subplot(nrows, ncols, 4)
-plt.plot(temps, ns_exp)
+plt.plot(temps, exp_vals["nup1"], '.-')
+plt.plot(temps, exp_vals["ndn1"], '.-')
+plt.plot(temps, exp_vals["ns1"], '.-')
+plt.plot(temps, exp_vals["d1"], '.-')
 plt.grid()
-plt.ylim([0, 1])
+plt.ylim([-0.05, 1.1])
+plt.legend(['nup', 'ndn', 'ns', 'd'])
 plt.xlabel('Temp (t)')
-plt.ylabel('Singles density')
+plt.title('Densities')
 
-plt.subplot(nrows, ncols, 5)
-plt.plot(temps, d_exp)
-plt.grid()
-plt.ylim([0, 1])
-plt.xlabel('Temp (t)')
-plt.ylabel('doubles density')
+if save_results:
+    fig_name = os.path.join(save_dir, today_str + "_hubb_ed_densities.png")
+    fig_handle_quantities.savefig(fig_name)
 
+# ############################
+# plot correlators
+# ############################
 nrows = 2
 ncols = 3
 
 fig_handle_corrs = plt.figure()
 
 plt.subplot(nrows, ncols, 1)
-plt.plot(temps, szsz_c)
+plt.plot(temps, exp_vals["sz_sz"] - exp_vals["sz1"] * exp_vals["sz2"], '.-')
 plt.grid()
-plt.ylim([-0.1, 0.1])
+plt.ylim([-0.3, 0.1])
 plt.xlabel('Temp (t)')
-plt.ylabel('<szsz>_c')
+plt.title('<szsz>_c')
 
 plt.subplot(nrows, ncols, 2)
-plt.plot(temps, nupnup_c)
+plt.plot(temps, exp_vals["nup_nup"] - exp_vals["nup1"] * exp_vals["nup2"], '.-')
+plt.plot(temps, exp_vals["ndn_ndn"] - exp_vals["ndn1"] * exp_vals["ndn2"], '.-')
 plt.grid()
+plt.legend(['nup', 'ndn'])
 plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
-plt.ylabel('<nup nup>_c')
+plt.title('<n_sigma n_sigma>_c')
+
 
 plt.subplot(nrows, ncols, 3)
-plt.plot(temps, ndnndn_c)
+plt.plot(temps, exp_vals["nup_ndn"] - exp_vals["nup1"] * exp_vals["ndn1"], '.-')
 plt.grid()
 plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
-plt.ylabel('<ndn ndn>_c')
+plt.title('<nup ndn>_c')
 
 plt.subplot(nrows, ncols, 4)
-plt.plot(temps, nupndn_c)
+plt.plot(temps, exp_vals["ns_ns"] - exp_vals["ns1"] * exp_vals["ns2"], '.-')
 plt.grid()
 plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
-plt.ylabel('<nup ndn>_c')
+plt.title('<ns ns>_c')
 
 plt.subplot(nrows, ncols, 5)
-plt.plot(temps, nsns_c)
+plt.plot(temps, exp_vals["dd"] - exp_vals["d1"] * exp_vals["d2"], '.-')
 plt.grid()
 plt.ylim([-0.1, 0.1])
 plt.xlabel('Temp (t)')
-plt.ylabel('<ns ns>_c')
-
-plt.subplot(nrows, ncols, 6)
-plt.plot(temps, dd_c)
-plt.grid()
-plt.ylim([-0.1, 0.1])
-plt.xlabel('Temp (t)')
-plt.ylabel('<d d>_c')
+plt.title('<d d>_c')
 
 if save_results:
-    with open(fname_results, 'wb') as f:
-        pickle.dump(data, f)
-
-    fig_name = os.path.join(save_dir, today_str + "_attractive_hubb_ed_energy.png")
-    fig_handle_quantities.savefig(fig_name)
-
-    fig_name = os.path.join(save_dir, today_str + "_attractive_hubb_ed_corr.png")
+    fig_name = os.path.join(save_dir, today_str + "_hubb_ed_corr.png")
     fig_handle_corrs.savefig(fig_name)
 
 plt.show()

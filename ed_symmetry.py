@@ -86,14 +86,14 @@ def getTranslFn(translation_vector):
 # Functions to determine how sites transform
 # #################################################
 
-def getTransformedSites(transform_fn, sites, geom_obj, round_decimals=10):
+def getTransformedSites(transform_fn, sites, geom_obj, tol=1e-10):
     """
     Determine how sites are permuted under the action of a given transformation.
 
      TODO: actually TransSites[ii] transforms into Sites[ii]. I think this is why have to take the transpose in get_xform_op. Should fix this...
     :param transform_fn: A function of the form f(x, y) which returns a 2 x n matrix where each column represents the
     transformed position of site at (x,y).
-    :param sites:
+    :param sites: list of initial sites by index e.g. [0, 1, 2, ..., n]
     :param geom_obj: instances of geometry class
     :return:
     initial_sites:
@@ -104,29 +104,32 @@ def getTransformedSites(transform_fn, sites, geom_obj, round_decimals=10):
     # will not evaluate as equal
     if geom_obj.lattice is not None:
         xlocs_red, ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(geom_obj.xlocs, geom_obj.ylocs, "centered")
-        xlocs_red = np.round(xlocs_red, round_decimals)
-        ylocs_red = np.round(ylocs_red, round_decimals)
+        xlocs_red = xlocs_red
+        ylocs_red = ylocs_red
     else:
-        xlocs_red = np.round(geom_obj.xlocs, round_decimals)
-        ylocs_red = np.round(geom_obj.ylocs, round_decimals)
+        xlocs_red = geom_obj.xlocs
+        ylocs_red = geom_obj.ylocs
 
     # still need to use actual locations for transform function
-    TransCoors = transform_fn(geom_obj.xlocs, geom_obj.ylocs)
-    trans_xlocs = TransCoors[0, :]
-    trans_ylocs = TransCoors[1, :]
+    xformed_coords = transform_fn(geom_obj.xlocs, geom_obj.ylocs)
+    trans_xlocs = xformed_coords[0, :]
+    trans_ylocs = xformed_coords[1, :]
     # also reduce the transformed locations
     if geom_obj.lattice is not None:
         trans_xlocs_red, trans_ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(trans_xlocs, trans_ylocs, "centered")
-        trans_xlocs_red = np.round(trans_xlocs_red, round_decimals)
-        trans_ylocs_red = np.round(trans_ylocs_red, round_decimals)
+        trans_xlocs_red = trans_xlocs_red
+        trans_ylocs_red = trans_ylocs_red
     else:
-        trans_xlocs_red = np.round(trans_xlocs, round_decimals)
-        trans_ylocs_red = np.round(trans_ylocs, round_decimals)
+        trans_xlocs_red = trans_xlocs
+        trans_ylocs_red = trans_ylocs
 
     trans_sites = np.zeros(len(sites))
 
     for ii in range(0, len(sites)):
-        index = np.where((trans_xlocs_red == xlocs_red[ii]) & (trans_ylocs_red == ylocs_red[ii]))
+        # index = np.where((trans_xlocs_red == xlocs_red[ii]) & (trans_ylocs_red == ylocs_red[ii]))
+        condition = np.logical_and(np.abs(trans_xlocs_red[ii] - xlocs_red) < tol,
+                                   np.abs(trans_ylocs_red[ii] - ylocs_red) < tol)
+        index = np.where(condition)
         if index[0].shape[0] == 0:
             print('site %d at x = %0.2f, y = %0.2f did not transform to another site' % (ii, xlocs_red[ii], ylocs_red[ii]))
             raise Exception
@@ -134,7 +137,7 @@ def getTransformedSites(transform_fn, sites, geom_obj, round_decimals=10):
     # TODO: add descriptive error when one site doesn't have a partner under transformation.
     return np.array(sites), trans_sites
 
-def findSiteCycles(transform_fn, geom_obj, round_decimals=10):
+def findSiteCycles(transform_fn, geom_obj, tol=1e-10):
     """
     Find closed cycles of sites which transform into each other under a given transformation.
     The transformation operator should be unity after NumTransToClose.
@@ -158,7 +161,7 @@ def findSiteCycles(transform_fn, geom_obj, round_decimals=10):
     ii = 0
     while not np.array_equal(current_sites, sites) and ii < max_iter:
         ii = ii + 1
-        _, current_sites = getTransformedSites(transform_fn, trans_sites[:, ii - 1], geom_obj, round_decimals=round_decimals)
+        _, current_sites = getTransformedSites(transform_fn, trans_sites[:, ii - 1], geom_obj, tol=tol)
         trans_sites = np.concatenate([trans_sites, current_sites[:, None]], 1)
     max_cycle_len = ii
     if max_cycle_len == max_iter:

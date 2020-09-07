@@ -133,7 +133,8 @@ class ed_base:
             tend = time.time()
             print("get_xform_op op took %0.2f s" % (tend - tstart))  # TODO find way to print a name
 
-        return trans_op.transpose()  # TODO why do I need this transpose? Related to the above issue.
+        # return trans_op.transpose()  # TODO why do I need this transpose? Related to the above issue.
+        return trans_op
 
     # ########################
     # Build and diagonalize H

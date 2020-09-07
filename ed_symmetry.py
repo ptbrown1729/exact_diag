@@ -2,8 +2,6 @@ import time
 import numpy as np
 import scipy.sparse as sp
 
-_round_decimals = 14
-
 # #################################################
 # coordinate transformation functions
 # #################################################
@@ -18,7 +16,8 @@ def getRotFn(n_rotations, cx=0, cy=0):
     angle = 2 * np.pi / n_rotations
     # should I do the rounding after computing the values? Or possibly should rely on getTransformedSites.
     # That seems like the right philosophical approach to me...
-    rotation_mat = np.round(np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]), _round_decimals)
+    #rotation_mat = np.round(np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]), _round_decimals)
+    rotation_mat = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
     rotation_fn = lambda Xs, Ys: rotation_mat.dot(np.concatenate((Xs[None, :] - cx, Ys[None, :] - cy), axis=0)) + np.array([[cx], [cy]])
 
     return rotation_fn
@@ -50,7 +49,8 @@ def getReflFn(reflection_vect, cx=0, cy=0):
     rotation_mat = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
     # in this basis, reflection matrix is easy to write down
     reflection_y_axis = np.array([[-1, 0], [0, 1]])
-    reflection_mat = np.round(rotation_mat.transpose().dot(reflection_y_axis.dot(rotation_mat)), _round_decimals)
+    # reflection_mat = np.round(rotation_mat.transpose().dot(reflection_y_axis.dot(rotation_mat)), _round_decimals)
+    reflection_mat = rotation_mat.transpose().dot(reflection_y_axis.dot(rotation_mat))
     reflection_fn = lambda Xs, Ys: reflection_mat.dot(np.concatenate((Xs[None, :] - cx, Ys[None, :] - cy), 0)) + np.array([[cx], [cy]])
 
     return reflection_fn
@@ -78,14 +78,15 @@ def getTranslFn(translation_vector):
     translation_vector = translation_vector.reshape([translation_vector.size])
 
     # moving periodicity to getTransformedSites, so don't include it here also
-    transl_fn = lambda xs, ys: np.round(np.concatenate([xs[None, :] + translation_vector[0], ys[None, :] + translation_vector[1]], 0), _round_decimals)
+    # transl_fn = lambda xs, ys: np.round(np.concatenate([xs[None, :] + translation_vector[0], ys[None, :] + translation_vector[1]], 0), _round_decimals)
+    transl_fn = lambda xs, ys: np.concatenate([xs[None, :] + translation_vector[0], ys[None, :] + translation_vector[1]], 0)
     return transl_fn
 
 # #################################################
 # Functions to determine how sites transform
 # #################################################
 
-def getTransformedSites(transform_fn, sites, geom_obj):
+def getTransformedSites(transform_fn, sites, geom_obj, round_decimals=10):
     """
     Determine how sites are permuted under the action of a given transformation.
 
@@ -103,11 +104,11 @@ def getTransformedSites(transform_fn, sites, geom_obj):
     # will not evaluate as equal
     if geom_obj.lattice is not None:
         xlocs_red, ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(geom_obj.xlocs, geom_obj.ylocs, "centered")
-        xlocs_red = np.round(xlocs_red, _round_decimals)
-        ylocs_red = np.round(ylocs_red, _round_decimals)
+        xlocs_red = np.round(xlocs_red, round_decimals)
+        ylocs_red = np.round(ylocs_red, round_decimals)
     else:
-        xlocs_red = np.round(geom_obj.xlocs, _round_decimals)
-        ylocs_red = np.round(geom_obj.ylocs, _round_decimals)
+        xlocs_red = np.round(geom_obj.xlocs, round_decimals)
+        ylocs_red = np.round(geom_obj.ylocs, round_decimals)
 
     # still need to use actual locations for transform function
     TransCoors = transform_fn(geom_obj.xlocs, geom_obj.ylocs)
@@ -116,26 +117,24 @@ def getTransformedSites(transform_fn, sites, geom_obj):
     # also reduce the transformed locations
     if geom_obj.lattice is not None:
         trans_xlocs_red, trans_ylocs_red, _, _ = geom_obj.lattice.reduce_to_unit_cell(trans_xlocs, trans_ylocs, "centered")
-        trans_xlocs_red = np.round(trans_xlocs_red, _round_decimals)
-        trans_ylocs_red = np.round(trans_ylocs_red, _round_decimals)
+        trans_xlocs_red = np.round(trans_xlocs_red, round_decimals)
+        trans_ylocs_red = np.round(trans_ylocs_red, round_decimals)
     else:
-        trans_xlocs_red = np.round(trans_xlocs, _round_decimals)
-        trans_ylocs_red = np.round(trans_ylocs, _round_decimals)
-    #TransCoors = np.concatenate([trans_xcoords_red, trans_ycoords_red], 0)
-    #TransCoors = np.round(TransCoors, round_decimals)
-    TransSites = np.zeros(len(sites))
+        trans_xlocs_red = np.round(trans_xlocs, round_decimals)
+        trans_ylocs_red = np.round(trans_ylocs, round_decimals)
+
+    trans_sites = np.zeros(len(sites))
 
     for ii in range(0, len(sites)):
-        #Index = np.where((TransCoors[0, :] == Coords[0, ii]) & (TransCoors[1, :] == Coords[1, ii]))[0][0]
-        Index = np.where((trans_xlocs_red == xlocs_red[ii]) & (trans_ylocs_red == ylocs_red[ii]))
-        if Index[0].shape[0] == 0:
+        index = np.where((trans_xlocs_red == xlocs_red[ii]) & (trans_ylocs_red == ylocs_red[ii]))
+        if index[0].shape[0] == 0:
             print('site %d at x = %0.2f, y = %0.2f did not transform to another site' % (ii, xlocs_red[ii], ylocs_red[ii]))
             raise Exception
-        TransSites[ii] = sites[Index[0][0]]
+        trans_sites[ii] = sites[index[0][0]]
     # TODO: add descriptive error when one site doesn't have a partner under transformation.
-    return np.array(sites), TransSites
+    return np.array(sites), trans_sites
 
-def findSiteCycles(transform_fn, geom_obj):
+def findSiteCycles(transform_fn, geom_obj, round_decimals=10):
     """
     Find closed cycles of sites which transform into each other under a given transformation.
     The transformation operator should be unity after NumTransToClose.
@@ -159,7 +158,7 @@ def findSiteCycles(transform_fn, geom_obj):
     ii = 0
     while not np.array_equal(current_sites, sites) and ii < max_iter:
         ii = ii + 1
-        _, current_sites = getTransformedSites(transform_fn, trans_sites[:, ii - 1], geom_obj)
+        _, current_sites = getTransformedSites(transform_fn, trans_sites[:, ii - 1], geom_obj, round_decimals=round_decimals)
         trans_sites = np.concatenate([trans_sites, current_sites[:, None]], 1)
     max_cycle_len = ii
     if max_cycle_len == max_iter:
@@ -177,7 +176,6 @@ def findSiteCycles(transform_fn, geom_obj):
                 print("sites do not transform correctly according to this symmetry")
                 return [], 0
             cycle = np.ndarray.tolist(np.ndarray.flatten(trans_sites[ii, indices]))
-            # cycle = np.ndarray.tolist(np.unique(trans_sites[ii,:]))
             cycle = list(map(int, cycle))
             cycles.append(cycle)
 
@@ -187,7 +185,7 @@ def findSiteCycles(transform_fn, geom_obj):
 # Functions to determine how states transform
 # #################################################
 
-def get_reduced_projector(p_full, dim, print_results=False):
+def get_reduced_projector(p_full, dim, states_related_by_symm, print_results=False):
     """
     Create an operator which projects onto a certain subspace which has definite transformation properties with
     respect to a given transformation operator.
@@ -215,60 +213,78 @@ def get_reduced_projector(p_full, dim, print_results=False):
     p_full.data[np.abs(p_full.data) < 1e-10] = 0
     p_full.eliminate_zeros()
 
-    # remove any empty columns
-    # p_full.indptr = np.unique(p_full.indptr)
-    # p_full = sp.csc_matrix((p_full.data, p_full.indices, p_full.indptr),
-    #                        shape=(p_full.shape[0], len(p_full.indptr) - 1))
-
-    indptr_red = np.unique(p_full.indptr)
-    p_full_noz = sp.csc_matrix((p_full.data, p_full.indices, indptr_red),
-                           shape=(p_full.shape[0], len(indptr_red) - 1))
-    # TODO: is it more efficient to do this after normalizing? This function is fast, not limiting the ED speed.
-
     # find orthonormal columns of full rank
-    first_indices = p_full.indices[p_full_noz.indptr[:-1]]
+    # for each column, find first non-zero index
     if dim == 1:
+        # remove any zero columns
+        cols_noz = p_full.indptr[:-1] != p_full.indptr[1:]
+        p_full_noz = p_full[:, cols_noz]
+
+        first_nonzero_row = p_full.indices[p_full_noz.indptr[:-1]]
         # We only need to check if the first indices are unique to find the unique columns.
         # For dim=1, if these are the same then so are the entire columns
-        _, unique_indices = np.unique(first_indices, return_index=True)
+        _, unique_indices = np.unique(first_nonzero_row, return_index=True)
         p_red = p_full_noz[:, unique_indices]
     else:
-        unique, unique_indices, unique_inverse = np.unique(first_indices, return_index=True, return_inverse=True)
+        # todo: do I need to check other indices?
+        cols_noz = p_full.indptr[:-1] != p_full.indptr[1:]
+        p_full = p_full[:, cols_noz]
+        states_related_by_symm = states_related_by_symm[:, cols_noz]
+        # first_nonzero_row = states_related_by_symm.indices[states_related_by_symm.indptr[:-1]]
+        first_nonzero_row = p_full.indices[p_full.indptr[:-1]]
+
+        unique, unique_indices, unique_inverse, counts = np.unique(first_nonzero_row, return_index=True, return_inverse=True, return_counts=True)
         # first_indices = unique[unique_inverse]
-        # unique = first_indices[unique_indices]
+        # unique = first_indices[unique_indices]. These are column indices of a unique set of basis vectors from which
+        # all others can be obtained by applying symmetry operations
 
         # get collection of all columns that have the same first non-zero index
         unique_inv_sorted = np.argsort(unique_inverse)
 
-        # todo: this works for D3 but now fails for C4V
         # construct reduced projector matrix
-        nvecs = np.sum(unique_inverse == unique_inverse[0])
-        max_rank = int(p_full_noz.shape[1] * dim / nvecs) # todo: can rank be less than this?
-        p_red = sp.lil_matrix((p_full_noz.shape[0], max_rank))
+        # maximum rank, but real rank can be less than this
+        p_red = sp.lil_matrix((p_full.shape))
         p_col_counter = 0
+        inv_counter = 0
+
+        q, r = np.linalg.qr(p_full.todense())
+        r = np.round(r, 12)
+        p_red = sp.csc_matrix(q[:, np.diag(np.abs(r)) != 0])
+
+        '''
         # loop over subspaces represented by
-        for ii in range(int(len(unique_inv_sorted) / nvecs)):
-            # non-zero rows for this subspace
-            rows = p_full_noz.indices[p_full_noz.indptr[unique_inv_sorted[nvecs * ii]]:
-                                      p_full_noz.indptr[unique_inv_sorted[nvecs * ii] + 1]]
+        for ii in range(len(unique)):
+            # all column indices = unique_inv_sorted[inv_counter : inv_counter + counts[ii]]
+            # non-zero rows for this the first column vector (which will be identical for the other related vectors)
+            rows = p_full.indices[p_full.indptr[unique_inv_sorted[inv_counter]] :
+                                  p_full.indptr[unique_inv_sorted[inv_counter] + 1]]
+            # rows = states_related_by_symm.indices[states_related_by_symm.indptr[unique_inv_sorted[inv_counter]]:
+            #                       states_related_by_symm.indptr[unique_inv_sorted[inv_counter] + 1]]
+
             # get relevant matrices, only keep nonzero rows and columns for this subpsace
-            rrs, uis = np.meshgrid(rows, unique_inv_sorted[nvecs * ii : nvecs * ii + nvecs])
-            mat = p_full_noz[rrs, uis].todense()
+            uis, rrs = np.meshgrid(unique_inv_sorted[inv_counter : inv_counter + counts[ii]], rows)
+
+            mat = p_full[rrs, uis].todense()
             # get orthonormal basis for this space from Gram-Schmidt processes via QR decomposition
             q, r = np.linalg.qr(mat)
             # except QR decomposition is not unique, and numpy will include other columns which are not in the span of
             # our states. These columns don't matter for the QR, as they correspond to zero rows in R. So can get rid
             # of column ii in Q if row ii in R is all zeros
-            q_red = q[:, np.sum(np.abs(np.round(r, 12)), axis=1) != 0]
+            # q_red = np.round(q[:, np.sum(np.abs(np.round(r, 12)), axis=1) != 0], 10)
+            r = np.round(r, 12)
+            q_red = np.round(q[:, np.diag(np.abs(r)) != 0], 12)
             qrank = q_red.shape[1]
 
             # put these back in the correct rows for the final projector
             uis_out, rrs_out = np.meshgrid(np.arange(p_col_counter, p_col_counter + qrank), rows)
             p_red[rrs_out, uis_out] = q_red
 
+            # advance counters
+            inv_counter += counts[ii]
             p_col_counter += qrank
 
         p_red = p_red[:, :p_col_counter].tocsc()
+        '''
 
     # normalize each column
     norms = np.sqrt(np.asarray(p_red.multiply(p_red.conj()).sum(axis=0))).flatten()
@@ -290,17 +306,25 @@ def get_symmetry_projectors(character_table, conjugacy_classes, print_results=Fa
     :param print_results:
     :return projs:
     """
+
+    if not validate_char_table(character_table, conjugacy_classes):
+        raise Exception("invalid character table/conjugacy class combination")
+
+    # columns (or rows, since orthogonal mat) represent basis states that can be transformed into one another by symmetries
+    states_related_by_symm = sum([sum([np.abs(g) for g in cc]) for cc in conjugacy_classes])
+
+    # only need sums over conjugacy classes to build projectors
     class_sums = [sum(cc) for cc in conjugacy_classes]
 
     projs = [get_reduced_projector(
-             sum([np.conj(ch) * cs for ch, cs in zip(chars, class_sums)]), chars[0], print_results)
+             sum([np.conj(ch) * cs for ch, cs in zip(chars, class_sums)]), chars[0], states_related_by_symm, print_results=print_results)
              for chars in character_table]
 
     # test projector size
     proj_to_dims = np.asarray([p.shape[0] for p in projs]).sum()
     proj_from_dims = projs[0].shape[1]
-    if proj_to_dims != proj_from_dims:
-        raise Exception("total span of all projectors did not match input size.")
+    # if proj_to_dims != proj_from_dims:
+    #     raise Exception("total span of all projectors was %d, but expected %d." % (proj_to_dims, proj_from_dims))
 
     return projs
 
@@ -503,7 +527,6 @@ def getD4Projectors(rot_op, refl_op, print_results=False):
 def getD5Projectors(rot_op, refl_op, print_results=False):
     id = sp.eye(refl_op.shape[0], format="csc")
 
-
     char_table = np.array([[1,  1,  1, 1],
                            [1, -1,  1, 1],
                            [2,  0,  -(1 + np.sqrt(5))/2,  (-1 + np.sqrt(5))/2],
@@ -517,9 +540,49 @@ def getD5Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
+def getD6Projectors(rot_op, refl_op, print_results=False):
+    id = sp.eye(refl_op.shape[0], format="csc")
+
+    char_table = np.array([[1,  1,  1,  1,  1,  1],
+                           [1,  1, -1, -1,  1,  1],
+                           [1, -1, -1,  1,  1, -1],
+                           [1,  -1,  1, -1,  1, -1],
+                           [2,  2,  0,  0, -1, -1],
+                           [2, -2,  0,  0, -1,  1]])
+    conj_classes = [[id],
+                    [rot_op**3],
+                    [rot_op * refl_op, rot_op ** 3 * refl_op, rot_op ** 5 * refl_op],
+                    [refl_op, rot_op**2 * refl_op, rot_op**4 * refl_op],
+                    [rot_op**2, rot_op**4],
+                    [rot_op, rot_op**5]]
+
+    projs = get_symmetry_projectors(char_table, conj_classes, print_results=print_results)
+
+    return projs
+
+def getD7Projectors(rot_op, refl_op, print_results=False):
+    id = sp.eye(refl_op.shape[0], format="csc")
+
+    char_table = np.array([[1,  1, 1, 1, 1],
+                           [1, -1, 1, 1, 1],
+                           [2,  0, 2*np.cos(2*np.pi/7), 2*np.cos(4*np.pi/7), 2*np.cos(6*np.pi/7)],
+                           [2,  0, 2*np.cos(4*np.pi/7), 2*np.cos(6*np.pi/7), 2*np.cos(2*np.pi/7)],
+                           [2,  0, 2*np.cos(6*np.pi/7), 2*np.cos(2*np.pi/7), 2*np.cos(4*np.pi/7)]])
+    conj_classes = [[id],
+                    [refl_op, rot_op * refl_op, rot_op**2 * refl_op, rot_op**3 * refl_op,
+                     rot_op**4 * refl_op, rot_op**5 * refl_op, rot_op**6 * refl_op],
+                    [rot_op, rot_op ** 6],
+                    [rot_op**3, rot_op**4],
+                    [rot_op**2, rot_op**5]]
+
+    projs = get_symmetry_projectors(char_table, conj_classes, print_results=print_results)
+
+    return projs
+
 def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
     """
     Symmetry group = semidirect product (Z3 + Z3, C4V)
+            #1 #6 #9 #6 #18#4 #12#12 #4
             C1 C2 C3 C4 C5 C6 C7 C8 C9
     X.1     1  1  1  1  1  1  1  1  1
     X.2     1 -1  1 -1  1  1 -1 -1  1
@@ -553,39 +616,51 @@ def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
           Tx^n*Ty^m*R^3*Refl except (n,m) = (0,0), (1,1) and (2,2)} (order=6, #=12)
     C9 = {TxTy, Tx^2Ty, TxTy^2 Tx^2Ty^2} (order=3, #=4)
     """
+    #(c2, c7, c6) 0.335493
+    #(c2, c7, c9) dim 1856
+    #(c2, c8, c6) dim 2064
+    #(c2, c8, c9) dim 2064
+    #(c4, c7, c6) dim 2064
+    #(c4, c7, c9) dim 2064
+    #(c4, c8, c6) dim 1856
+    #(c4, c8, c9) 0.0904164
 
     c1 = [sp.eye(refl_op.shape[0], format="csc")]
-    c2 = [refl_op, rot_op ** 2 * refl_op, tx_op * refl_op, tx_op ** 2 * refl_op,
-          ty_op * rot_op ** 2 * refl_op, ty_op ** 2 * rot_op ** 2 * refl_op]
-    c3 = [rot_op ** 2, tx_op * rot_op ** 2, tx_op ** 2 * rot_op,
-          ty_op * rot_op, ty_op ** 2 * rot_op, tx_op * ty_op * rot_op ** 2,
-          tx_op * ty_op ** 2 * rot_op, tx_op ** 2 * ty_op * rot_op, tx_op ** 2 * ty_op ** 2 * rot_op]
-    c4 = [rot_op * refl_op, rot_op ** 3 * refl_op,
+
+    c4 = [refl_op, rot_op**2 * refl_op, tx_op * refl_op, tx_op**2 * refl_op,
+          ty_op * rot_op**2 * refl_op, ty_op**2 * rot_op**2 * refl_op]
+    c2 = [rot_op * refl_op, rot_op ** 3 * refl_op,
           tx_op * ty_op ** 2 * rot_op * refl_op, tx_op ** 2 * ty_op * rot_op * refl_op,
           tx_op * ty_op * rot_op ** 3 * refl_op, tx_op ** 2 * ty_op ** 2 * rot_op ** 3 * refl_op]
-    c5 = [rot_op, rot_op ** 3,
-          tx_op * rot_op, tx_op ** 2 * rot_op,
-          ty_op * rot_op, ty_op ** 2 * rot_op,
-          tx_op * ty_op * rot_op, tx_op * ty_op ** 2 * rot_op,
-          tx_op ** 2 * ty_op * rot_op, tx_op ** 2 * ty_op ** 2 * rot_op,
-          tx_op * rot_op ** 3, tx_op ** 2 * rot_op ** 3,
-          ty_op * rot_op ** 3, ty_op ** 2 * rot_op ** 3,
-          tx_op * ty_op * rot_op ** 3, tx_op * ty_op ** 2 * rot_op ** 3,
-          tx_op ** 2 * ty_op * rot_op ** 3, tx_op ** 2 * ty_op ** 2 * rot_op ** 3]
-    c6 = [tx_op, tx_op**2, ty_op, ty_op**2]
-    c7 = [ty_op * refl_op, ty_op * refl_op ** 2,
-          tx_op * ty_op * refl_op, tx_op * ty_op ** 2 * refl_op,
-          tx_op ** 2 * ty_op * refl_op, tx_op ** 2 * ty_op ** 2 * refl_op,
-          tx_op * rot_op ** 2 * refl_op, tx_op ** 2 * rot_op ** 2 * refl_op,
-          tx_op * ty_op * rot_op ** 2 * refl_op, tx_op * ty_op ** 2 * rot_op ** 2 * refl_op,
-          tx_op ** 2 * ty_op * rot_op ** 2 * refl_op, tx_op ** 2 * ty_op ** 2 * rot_op ** 2 * refl_op]
-    c8 = [tx_op * rot_op * refl_op, tx_op ** 2 * rot_op * refl_op,
-          ty_op * rot_op * refl_op, ty_op ** 2 * rot_op * refl_op,
-          tx_op * ty_op * rot_op * refl_op, tx_op ** 2 * ty_op ** 2 * rot_op * refl_op,
-          tx_op * rot_op ** 3 * refl_op, tx_op ** 2 * rot_op ** 3 * refl_op,
-          ty_op * rot_op ** 3 * refl_op, ty_op ** 2 * rot_op ** 3 * refl_op,
-          tx_op * ty_op ** 2 * rot_op ** 3 * refl_op, tx_op ** 2 * ty_op * rot_op ** 3 * refl_op]
-    c9 = [tx_op * ty_op, tx_op**2 * ty_op, tx_op * ty_op**2, tx_op**2 * ty_op**2]
+
+    c3 = [rot_op**2, tx_op * rot_op**2, tx_op**2 * rot_op**2,
+          ty_op * rot_op**2, ty_op**2 * rot_op**2, tx_op * ty_op * rot_op**2,
+          tx_op * ty_op**2 * rot_op**2, tx_op**2 * ty_op * rot_op**2, tx_op**2 * ty_op**2 * rot_op**2]
+    c5 = [rot_op, rot_op**3,
+          tx_op * rot_op, tx_op**2 * rot_op,
+          ty_op * rot_op, ty_op**2 * rot_op,
+          tx_op * ty_op * rot_op, tx_op * ty_op**2 * rot_op,
+          tx_op ** 2 * ty_op * rot_op, tx_op**2 * ty_op**2 * rot_op,
+          tx_op * rot_op**3, tx_op**2 * rot_op**3,
+          ty_op * rot_op**3, ty_op**2 * rot_op**3,
+          tx_op * ty_op * rot_op**3, tx_op * ty_op**2 * rot_op**3,
+          tx_op**2 * ty_op * rot_op**3, tx_op**2 * ty_op**2 * rot_op**3]
+
+    c8 = [ty_op * refl_op, ty_op**2 * refl_op,
+          tx_op * ty_op * refl_op, tx_op * ty_op**2 * refl_op,
+          tx_op**2 * ty_op * refl_op, tx_op**2 * ty_op**2 * refl_op,
+          tx_op * rot_op**2 * refl_op, tx_op**2 * rot_op**2 * refl_op,
+          tx_op * ty_op * rot_op**2 * refl_op, tx_op * ty_op**2 * rot_op**2 * refl_op,
+          tx_op**2 * ty_op * rot_op**2 * refl_op, tx_op**2 * ty_op**2 * rot_op**2 * refl_op]
+    c7 = [tx_op * rot_op * refl_op, tx_op**2 * rot_op * refl_op,
+          ty_op * rot_op * refl_op, ty_op**2 * rot_op * refl_op,
+          tx_op * ty_op * rot_op * refl_op, tx_op**2 * ty_op**2 * rot_op * refl_op,
+          tx_op * rot_op**3 * refl_op, tx_op**2 * rot_op**3 * refl_op,
+          ty_op * rot_op**3 * refl_op, ty_op**2 * rot_op**3 * refl_op,
+          tx_op * ty_op**2 * rot_op**3 * refl_op, tx_op**2 * ty_op * rot_op**3 * refl_op]
+
+    c9 = [tx_op, tx_op**2, ty_op, ty_op**2]
+    c6 = [tx_op * ty_op, tx_op ** 2 * ty_op, tx_op * ty_op ** 2, tx_op ** 2 * ty_op ** 2]
 
     conj_classes = [c1, c2, c3, c4, c5, c6, c7, c8, c9]
 
@@ -605,3 +680,38 @@ def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
 
 def getC4V_and_4by4(rot_op, refl_op, tx_op, ty_op, print_results=False):
     pass
+
+def validate_char_table(char_table, conj_classes):
+    """
+    Verify character table is sensible by checking row/column orthogonality relations
+    :param char_table:
+    :param conj_classes:
+    :return:
+    """
+    n = char_table.shape[0]
+    cc_sizes = np.array([len(cc) for cc in conj_classes])
+    order = int(np.sum(cc_sizes))
+
+    valid = True
+
+    # check column orthogonality relation
+    col_cross_sums = np.zeros((n, n), dtype=np.int)
+    for ii in range(n):
+        for jj in range(n):
+            val = np.sum(char_table[:, ii] * char_table[:, jj].conj(), axis=0)
+            col_cross_sums[ii, jj] = val
+
+    if not np.array_equal(np.diag(np.array(order / cc_sizes, dtype=np.int)), col_cross_sums):
+        valid = False
+
+    # row orthogonality relation
+    row_cross_sums = np.zeros((n, n), dtype=np.int)
+    for ii in range(n):
+        for jj in range(n):
+            val = np.sum(char_table[ii, :] * char_table[jj, :].conj() * cc_sizes, axis=0)
+            row_cross_sums[ii, jj] = val
+
+    if not np.array_equal(order * np.eye(n, dtype=np.int), row_cross_sums):
+        valid = False
+
+    return valid

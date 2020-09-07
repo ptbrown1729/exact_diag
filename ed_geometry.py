@@ -120,6 +120,25 @@ class Geometry():
         return cls(xlocs, ylocs, adjacency_mat, phase_mat)
 
     @classmethod
+    def createRegularPolygonGeometry(cls, nsides, adjacency_mat=None, phase_mat=None):
+
+        if adjacency_mat is None:
+            adjacency_mat = np.zeros((nsides, nsides))
+            adjacency_mat[0, 1] = 1
+            adjacency_mat[0, -1] = 1
+            adjacency_mat[-1, 0] = 1
+            adjacency_mat[-1, -2] = 1
+            for ii in range(1, nsides-1):
+                adjacency_mat[ii, ii - 1] = 1
+                adjacency_mat[ii, ii + 1] = 1
+
+        theta_in = 2*np.pi / nsides
+        d = 0.5 / np.sin(theta_in / 2)
+        xlocs = [d * np.sin(theta_in * ii) for ii in range(nsides)]
+        ylocs = [d * np.cos(theta_in * ii) for ii in range(nsides)]
+        return cls(xlocs, ylocs, adjacency_mat, phase_mat)
+
+    @classmethod
     def createSquareGeometry(cls, nx_sites, ny_sites, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
         """
         Create a Geometry instance for a square cluster on a square lattice

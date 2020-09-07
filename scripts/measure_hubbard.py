@@ -20,6 +20,7 @@ import fermi_gas as fg
 # ############################
 save_results = True
 save_dir = "../data"
+compute_h_per_sector = False # allows pushing computer with low RAM to larger size, but slow
 
 nx = 4
 ny = 3
@@ -47,6 +48,7 @@ gm = geom.Geometry.createSquareGeometry(nx, ny, 0, 0, bc1_open=bc1_open, bc2_ope
 
 model = ed_fermions.fermions(gm, us_interspecies=U, ts=1, mus=(mu_up, mu_dn), nspecies=2)
 
+print("computing number projectors")
 # get nup projectors
 nup_op = model.get_sum_op(model.n_op, 0, format="boson")
 nup_projs, nups = model.get_subspace_projs(nup_op, print_results=False)
@@ -55,7 +57,7 @@ nup_projs, nups = model.get_subspace_projs(nup_op, print_results=False)
 ndn_op = model.get_sum_op(model.n_op, 1, format="boson")
 
 # get translation operators
-# translational symmetry projectors
+print("computing symmetry operators")
 if not bc1_open:
     xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
     xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, gm)
@@ -67,6 +69,7 @@ if not bc2_open:
     ytransl_op = model.n_projector * model.get_xform_op(ytransl_cycles) * model.n_projector.conj().transpose()
 
 # get all projectors
+print("computing combined projectors")
 projector_list = []
 nups_list = np.array([])
 ndns_list = np.array([])
@@ -149,11 +152,20 @@ for k in ops.keys():
     exp_vals_sectors.update({k: [np.zeros(nt) for _ in projector_list]})
 
 eigs_sector = []
-H = model.createH(print_results=True)
+# better to first construct full Hamiltonian, then project at each step.
+# but computers with small amount of memory may not be able to do this.
+if not compute_h_per_sector:
+    H = model.createH(print_results=True)
+
 for ii, proj in enumerate(projector_list):
     ndim = proj.shape[0]
     print("started sector %d/%d of size %dx%d" % (ii + 1, len(projector_list), ndim, ndim))
-    h_sector = proj * H * proj.conj().transpose()
+
+    if compute_h_per_sector:
+        h_sector = model.createH(projector=proj, print_results=True)
+    else:
+        h_sector = proj * H * proj.conj().transpose()
+
     eigs, eigvects = model.diagH(h_sector)
     eigs_sector.append(eigs)
 

@@ -225,7 +225,7 @@ class fermions(ed_base.ed_base):
 
     def get_samespecies_int_mat(self, interaction):
         """
-        Get matrix representing nearest-neighbor interactions_4
+        Get matrix representing nearest-neighbor interactions
         :param interaction: either a single number or an array of length self.nspecies
         :return:
         """
@@ -240,7 +240,8 @@ class fermions(ed_base.ed_base):
         return int_mat
 
     def createH(self, projector=None, print_results=False):
-        """Construct Fermi-Hubbard Hamiltonian
+        """
+        Construct Fermi-Hubbard Hamiltonian
         :param projector: Sparse matrix, projection operator to be applied to each term of the Hamiltonian as it is
         constructed. Applied as P * H * P.conj().transpose()
         :param print_results:

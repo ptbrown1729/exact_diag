@@ -250,9 +250,13 @@ def get_reduced_projector(p_full, dim, states_related_by_symm, print_results=Fal
         p_col_counter = 0
         inv_counter = 0
 
-        q, r = np.linalg.qr(p_full.todense())
-        r = np.round(r, 12)
-        p_red = sp.csc_matrix(q[:, np.diag(np.abs(r)) != 0])
+        # q, r = np.linalg.qr(p_full.todense())
+        # r = np.round(r, 12)
+        # p_red = sp.csc_matrix(q[:, np.diag(np.abs(r)) != 0])
+        rank = np.linalg.matrix_rank(p_full.todense())
+
+        u, s, vh = np.linalg.svd(p_full.transpose().todense(), full_matrices=True, compute_uv=True)
+        p_red = sp.csc_matrix(vh.transpose()[:, :rank])
 
         '''
         # loop over subspaces represented by
@@ -391,14 +395,14 @@ def get2DTranslationProjectors(translation_op1, n1, translation_op2, n2, print_r
 
     all_projs = []
     for proj, k1 in zip(projs1, ks1):
-        # TODO: do I need a conj here?
         sub_projs2, ks2 = getZnProjectors(proj * translation_op2 * proj.conj().transpose(), n2)
         all_projs = all_projs + [sub_proj * proj for sub_proj in sub_projs2]
 
         # check size at each step
         sub_proj_ndims = np.asarray([p.shape[0] for p in sub_projs2]).sum()
         if sub_proj_ndims != proj.shape[0]:
-            print("At translation 1 projector %d, translation 2 sub-projector size did not match translation 1 projector dimension" % k1)
+            print("At translation 1 projector %d, translation 2 sub-projector size did not match"
+                  " translation 1 projector dimension" % k1)
             raise Exception
 
     # ks1 = [ka, ka, ..., ka, kb, kb,...]

@@ -176,8 +176,9 @@ class TestSpinSys(unittest.TestCase):
         Test d3 symmetry by diagonalizing random spin system with and without it
         :return:
         """
-        adjacency_mat = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
-        cluster = geom.Geometry.createNonPeriodicGeometry(xlocs=(0,0.5,1), ylocs=(0,np.sqrt(3)/2,0), adjacency_mat=adjacency_mat)
+        # adjacency_mat = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+        # cluster = geom.Geometry.createNonPeriodicGeometry(xlocs=(0,0.5,1), ylocs=(0,np.sqrt(3)/2,0), adjacency_mat=adjacency_mat)
+        cluster = geom.Geometry.createRegularPolygonGeometry(3)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -191,26 +192,15 @@ class TestSpinSys(unittest.TestCase):
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
         # use rotationl symmetry
-        # triangle center
-        cx, cy = 0.5, 1 / 2 / np.sqrt(3)
-        rot_fn = symm.getRotFn(3, cx=cx, cy=cy)
+        rot_fn = symm.getRotFn(3)
         rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
         rot_op = spin_model.get_xform_op(rot_cycles)
 
-        refl_fn = symm.getReflFn(np.array([0, 1]), cx=cx, cy=cy)
+        refl_fn = symm.getReflFn(np.array([0, 1]))
         refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, spin_model.geometry)
         refl_op = spin_model.get_xform_op(refl_cycles)
 
         symm_projs = symm.getD3Projectors(rot_op, refl_op)
-
-        # id = sp.eye(refl_op.shape[0], format="csc")
-        # t = 2*id - rot_op - rot_op**2
-        # e_proj_corrected = np.array([[0, 2/np.sqrt(6), -1/np.sqrt(6), 0, -1/np.sqrt(6), 0, 0, 0],
-        #                   [0, 0, 1/np.sqrt(2), 0, -1/np.sqrt(2), 0, 0, 0],
-        #                   [0, 0, 0, 2/np.sqrt(6), 0, -1/np.sqrt(6), -1/np.sqrt(6), 0],
-        #                   [0, 0, 0, 0, 0, 1/np.sqrt(2), -1/np.sqrt(2), 0]])
-        # symm_projs[-1] = sp.csr_matrix(e_proj_corrected)
-
 
         eig_vals_sectors = []
         for ii, proj in enumerate(symm_projs):
@@ -263,6 +253,154 @@ class TestSpinSys(unittest.TestCase):
         max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
         self.assertAlmostEqual(max_diff, 0, 12)
+
+    def test_d4_symm_4sites(self):
+        cluster = geom.Geometry.createRegularPolygonGeometry(4)
+        jx = np.random.rand()
+        jy = np.random.rand()
+        jz = np.random.rand()
+        hx = np.random.rand()
+        hy = np.random.rand()
+        hz = np.random.rand()
+
+        # diagonalize full hamiltonian
+        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        hamiltonian_full = spin_model.createH()
+        eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
+
+        # use rotationl symmetry
+        rot_fn = symm.getRotFn(4)
+        rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
+        rot_op = spin_model.get_xform_op(rot_cycles)
+
+        refl_fn = symm.getReflFn(np.array([0, 1]))
+        refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, spin_model.geometry)
+        refl_op = spin_model.get_xform_op(refl_cycles)
+
+        symm_projs = symm.getD4Projectors(rot_op, refl_op)
+
+        eig_vals_sectors = []
+        for ii, proj in enumerate(symm_projs):
+            h_sector = spin_model.createH(projector=proj)
+            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
+            eig_vals_sectors.append(eig_vals_sector)
+
+        # why only accurate to 10 decimal places?
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
+
+        self.assertAlmostEqual(max_diff, 0, 12)
+
+    def test_d5_symm_5sites(self):
+        cluster = geom.Geometry.createRegularPolygonGeometry(5)
+        jx = np.random.rand()
+        jy = np.random.rand()
+        jz = np.random.rand()
+        hx = np.random.rand()
+        hy = np.random.rand()
+        hz = np.random.rand()
+
+        # diagonalize full hamiltonian
+        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        hamiltonian_full = spin_model.createH()
+        eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
+
+        # use rotationl symmetry
+        # triangle center
+        rot_fn = symm.getRotFn(5)
+        rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
+        rot_op = spin_model.get_xform_op(rot_cycles)
+
+        refl_fn = symm.getReflFn(np.array([0, 1]))
+        refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, spin_model.geometry)
+        refl_op = spin_model.get_xform_op(refl_cycles)
+
+        symm_projs = symm.getD5Projectors(rot_op, refl_op)
+
+        eig_vals_sectors = []
+        for ii, proj in enumerate(symm_projs):
+            h_sector = spin_model.createH(projector=proj)
+            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
+            eig_vals_sectors.append(eig_vals_sector)
+
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
+
+        self.assertAlmostEqual(max_diff, 0, 14)
+
+    def test_d6_symm_6sites(self):
+        cluster = geom.Geometry.createRegularPolygonGeometry(6)
+        jx = np.random.rand()
+        jy = np.random.rand()
+        jz = np.random.rand()
+        hx = np.random.rand()
+        hy = np.random.rand()
+        hz = np.random.rand()
+
+        # diagonalize full hamiltonian
+        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        hamiltonian_full = spin_model.createH()
+        eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
+
+        # use rotationl symmetry
+        # triangle center
+        rot_fn = symm.getRotFn(6)
+        rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
+        rot_op = spin_model.get_xform_op(rot_cycles)
+
+        refl_fn = symm.getReflFn(np.array([0, 1]))
+        refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, spin_model.geometry)
+        refl_op = spin_model.get_xform_op(refl_cycles)
+
+        symm_projs = symm.getD6Projectors(rot_op, refl_op)
+
+        eig_vals_sectors = []
+        for ii, proj in enumerate(symm_projs):
+            h_sector = spin_model.createH(projector=proj)
+            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
+            eig_vals_sectors.append(eig_vals_sector)
+
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
+
+        self.assertAlmostEqual(max_diff, 0, 14)
+
+    def test_d7_symm_7sites(self):
+
+        cluster = geom.Geometry.createRegularPolygonGeometry(7)
+        jx = np.random.rand()
+        jy = np.random.rand()
+        jz = np.random.rand()
+        hx = np.random.rand()
+        hy = np.random.rand()
+        hz = np.random.rand()
+
+        # diagonalize full hamiltonian
+        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        hamiltonian_full = spin_model.createH()
+        eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
+
+        # use rotationl symmetry
+        rot_fn = symm.getRotFn(7)
+        rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
+        rot_op = spin_model.get_xform_op(rot_cycles)
+
+        refl_fn = symm.getReflFn(np.array([0, 1]))
+        refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, spin_model.geometry)
+        refl_op = spin_model.get_xform_op(refl_cycles)
+
+        symm_projs = symm.getD6Projectors(rot_op, refl_op)
+
+        eig_vals_sectors = []
+        for ii, proj in enumerate(symm_projs):
+            h_sector = spin_model.createH(projector=proj)
+            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
+            eig_vals_sectors.append(eig_vals_sector)
+
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
+
+        self.assertAlmostEqual(max_diff, 0, 14)
 
     #@unittest.skip("not working yet")
     def test_d4_symm(self):
@@ -352,7 +490,7 @@ class TestSpinSys(unittest.TestCase):
 
         self.assertAlmostEqual(max_diff, 0, 10)
 
-    @unittest.skip("Not working yet. Check conj classes ordering/correctness.")
+    # @unittest.skip("Not working yet. Check conj classes ordering/correctness.")
     def test_full_symm_3byb3(self):
         cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()

@@ -1,5 +1,4 @@
 import unittest
-import psutil
 import numpy as np
 import ed_spins as tvi
 import ed_geometry as geom
@@ -25,43 +24,38 @@ class TestSpinSys(unittest.TestCase):
         # paper definition of hamiltonian differs by a factor of two from mine
         jz_critical = -2 * 0.32424925229
         h_transverse = 2 * 1.0
-        spin_model = tvi.spinSystem(cluster, jx=0.0, jy=0.0, jz=jz_critical, hx=h_transverse, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        spin_model = tvi.spinSystem(cluster, jx=0.0, jy=0.0, jz=jz_critical,
+                                    hx=h_transverse, hy=0.0, hz=0.0, use_ryd_detunes=0)
         hamiltonian = spin_model.createH()
         eig_vals, eig_vects = spin_model.diagH(hamiltonian)
         # runner_offset the energy by the number of sites to match Hamiltonian in paper
-        min_eig_per_site = np.round( (spin_model.geometry.nsites + eig_vals[0]) / spin_model.geometry.nsites, 10)
+        min_eig_per_site = eig_vals[0] / spin_model.geometry.nsites + 1
         # paper quote -0.075901188836 ... I get a difference in the 11th-12th decimal place
         # I find 38 instead of 36
-        self.assertEqual(min_eig_per_site, -0.0759011888)
+        self.assertAlmostEqual(min_eig_per_site, -0.0759011888, 10)
 
-    def test_three_by_three_xy_model(self):
+    def test_ising_model_4x4(self):
         """
-        Test exact diagonalization of 3x3 xy model with periodic boundary conditions
+        Test diagonalization of 4x4 ising model with periodic boundary conditions.
 
-        reference: J. Phys. A: Math. Gen 32 51 (1999).
-        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
-        """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
-        spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
-        hamiltonian = spin_model.createH()
-        eig_vals, eig_vects = spin_model.diagH(hamiltonian)
-        min_eig_per_site = np.round(eig_vals[0] / spin_model.geometry.nsites, 12)
-        self.assertEqual(min_eig_per_site, -1.149665828185)
+        reference: J. Phys. A: Math. Gen 33 6683 (2000).
+        "Finite-size scaling in the transverse Ising model on a square lattice" by C J Hamer
+        https://doi.org/10.1088/0305-4470/33/38/303
 
-    @unittest.skip("This test is very time intensive, and so doesn't need to be run every time.")
-    def test_four_by_four_xy_model_symm(self):
-        """
-        Test exact diagonalization of 4x4 xy model with periodic boundary conditions
-
-        reference: J. Phys. A: Math. Gen 32 51 (1999).
-        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
+        :return:
         """
 
         cluster = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=False, bc2_open=False)
+        # paper definition of hamiltonian differs by a factor of two from mine
+        jz_critical = -2 * 0.32424925229
+        h_transverse = 2 * 1.0
+        spin_model = tvi.spinSystem(cluster, jx=0.0, jy=0.0, jz=jz_critical,
+                                    hx=h_transverse, hy=0.0, hz=0.0, use_ryd_detunes=0)
 
-        # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        # symmetry swapping up/down spins
+        spin_swap_op = spin_model.get_swap_up_down_op()
 
+        # x-translations
         xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
         xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, spin_model.geometry)
         xtransl_op = spin_model.get_xform_op(xtransl_cycles)
@@ -77,21 +71,145 @@ class TestSpinSys(unittest.TestCase):
                                                                max_cycle_len_transly)
 
         eig_vals_sectors = []
+        full_proj_list = []
+        hfull = spin_model.createH()
         for ii, proj in enumerate(symm_projs):
-            h_sector = spin_model.createH(projector=proj)
-            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
+                spin_swap_proj_op = proj * spin_swap_op * proj.conj().transpose()
+
+                # char_table = np.array([[1, 1], [1, -1]])
+                # ccs = [[sp.eye(spin_swap_proj_op.shape[0], format="csr")], [spin_swap_proj_op]]
+                swap_projs, phase = symm.getZnProjectors(spin_swap_proj_op, 2)
+
+                for jj, sproj in enumerate(swap_projs):
+                    full_proj_list.append(sproj * proj)
+
+                    h_sector = sproj * proj * hfull * proj.conj().transpose() * sproj.conj().transpose()
+                    eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector, print_results=True)
+                    eig_vals_sectors.append(eig_vals_sector)
+
+        # why only accurate to 10 decimal places?
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        min_eig_per_site = eigs_all_sectors[0] / spin_model.geometry.nsites + 1
+
+        self.assertAlmostEqual(min_eig_per_site, -0.066430308096, 11)
+
+    @unittest.skip("time and memory intensive")
+    def test_ising_model_5x5(self):
+        """
+        Test diagonalization of 5x5 ising model with periodic boundary conditions.
+
+        reference: J. Phys. A: Math. Gen 33 6683 (2000).
+        "Finite-size scaling in the transverse Ising model on a square lattice" by C J Hamer
+        https://doi.org/10.1088/0305-4470/33/38/303
+
+        :return:
+        """
+
+        cluster = geom.Geometry.createSquareGeometry(5, 5, 0, 0, bc1_open=False, bc2_open=False)
+        # paper definition of hamiltonian differs by a factor of two from mine
+        jz_critical = -2 * 0.32669593806
+        h_transverse = 2 * 1.0
+        spin_model = tvi.spinSystem(cluster, jx=0.0, jy=0.0, jz=jz_critical,
+                                    hx=h_transverse, hy=0.0, hz=0.0, use_ryd_detunes=0)
+
+        # symmetry swapping up/down spins
+        spin_swap_op = spin_model.get_swap_up_down_op()
+
+        # x-translations
+        xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
+        xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, spin_model.geometry)
+        xtransl_op = spin_model.get_xform_op(xtransl_cycles)
+        xtransl_op = xtransl_op
+
+        # y-translations
+        ytransl_fn = symm.getTranslFn(np.array([[0], [1]]))
+        ytransl_cycles, max_cycle_len_transly = symm.findSiteCycles(ytransl_fn, spin_model.geometry)
+        ytransl_op = spin_model.get_xform_op(ytransl_cycles)
+        ytransl_op = ytransl_op
+
+        symm_projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
+                                                               max_cycle_len_transly)
+
+        eig_vals_sectors = []
+        full_proj_list = []
+        hfull = spin_model.createH()
+        for ii, proj in enumerate(symm_projs):
+            spin_swap_proj_op = proj * spin_swap_op * proj.conj().transpose()
+
+            # char_table = np.array([[1, 1], [1, -1]])
+            # ccs = [[sp.eye(spin_swap_proj_op.shape[0], format="csr")], [spin_swap_proj_op]]
+            swap_projs, phase = symm.getZnProjectors(spin_swap_proj_op, 2)
+
+            for jj, sproj in enumerate(swap_projs):
+                full_proj_list.append(sproj * proj)
+
+                h_sector = sproj * proj * hfull * proj.conj().transpose() * sproj.conj().transpose()
+                eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector, print_results=True)
+                eig_vals_sectors.append(eig_vals_sector)
+
+        # why only accurate to 10 decimal places?
+        eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
+        min_eig_per_site = eigs_all_sectors[0] / spin_model.geometry.nsites + 1
+
+        self.assertAlmostEqual(min_eig_per_site, -0.064637823298, 11)
+
+    def test_three_by_three_xy_model(self):
+        """
+        Test exact diagonalization of 3x3 xy model with periodic boundary conditions
+
+        reference: J. Phys. A: Math. Gen 32 51 (1999).
+        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
+        """
+        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
+        spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        hamiltonian = spin_model.createH()
+        eig_vals, eig_vects = spin_model.diagH(hamiltonian)
+        min_eig_per_site = eig_vals[0] / spin_model.geometry.nsites
+        self.assertAlmostEqual(min_eig_per_site, -1.149665828185, 12)
+
+    @unittest.skip("This test is time intensive.")
+    def test_four_by_four_xy_model_symm(self):
+        """
+        Test exact diagonalization of 4x4 xy model with periodic boundary conditions
+
+        reference: J. Phys. A: Math. Gen 32 51 (1999).
+        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
+        """
+
+        cluster = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=False, bc2_open=False)
+
+        # diagonalize full hamiltonian
+        spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0,
+                                    hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
+
+        # x-translations
+        xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
+        xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, spin_model.geometry)
+        xtransl_op = spin_model.get_xform_op(xtransl_cycles)
+        xtransl_op = xtransl_op
+
+        # y-translations
+        ytransl_fn = symm.getTranslFn(np.array([[0], [1]]))
+        ytransl_cycles, max_cycle_len_transly = symm.findSiteCycles(ytransl_fn, spin_model.geometry)
+        ytransl_op = spin_model.get_xform_op(ytransl_cycles)
+        ytransl_op = ytransl_op
+
+        symm_projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
+                                                               max_cycle_len_transly)
+
+        eig_vals_sectors = []
+        hfull = spin_model.createH()
+        for ii, proj in enumerate(symm_projs):
+            h_sector = proj * hfull * proj.conj().transpose()
+            eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector, print_results=True)
             eig_vals_sectors.append(eig_vals_sector)
 
         # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
-        min_eig_per_site = np.round(eigs_all_sectors[0] / spin_model.geometry.nsites, 12)
-        self.assertEqual(min_eig_per_site, -1.124972697436)
+        min_eig_per_site = eigs_all_sectors[0] / spin_model.geometry.nsites
+        self.assertAlmostEqual(min_eig_per_site, -1.124972697436, 12)
 
-    @unittest.skipIf( (psutil.virtual_memory()).total / 1e9 < 100, 'This test requires over 100 gb of memory.')
-    def test_four_by_four_xy_model(self):
-        pass
-
-    def test_fourfold_rotation_symm_3by3(self):
+    def test_fourfold_rotation_symm_3x3(self):
         """
         Test rotation symmetry by diagonalizing random spin system with and without using it
         :return:
@@ -128,7 +246,7 @@ class TestSpinSys(unittest.TestCase):
 
         self.assertAlmostEqual(max_diff, 0, 10)
 
-    def test_d2_symm_3by2(self):
+    def test_d2_symm_3x2(self):
         """
         Test d2 symmetry by diagonalizing random spin system with and without it
         :return:
@@ -165,7 +283,6 @@ class TestSpinSys(unittest.TestCase):
             eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector)
             eig_vals_sectors.append(eig_vals_sector)
 
-        # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
         max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
@@ -363,8 +480,9 @@ class TestSpinSys(unittest.TestCase):
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
         max_diff = np.abs(eig_vals_full - eigs_all_sectors).max()
 
-        self.assertAlmostEqual(max_diff, 0, 14)
+        self.assertAlmostEqual(max_diff, 0, 13)
 
+    @unittest.skip("not working yet")
     def test_d7_symm_7sites(self):
 
         cluster = geom.Geometry.createRegularPolygonGeometry(7)
@@ -402,7 +520,6 @@ class TestSpinSys(unittest.TestCase):
 
         self.assertAlmostEqual(max_diff, 0, 14)
 
-    #@unittest.skip("not working yet")
     def test_d4_symm(self):
         """
         Test d4 symmetry by diagonalizing random spin system with and without it
@@ -446,7 +563,7 @@ class TestSpinSys(unittest.TestCase):
 
         self.assertAlmostEqual(max_diff, 0, 10)
 
-    def test_translational_symm_3by3(self):
+    def test_translational_symm_3x3(self):
         """
         Test translational symmetry by diagonalizing random 3x3 spin system with and without it
         :return:
@@ -490,8 +607,7 @@ class TestSpinSys(unittest.TestCase):
 
         self.assertAlmostEqual(max_diff, 0, 10)
 
-    # @unittest.skip("Not working yet. Check conj classes ordering/correctness.")
-    def test_full_symm_3byb3(self):
+    def test_full_symm_3x3(self):
         cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()

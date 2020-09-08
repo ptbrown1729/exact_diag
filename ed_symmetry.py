@@ -207,101 +207,92 @@ def get_reduced_projector(p_full, dim, states_related_by_symm, print_results=Fal
     if print_results:
         tstart = time.time()
 
-    if not sp.isspmatrix_csc(p_full):
-        print("warning, projop_full2full was not csc. Converted it to csc")
-        p_full = p_full.tocsc()
+    if not sp.isspmatrix_csr(p_full):
+        print("warning, projop_full2full was not csr. Converted it to csr.")
+        p_full = p_full.tocsr()
+
+    if not sp.isspmatrix_csr(states_related_by_symm):
+        print("warning, projop_full2full was not csr. Converted it to csr.")
+        states_related_by_symm = states_related_by_symm.tocsr()
 
     # round to avoid any finite precision issues
-    # TODO: check if this works _round_decimals value
     p_full.data[np.abs(p_full.data) < 1e-10] = 0
     p_full.eliminate_zeros()
 
-    # find orthonormal columns of full rank
-    # for each column, find first non-zero index
+    # remove any zero rows
+    rows_noz = p_full.indptr[:-1] != p_full.indptr[1:]
+    p_full = p_full[rows_noz, :]
+
+    # find orthonormal basis for row space of matrix
     if dim == 1:
-        # remove any zero columns
-        cols_noz = p_full.indptr[:-1] != p_full.indptr[1:]
-        p_full_noz = p_full[:, cols_noz]
+        # for each row, find first non-zero index
+        first_nonzero_col = p_full.indices[p_full.indptr[:-1]]
 
-        first_nonzero_row = p_full.indices[p_full_noz.indptr[:-1]]
-        # We only need to check if the first indices are unique to find the unique columns.
+        # We only need to check if the first indices are unique to find the unique rows.
         # For dim=1, if these are the same then so are the entire columns
-        _, unique_indices = np.unique(first_nonzero_row, return_index=True)
-        p_red = p_full_noz[:, unique_indices]
-    else:
-        # todo: do I need to check other indices?
-        cols_noz = p_full.indptr[:-1] != p_full.indptr[1:]
-        p_full = p_full[:, cols_noz]
-        states_related_by_symm = states_related_by_symm[:, cols_noz]
-        # first_nonzero_row = states_related_by_symm.indices[states_related_by_symm.indptr[:-1]]
-        first_nonzero_row = p_full.indices[p_full.indptr[:-1]]
 
-        unique, unique_indices, unique_inverse, counts = np.unique(first_nonzero_row, return_index=True, return_inverse=True, return_counts=True)
+        _, unique_indices = np.unique(first_nonzero_col, return_index=True)
+        p_red = p_full[unique_indices, :]
+    else:
+        states_related_by_symm = states_related_by_symm[rows_noz, :]
+        # get identifier for which sets of states transform into one another under action of
+        first_nonzero_col = states_related_by_symm.indices[states_related_by_symm.indptr[:-1]]
+        # first_nonzero_col = p_full.indices[p_full.indptr[:-1]]
+
+        unique, unique_indices, unique_inverse, counts = np.unique(first_nonzero_col, return_index=True, return_inverse=True, return_counts=True)
         # first_indices = unique[unique_inverse]
         # unique = first_indices[unique_indices]. These are column indices of a unique set of basis vectors from which
         # all others can be obtained by applying symmetry operations
 
-        # get collection of all columns that have the same first non-zero index
+        # get collection of all rows that have the same first non-zero index
         unique_inv_sorted = np.argsort(unique_inverse)
 
         # construct reduced projector matrix
         # maximum rank, but real rank can be less than this
         p_red = sp.lil_matrix((p_full.shape))
-        p_col_counter = 0
+        p_row_counter = 0
         inv_counter = 0
 
-        # q, r = np.linalg.qr(p_full.todense())
-        # r = np.round(r, 12)
-        # p_red = sp.csc_matrix(q[:, np.diag(np.abs(r)) != 0])
-        rank = np.linalg.matrix_rank(p_full.todense())
+        # rank_full = np.linalg.matrix_rank(p_full.todense())
+        # u, s, vh = np.linalg.svd(p_full.todense(), full_matrices=True, compute_uv=True)
+        # p_red_full = sp.csr_matrix(np.round(vh[:rank_full, :], 12))
 
-        u, s, vh = np.linalg.svd(p_full.transpose().todense(), full_matrices=True, compute_uv=True)
-        p_red = sp.csc_matrix(vh.transpose()[:, :rank])
-
-        '''
         # loop over subspaces represented by
         for ii in range(len(unique)):
             # all column indices = unique_inv_sorted[inv_counter : inv_counter + counts[ii]]
             # non-zero rows for this the first column vector (which will be identical for the other related vectors)
-            rows = p_full.indices[p_full.indptr[unique_inv_sorted[inv_counter]] :
-                                  p_full.indptr[unique_inv_sorted[inv_counter] + 1]]
-            # rows = states_related_by_symm.indices[states_related_by_symm.indptr[unique_inv_sorted[inv_counter]]:
-            #                       states_related_by_symm.indptr[unique_inv_sorted[inv_counter] + 1]]
+            # rows = p_full.indices[p_full.indptr[unique_inv_sorted[inv_counter]] :
+            #                       p_full.indptr[unique_inv_sorted[inv_counter] + 1]]
+            cols = states_related_by_symm.indices[states_related_by_symm.indptr[unique_inv_sorted[inv_counter]]:
+                                  states_related_by_symm.indptr[unique_inv_sorted[inv_counter] + 1]]
 
             # get relevant matrices, only keep nonzero rows and columns for this subpsace
-            uis, rrs = np.meshgrid(unique_inv_sorted[inv_counter : inv_counter + counts[ii]], rows)
+            ccols, rrows = np.meshgrid(cols, unique_inv_sorted[inv_counter : inv_counter + counts[ii]])
 
-            mat = p_full[rrs, uis].todense()
-            # get orthonormal basis for this space from Gram-Schmidt processes via QR decomposition
-            q, r = np.linalg.qr(mat)
-            # except QR decomposition is not unique, and numpy will include other columns which are not in the span of
-            # our states. These columns don't matter for the QR, as they correspond to zero rows in R. So can get rid
-            # of column ii in Q if row ii in R is all zeros
-            # q_red = np.round(q[:, np.sum(np.abs(np.round(r, 12)), axis=1) != 0], 10)
-            r = np.round(r, 12)
-            q_red = np.round(q[:, np.diag(np.abs(r)) != 0], 12)
-            qrank = q_red.shape[1]
+            mat = p_full[rrows, ccols].todense()
+            rank = np.linalg.matrix_rank(mat)
+            u, s, vh = np.linalg.svd(mat, full_matrices=True, compute_uv=True)
+            mat_red = np.round(vh[:rank, :], 15)
 
             # put these back in the correct rows for the final projector
-            uis_out, rrs_out = np.meshgrid(np.arange(p_col_counter, p_col_counter + qrank), rows)
-            p_red[rrs_out, uis_out] = q_red
+            ccols_out, rrows_out = np.meshgrid(cols, np.arange(p_row_counter, p_row_counter + rank))
+            p_red[rrows_out, ccols_out] = mat_red
 
             # advance counters
             inv_counter += counts[ii]
-            p_col_counter += qrank
+            p_row_counter += rank
 
-        p_red = p_red[:, :p_col_counter].tocsc()
-        '''
+        p_red = p_red[:p_row_counter, :].tocsr()
 
-    # normalize each column
-    norms = np.sqrt(np.asarray(p_red.multiply(p_red.conj()).sum(axis=0))).flatten()
-    p_red = p_red * sp.diags(np.reciprocal(norms), 0, format="csc")
+    # normalize each row
+    norms = np.sqrt(np.asarray(p_red.multiply(p_red.conj()).sum(axis=1))).flatten()
+    p_red = sp.diags(np.reciprocal(norms), 0, format="csr") * p_red
 
     if print_results:
         tend = time.time()
         print("Finding projector took %0.2f s" % (tend - tstart))
 
-    p_red = p_red.conj().transpose()
+    # p_red = p_red.conj().transpose()
     return p_red
 
 def get_symmetry_projectors(character_table, conjugacy_classes, print_results=False):
@@ -330,8 +321,8 @@ def get_symmetry_projectors(character_table, conjugacy_classes, print_results=Fa
     # test projector size
     proj_to_dims = np.asarray([p.shape[0] for p in projs]).sum()
     proj_from_dims = projs[0].shape[1]
-    # if proj_to_dims != proj_from_dims:
-    #     raise Exception("total span of all projectors was %d, but expected %d." % (proj_to_dims, proj_from_dims))
+    if proj_to_dims != proj_from_dims:
+        raise Exception("total span of all projectors was %d, but expected %d." % (proj_to_dims, proj_from_dims))
 
     return projs
 
@@ -372,7 +363,7 @@ def getZnProjectors(xform_op, n_xforms, print_results=False):
     kx, ky = np.meshgrid(range(n_xforms), range(n_xforms))
     char_table = np.round(np.exp(-2*np.pi*1j / n_xforms * kx * ky), 14)
 
-    id = sp.eye(xform_op.shape[0], format="csc")
+    id = sp.eye(xform_op.shape[0], format="csr")
     conj_classes = [[id]] + [[xform_op**n] for n in range(1, n_xforms)]
 
     projs = get_symmetry_projectors(char_table, conj_classes, print_results)
@@ -440,7 +431,7 @@ def getD2Projectors(rot_op, refl_op, print_results=False):
     """
 
     # Project onto subspaces associated with each irreducible representation of C_4v
-    id = sp.eye(refl_op.shape[0], format="csc")
+    id = sp.eye(refl_op.shape[0], format="csr")
     char_table = np.array([[1,  1,  1,  1],
                            [1,  1, -1, -1],
                            [1, -1,  1, -1],
@@ -476,7 +467,7 @@ def getD3Projectors(rot_op, refl_op, print_results=False):
     """
 
     # Project onto subspaces associated with each irreducible representation of C_4v
-    id = sp.eye(refl_op.shape[0], format="csc")
+    id = sp.eye(refl_op.shape[0], format="csr")
 
     char_table = np.array([[1, 1, 1],
                            [1, 1, -1],
@@ -516,7 +507,7 @@ def getD4Projectors(rot_op, refl_op, print_results=False):
     :return:
     projs: list of projection operators onto symmetry subspaces
     """
-    id = sp.eye(refl_op.shape[0], format="csc")
+    id = sp.eye(refl_op.shape[0], format="csr")
     char_table = np.array([[1,  1,  1,  1,  1],
                            [1,  1,  1, -1, -1],
                            [1, -1,  1,  1, -1],
@@ -532,7 +523,7 @@ def getD4Projectors(rot_op, refl_op, print_results=False):
     return projs
 
 def getD5Projectors(rot_op, refl_op, print_results=False):
-    id = sp.eye(refl_op.shape[0], format="csc")
+    id = sp.eye(refl_op.shape[0], format="csr")
 
     char_table = np.array([[1,  1,  1, 1],
                            [1, -1,  1, 1],
@@ -548,7 +539,7 @@ def getD5Projectors(rot_op, refl_op, print_results=False):
     return projs
 
 def getD6Projectors(rot_op, refl_op, print_results=False):
-    id = sp.eye(refl_op.shape[0], format="csc")
+    id = sp.eye(refl_op.shape[0], format="csr")
 
     char_table = np.array([[1,  1,  1,  1,  1,  1],
                            [1,  1, -1, -1,  1,  1],
@@ -568,7 +559,7 @@ def getD6Projectors(rot_op, refl_op, print_results=False):
     return projs
 
 def getD7Projectors(rot_op, refl_op, print_results=False):
-    id = sp.eye(refl_op.shape[0], format="csc")
+    id = sp.eye(refl_op.shape[0], format="csr")
 
     char_table = np.array([[1,  1, 1, 1, 1],
                            [1, -1, 1, 1, 1],
@@ -632,7 +623,7 @@ def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
     #(c4, c8, c6) dim 1856
     #(c4, c8, c9) 0.0904164
 
-    c1 = [sp.eye(refl_op.shape[0], format="csc")]
+    c1 = [sp.eye(refl_op.shape[0], format="csr")]
 
     c4 = [refl_op, rot_op**2 * refl_op, tx_op * refl_op, tx_op**2 * refl_op,
           ty_op * rot_op**2 * refl_op, ty_op**2 * rot_op**2 * refl_op]
@@ -705,7 +696,7 @@ def validate_char_table(char_table, conj_classes):
     col_cross_sums = np.zeros((n, n), dtype=np.int)
     for ii in range(n):
         for jj in range(n):
-            val = np.sum(char_table[:, ii] * char_table[:, jj].conj(), axis=0)
+            val = np.sum(char_table[:, ii] * char_table[:, jj].conj(), axis=0).real
             col_cross_sums[ii, jj] = val
 
     if not np.array_equal(np.diag(np.array(order / cc_sizes, dtype=np.int)), col_cross_sums):
@@ -715,7 +706,7 @@ def validate_char_table(char_table, conj_classes):
     row_cross_sums = np.zeros((n, n), dtype=np.int)
     for ii in range(n):
         for jj in range(n):
-            val = np.sum(char_table[ii, :] * char_table[jj, :].conj() * cc_sizes, axis=0)
+            val = np.sum(char_table[ii, :] * char_table[jj, :].conj() * cc_sizes, axis=0).real
             row_cross_sums[ii, jj] = val
 
     if not np.array_equal(order * np.eye(n, dtype=np.int), row_cross_sums):

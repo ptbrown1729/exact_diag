@@ -10,19 +10,7 @@ import scipy.linalg
 import scipy.sparse as sp
 import ed_geometry as geom
 
-# Idea: one annoying issue is I don't want to have to enter information about the number of spins, etc for generating
-# every operator. This also opens up lots of possibilities for programming mistakes. Better to get this information
-# from the class. But I would still like to keep my most general functions. So perhaps instead of overriding them
-# in each class, I should rename something like, get_single_logical_site_op, and in each subclass implement
-# get_single_site_op using these. But the problem that comes up is how to implement get_xform_op in the baseclass,
-# because this relies on lots of get_single_site_op and get_two_site_op calls. So if I change the signature of these
-# functions, this is a problem. ACTUALLY, this comes up in get_swap_op from within get_xform_op
-
-
 class ed_base:
-
-    _round_decimals = 14
-
     # these must be overriden in derived classes
     nspecies = 0
     nbasis = 0
@@ -123,9 +111,6 @@ class ed_base:
                 for ii in range(0, self.nspecies):
                     cycle_op = 1
                     for jj in range(len(cycle) - 1, 0, -1):
-                        # TODO: I think this might be the wrong way?
-                        # TODO: I think that is cancelled out by the fact the cycles are the opposite of what I expect
-                        # TODO: Actually, probably by the transpose required at the end?
                         cycle_op = self.get_swap_op(cycle[jj - 1], cycle[jj], ii).tocsr() * cycle_op
                     trans_op = cycle_op * trans_op
 
@@ -133,7 +118,6 @@ class ed_base:
             tend = time.time()
             print("get_xform_op op took %0.2f s" % (tend - tstart))  # TODO find way to print a name
 
-        # return trans_op.transpose()  # TODO why do I need this transpose? Related to the above issue.
         return trans_op
 
     # ########################

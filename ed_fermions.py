@@ -5,11 +5,6 @@ import ed_geometry as geom
 import ed_symmetry as symm
 import ed_base
 
-# TODO: maybe I should wrap all operator functions in this class to hide the nspins arguments, since that is never
-# going to change for fermions. nspins would only be visible in ed_base. This would mean that spinful2spinlessIndex
-# and spinless2spinfulIndex would be called underneath the hood.
-
-
 class fermions(ed_base.ed_base):
 
     nbasis = 2
@@ -436,14 +431,12 @@ class fermions(ed_base.ed_base):
         current_op = 0
         distance_component_x = geom_obj.xdist_mat * direction_vector[0]
         distance_component_y = geom_obj.ydist_mat * direction_vector[1]
-        is_x_neighbor = np.round(np.abs(geom_obj.xdist_mat), self._round_decimals) == 1
-        is_y_neighbor = np.round(np.abs(geom_obj.ydist_mat), self._round_decimals) == 1
+        is_x_neighbor = np.round(np.abs(geom_obj.xdist_mat), 14) == 1
+        is_y_neighbor = np.round(np.abs(geom_obj.ydist_mat), 14) == 1
 
         for ii in range(0, geom_obj.nsites):
             for jj in range(0, geom_obj.nsites):
                 for kk in range(0, self.nspecies):
-                    # logical_site1_index = self.spinful2spinlessIndex(ii, geom_obj.nsites, kk)
-                    # logical_site2_index = self.spinful2spinlessIndex(jj, geom_obj.nsites, kk)
 
                     if geom_obj.adjacency_mat[ii, jj] and is_x_neighbor[ii, jj]:
                         link_current = tx * distance_component_x[ii, jj] * \

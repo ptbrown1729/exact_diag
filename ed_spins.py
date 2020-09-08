@@ -37,7 +37,8 @@ class spinSystem(ed_base.ed_base):
         """
         # TODO: update this to allow easy use of Heisenberg or Rydberg
         # TODO: finish updating class to work appropriately with this...
-        # TODO: update base class to assume we have the geometry field, which will make the signature of fns such as get_xform_op the same for the derived classes.
+        # TODO: update base class to assume we have the geometry field,
+        #  which will make the signature of fns such as get_xform_op the same for the derived classes.
         self.nbasis = int(2 * spin + 1)
         self.splus = self.get_splus(spin)
         self.sminus = self.get_sminus(spin)
@@ -211,7 +212,7 @@ class spinSystem(ed_base.ed_base):
             rydberg_detunings[ii] = 0.5 * np.sum(jsmat[ii, :])
         rydberg_detunings = -2.0*rydberg_detunings  # need this to keep same term in Hamiltonian had before.
 
-        if not (rydberg_detunings.imag > 10 ** -self._round_decimals).any():
+        if not (rydberg_detunings.imag > 10 ** -14).any():
             rydberg_detunings = rydberg_detunings.real
 
         return rydberg_detunings
@@ -307,13 +308,12 @@ class spinSystem(ed_base.ed_base):
     # ########################
     # miscellanoues functions
     # ########################
-
-    def find_special_states(self, XSites, YSites, number_left2right_top2bottom=0):
+    def find_special_states(self, xsites, ysites, number_left2right_top2bottom=0):
         """
         Generate state vectors for special states. Currently, the ferromagnetic states, anti-ferromagnetic states,
         and plus and minus product states
-        :param XSites:
-        :param YSites:
+        :param xsites:
+        :param ysites:
         :param number_left2right_top2bottom:
         :return:
         """
@@ -330,7 +330,7 @@ class spinSystem(ed_base.ed_base):
         # AllDnState[AllDnStateInd] = 1
         AllDnState = sp.csr_matrix((np.array([1]), (np.array([AllDnStateInd]), np.array([0]))), shape=(NStates, 1))
 
-        if ((XSites % 2) or not number_left2right_top2bottom) and (NSites > 1):
+        if ((xsites % 2) or not number_left2right_top2bottom) and (NSites > 1):
             # if Xsites is odd
             if NSites % 2:
                 # if nsites is odd
@@ -367,7 +367,6 @@ class spinSystem(ed_base.ed_base):
     # ########################
     # Calculate operators
     # ########################
-
     def get_npairs_op(self, corr_sites_conn):
         """
         Get operator that counts number of pairs of rydbergs. (i.e. spin-ups on NN sites)
@@ -408,6 +407,11 @@ class spinSystem(ed_base.ed_base):
         """
         species_index = 0
         return ed_base.ed_base.get_sum_op(self, op, species_index, format="boson", print_results=False)
+
+    def get_swap_up_down_op(self):
+        swapped_state = self.nstates - 1 - np.arange(self.nstates)
+        op = sp.csc_matrix((np.ones(self.nstates), swapped_state, np.arange(self.nstates+1)))
+        return op
 
     def get_swap_op(self, site1, site2, species=0):
         """

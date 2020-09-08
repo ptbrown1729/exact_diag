@@ -22,8 +22,8 @@ class TestSymm(unittest.TestCase):
         x_rot_expected = np.array([-3.0])
         y_rot_expected = np.array([3.0])
 
-        self.assertTrue(np.array_equal(x_rot, x_rot_expected))
-        self.assertTrue(np.array_equal(y_rot, y_rot_expected))
+        self.assertAlmostEqual(np.linalg.norm(x_rot - x_rot_expected), 0, 14)
+        self.assertAlmostEqual(np.linalg.norm(y_rot - y_rot_expected), 0, 14)
 
     def test_get_refl_fn(self):
         """
@@ -39,8 +39,8 @@ class TestSymm(unittest.TestCase):
         x_refl_expected = np.array([2.0])
         y_refl_expected = np.array([6.0])
 
-        self.assertTrue(np.array_equal(x_refl, x_refl_expected))
-        self.assertTrue(np.array_equal(y_refl, y_refl_expected))
+        self.assertAlmostEqual(np.linalg.norm(x_refl - x_refl_expected), 0, 14)
+        self.assertAlmostEqual(np.linalg.norm(y_refl - y_refl_expected), 0, 14)
 
     def test_get_inversion_fn(self):
         """
@@ -55,8 +55,8 @@ class TestSymm(unittest.TestCase):
         x_inv_expected = np.array([-3.0])
         y_inv_expected = np.array([1.0])
 
-        self.assertTrue(np.array_equal(x_inv, x_inv_expected))
-        self.assertTrue(np.array_equal(y_inv, y_inv_expected))
+        self.assertAlmostEqual(np.linalg.norm(x_inv - x_inv_expected), 0, 14)
+        self.assertAlmostEqual(np.linalg.norm(y_inv - y_inv_expected), 0, 14)
 
     def test_get_translation_fn(self):
         """
@@ -71,8 +71,8 @@ class TestSymm(unittest.TestCase):
         x_transl_expected = np.array([4.0])
         y_transl_expected = np.array([5.0])
 
-        self.assertTrue(np.array_equal(x_transl, x_transl_expected))
-        self.assertTrue(np.array_equal(y_transl, y_transl_expected))
+        self.assertAlmostEqual(np.linalg.norm(x_transl - x_transl_expected), 0, 14)
+        self.assertAlmostEqual(np.linalg.norm(y_transl - y_transl_expected), 0, 14)
 
     def test_get_transformed_sites(self):
         """
@@ -85,7 +85,7 @@ class TestSymm(unittest.TestCase):
         sites, trans_sites = ed_symmetry.getTransformedSites(transl_fn, range(0, geom.nsites), geom)
 
         sites_expected = np.arange(0, geom.nsites)
-        trans_sites_expected = np.array([7., 0., 1., 2., 3., 4., 5., 6.])
+        trans_sites_expected = np.array([1., 2., 3., 4., 5., 6., 7., 0.])
 
         self.assertTrue(np.array_equal(sites, sites_expected))
         self.assertTrue(np.array_equal(trans_sites, trans_sites_expected))
@@ -103,7 +103,7 @@ class TestSymm(unittest.TestCase):
         rot_fn = ed_symmetry.getRotFn(4, cx=cx, cy=cy)
         cycles, max_cycle_len = ed_symmetry.findSiteCycles(rot_fn, geom)
 
-        cycles_expected = [[0, 3, 12, 15], [1, 4, 13, 8], [2, 11, 14, 7], [5, 10, 9, 6]]
+        cycles_expected = [[0, 15, 12, 3], [1, 8, 13, 4], [2, 7, 14, 11], [5, 6, 9, 10]]
 
         self.assertEqual(max_cycle_len, 4)
         self.assertEqual(cycles, cycles_expected)

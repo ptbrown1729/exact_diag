@@ -90,7 +90,6 @@ def getTransformedSites(transform_fn, sites, geom_obj, tol=1e-10):
     """
     Determine how sites are permuted under the action of a given transformation.
 
-     TODO: actually TransSites[ii] transforms into Sites[ii]. I think this is why have to take the transpose in get_xform_op. Should fix this...
     :param transform_fn: A function of the form f(x, y) which returns a 2 x n matrix where each column represents the
     transformed position of site at (x,y).
     :param sites: list of initial sites by index e.g. [0, 1, 2, ..., n]
@@ -167,8 +166,6 @@ def findSiteCycles(transform_fn, geom_obj, tol=1e-10):
     if max_cycle_len == max_iter:
         raise Exception("Number of cycles required to close transformation greater than maximum allowed iterations")
 
-    # TODO: I think this function returns the cycles backwards.
-    # TODO: Actually I think the problem is in getTransformedSites
     cycles = []
     for ii in range(0, len(sites)):
         if sites[ii] not in [x for cycle in cycles for x in cycle]:
@@ -188,7 +185,7 @@ def findSiteCycles(transform_fn, geom_obj, tol=1e-10):
 # Functions to determine how states transform
 # #################################################
 
-def get_reduced_projector(p_full, dim, states_related_by_symm, print_results=False):
+def reduce_symm_projector(p_full, dim, states_related_by_symm, print_results=False):
     """
     Create an operator which projects onto a certain subspace which has definite transformation properties with
     respect to a given transformation operator.
@@ -234,17 +231,25 @@ def get_reduced_projector(p_full, dim, states_related_by_symm, print_results=Fal
         _, unique_indices = np.unique(first_nonzero_col, return_index=True)
         p_red = p_full[unique_indices, :]
     else:
+        # can do for the full matrix, but then must be able to convert projector to dense
+        # rank_full = np.linalg.matrix_rank(p_full.todense())
+        # u, s, vh = np.linalg.svd(p_full.todense(), full_matrices=True, compute_uv=True)
+        # p_red_full = sp.csr_matrix(np.round(vh[:rank_full, :], 12))
+
+        # instead of SVD on entire matrix, we can split matrix into sets of states related by symmetry
+        # only these states can transform into each other, so can do each of these sectors on its own
         states_related_by_symm = states_related_by_symm[rows_noz, :]
+
         # get identifier for which sets of states transform into one another under action of
         first_nonzero_col = states_related_by_symm.indices[states_related_by_symm.indptr[:-1]]
-        # first_nonzero_col = p_full.indices[p_full.indptr[:-1]]
 
+        # unique gives column indices of a unique set of basis vectors from which
+        # all others can be obtained by applying symmetry operations
         unique, unique_indices, unique_inverse, counts = np.unique(first_nonzero_col, return_index=True, return_inverse=True, return_counts=True)
         # first_indices = unique[unique_inverse]
-        # unique = first_indices[unique_indices]. These are column indices of a unique set of basis vectors from which
-        # all others can be obtained by applying symmetry operations
+        # unique = first_indices[unique_indices].
 
-        # get collection of all rows that have the same first non-zero index
+        # get collection of all rows that related by symmetry
         unique_inv_sorted = np.argsort(unique_inverse)
 
         # construct reduced projector matrix
@@ -253,16 +258,10 @@ def get_reduced_projector(p_full, dim, states_related_by_symm, print_results=Fal
         p_row_counter = 0
         inv_counter = 0
 
-        # rank_full = np.linalg.matrix_rank(p_full.todense())
-        # u, s, vh = np.linalg.svd(p_full.todense(), full_matrices=True, compute_uv=True)
-        # p_red_full = sp.csr_matrix(np.round(vh[:rank_full, :], 12))
-
         # loop over subspaces represented by
         for ii in range(len(unique)):
             # all column indices = unique_inv_sorted[inv_counter : inv_counter + counts[ii]]
             # non-zero rows for this the first column vector (which will be identical for the other related vectors)
-            # rows = p_full.indices[p_full.indptr[unique_inv_sorted[inv_counter]] :
-            #                       p_full.indptr[unique_inv_sorted[inv_counter] + 1]]
             cols = states_related_by_symm.indices[states_related_by_symm.indptr[unique_inv_sorted[inv_counter]]:
                                   states_related_by_symm.indptr[unique_inv_sorted[inv_counter] + 1]]
 
@@ -292,7 +291,6 @@ def get_reduced_projector(p_full, dim, states_related_by_symm, print_results=Fal
         tend = time.time()
         print("Finding projector took %0.2f s" % (tend - tstart))
 
-    # p_red = p_red.conj().transpose()
     return p_red
 
 def get_symmetry_projectors(character_table, conjugacy_classes, print_results=False):
@@ -314,7 +312,7 @@ def get_symmetry_projectors(character_table, conjugacy_classes, print_results=Fa
     # only need sums over conjugacy classes to build projectors
     class_sums = [sum(cc) for cc in conjugacy_classes]
 
-    projs = [get_reduced_projector(
+    projs = [reduce_symm_projector(
              sum([np.conj(ch) * cs for ch, cs in zip(chars, class_sums)]), chars[0], states_related_by_symm, print_results=print_results)
              for chars in character_table]
 

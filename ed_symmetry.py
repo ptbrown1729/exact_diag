@@ -595,8 +595,6 @@ def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
     more info here https://people.maths.bris.ac.uk/~matyd/GroupNames/61/S3wrC2.html
 
     Conjugacy classes
-    # todo: need to resolve which is (C2,C7)/(C4,C8) and C6/C9?
-    # right now know that if C2 is right, then so is C7
     C1 = {e} (order=1, #=1)
     C2 = {Refl, R^2*Refl, Tx*Refl, Tx^2*Refl,
           Ty*R^2*Refl, Ty^2*R^2*Refl} (order=2, #=6)
@@ -695,7 +693,7 @@ def validate_char_table(char_table, conj_classes):
     for ii in range(n):
         for jj in range(n):
             val = np.sum(char_table[:, ii] * char_table[:, jj].conj(), axis=0).real
-            col_cross_sums[ii, jj] = val
+            col_cross_sums[ii, jj] = np.round(val)
 
     if not np.array_equal(np.diag(np.array(order / cc_sizes, dtype=np.int)), col_cross_sums):
         valid = False
@@ -705,7 +703,7 @@ def validate_char_table(char_table, conj_classes):
     for ii in range(n):
         for jj in range(n):
             val = np.sum(char_table[ii, :] * char_table[jj, :].conj() * cc_sizes, axis=0).real
-            row_cross_sums[ii, jj] = val
+            row_cross_sums[ii, jj] = np.round(val)
 
     if not np.array_equal(order * np.eye(n, dtype=np.int), row_cross_sums):
         valid = False

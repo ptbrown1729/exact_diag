@@ -49,7 +49,7 @@ for p, mz in zip(mz_projs, mzs):
             for pp, parity in zip(sz_projs, spin_parities):
                 if (pp * tp * p).shape[0] != 0:
 
-                    if kx == 0:
+                    if kx == 0 or kx == np.pi:
                         inv_op_sub = pp * tp * p * inv_op * \
                                      p.conj().transpose() * tp.conj().transpose() * pp.conj().transpose()
                         inv_projs, space_parities = symm.getZnProjectors(inv_op_sub, 2)
@@ -73,7 +73,7 @@ for p, mz in zip(mz_projs, mzs):
     else:
         for tp, kx in zip(tx_projs, kxs):
             if (tp*p).shape[0] != 0:
-                if kx == 0:
+                if kx == 0 or kx == np.pi:
                     inv_op_sub = tp * p * inv_op * p.conj().transpose() * tp.conj().transpose()
                     inv_projs, space_parities = symm.getZnProjectors(inv_op_sub, 2)
                     space_parities = np.round(np.exp(1j * space_parities).real)

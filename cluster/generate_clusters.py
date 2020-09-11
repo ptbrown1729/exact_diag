@@ -3,6 +3,7 @@ import os
 import sys
 from ed_nlce import *
 
+
 def generate_clusters(fname_cluster_dat, max_cluster_order):
 
     # if data file already exists, read number of clusters and return
@@ -19,11 +20,14 @@ def generate_clusters(fname_cluster_dat, max_cluster_order):
     cluster_multiplicities = cluster_multiplicities[None, :]
 
     # save cluster data
-    data_clusters = [max_cluster_order, cluster_multiplicities, clusters_list, sub_cluster_mult, order_start_indices]
+    data_clusters = {"max_cluster_order": max_cluster_order, "cluster_multiplicities": cluster_multiplicities,
+                     "cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult,
+                     "order_start_indices": order_start_indices}
     with open(fname_cluster_dat, 'wb') as f:
         pickle.dump(data_clusters, f)
 
     return len(clusters_list)
+
 
 if __name__ == "__main__":
     output_fname = sys.argv[1]

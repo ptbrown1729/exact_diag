@@ -9,7 +9,59 @@ class TestSpinSys(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_three_by_three_ising_model(self):
+    def test_higher_spin(self):
+        """
+        Test heisenberg system with spin > 0.5
+        :return:
+        """
+        spin = 2.5
+
+        nx = 4
+        ny = 1
+        phi1 = 0
+        phi2 = 0
+        bc_open1 = 1
+        bc_open2 = 1
+        gm = geom.Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc_open1, bc_open2)
+        gm.dispGeometry()
+
+        j1 = 0.3333
+        j2 = 0.23623627
+        j3 = 0.8434783478
+        # -1 to account for difference in definitions
+        js = -np.array([[0, j1, j2, j3], [j1, 0, j2, j3], [j2, j2, 0, j3], [j3, j3, j3, 0]])
+        ss = tvi.spinSystem(gm, jx=js, jy=js, jz=js, spin=spin)
+        hamiltonian = ss.createH()
+
+        eig_vals, eig_vects = ss.diagH(hamiltonian)
+
+        # verify these are equal to expected result
+        # E = j1 * [s1*(s1+1) + s2*(s2+1)] + j2 * s3*(s3+1) + j3 * s4*(s4+1) + (j2-j1)*s12*(s12+1) +
+        # (j3-j2)*s123*(s123+1) - j3 * s1234 * (s1234 + 1)
+        eigs_analytic = []
+        s1 = spin
+        s2 = s1
+        s3 = s1
+        s4 = s1
+        s12s = np.arange(np.abs(s1 - s2), s1 + s2 + 1)
+
+        for s12 in s12s:
+            for s123 in np.arange(np.abs(s3 - s12), s3 + s12 + 1):
+                for s1234 in np.arange(np.abs(s4 - s123), s4 + s123 + 1):
+                    eig = j1 * (s1 * (s1 + 1) + s2 * (s2 + 1)) + \
+                          j2 * s3 * (s3 + 1) + \
+                          j3 * s4 * (s4 + 1) + \
+                          (j2 - j1) * s12 * (s12 + 1) + \
+                          (j3 - j2) * s123 * (s123 + 1) - \
+                          j3 * s1234 * (s1234 + 1)
+                    multiplicity = int(2 * s1234 + 1)
+                    eigs_analytic += [eig] * multiplicity
+        eigs_analytic.sort()
+
+        max_diff = np.max(np.abs(eigs_analytic - eig_vals))
+        self.assertAlmostEqual(max_diff, 0, 12)
+
+    def test_ising_model_3x3(self):
         """
         Test diagonalization of 3x3 ising model with periodic boundary conditions.
 

@@ -17,8 +17,8 @@ class TestNLCE(unittest.TestCase):
         lattice_vect1 = np.array([1, 0])
         lattice_vect2 = np.array([0, 1])
         use_symmetry = 1
-        cluster_list_next, multiplicity = ed_nlce.get_clusters_next_order(cluster_list, lattice_vect1=lattice_vect1,
-                                                                          lattice_vect2=lattice_vect2, use_symmetry=use_symmetry)
+        cluster_list_next, multiplicity = ed_nlce.get_clusters_next_order(cluster_list, lv1=lattice_vect1,
+                                                                          lv2=lattice_vect2, use_symmetry=use_symmetry)
         # TODO: compare cluster lists
         expected_cluster_list = [geom.Geometry.createNonPeriodicGeometry([-1., 0., 1.], [0., 0., 0.]),
                                  geom.Geometry.createNonPeriodicGeometry([0., 1., 0.], [1., 0., 0.])]
@@ -39,7 +39,7 @@ class TestNLCE(unittest.TestCase):
         use_symmetry=1
 
         full_cluster_list, cluster_multiplicities, order_start_indices = \
-            ed_nlce.get_all_clusters(max_cluster_order, lattice_vect1=lattice_vect1, lattice_vect2=lattice_vect2,
+            ed_nlce.get_all_clusters(max_cluster_order, lv1=lattice_vect1, lv2=lattice_vect2,
                                      use_symmetry=use_symmetry)
 
         expected_cluster_mults = np.array([1, 2, 2, 4, 2, 8, 4, 1, 4])

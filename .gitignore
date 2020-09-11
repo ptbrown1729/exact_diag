@@ -9,7 +9,7 @@ data
 *.aux
 *.pdf
 
-# .bib backup
+# JabRef backup files
 *.bib.bak
 *.bib.sav
 

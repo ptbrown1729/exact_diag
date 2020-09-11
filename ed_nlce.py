@@ -36,8 +36,8 @@ def get_clusters_next_order(cluster_list=None, lv1=np.array([1, 0]), lv2=np.arra
         cluster_list_next.append(gm)
         multiplicity.append(1)
     else:
-        # for each site in cluster add +- each lattice vector. produce a new cluster if we haven't already
-        # counted that one
+        # for each site in cluster add +- each lattice vector.
+        # produce a new cluster if we haven't already counted that one
         for c_index, cluster in enumerate(cluster_list):
             # loop over clusters
             coords = list(zip(cluster.xlocs, cluster.ylocs))
@@ -68,6 +68,7 @@ def get_clusters_next_order(cluster_list=None, lv1=np.array([1, 0]), lv2=np.arra
 def get_all_clusters(max_cluster_order, lv1=np.array([1, 0]), lv2=np.array([0, 1]), use_symmetry=True):
     """
     Get all clusters of infinite lattice up to a given order.
+
     :param max_cluster_order:
     :param lv1:
     :param lv2:
@@ -119,7 +120,7 @@ def get_all_clusters_with_subclusters(max_order, lv1=np.array([1, 0]), lv2=np.ar
     # To that end we define a matrix
     # sc[ii, jj] = m iff C[ii] > C[jj] exactly m times ...
     # i.e. the iith row of this matrix tells you which clusters
-    # are contained in cluster C[ii] with what multiplicityn
+    # are contained in cluster C[ii] with what multiplicity
     cluster_mult_mat = sp.csr_matrix((len(full_cluster_list), len(full_cluster_list)))
 
     start_index = order_indices_full[-2]
@@ -440,26 +441,27 @@ def get_reduced_subclusters(parent_geometry, print_progress=False):
 
 def get_clusters_rel_by_symmetry(cluster, symmetry='d4'):
     """
-    Return all distinct clusters related to the initial cluster by symmetry. Currently, only D4 symmetry is implented.
-    TODO: allow for other symmetries
+    Return all distinct clusters related to the initial cluster by symmetry.
+
     :param cluster: geometry object representing a cluster
-    :param symmetry: TODO implement
-    :return: cluster_symm_partners
-    cluster_symm_partners is a list of geometry objects, including the initial cluster.
+    :param symmetry: TODO implement others besides D4
+    :return cluster_symm_partners: a list of geometry objects, including the initial cluster which are related by the
+    specified symmetry
     """
     rot_fn = symm.getRotFn(4)
     refl_fn = symm.getReflFn([0, 1])
 
     cluster_symm_partners = [cluster]
     # list coordinates of all D4 symmetries
+    places_round = 14
     xys_list = []
-    xys_list.append(rot_fn(cluster.xlocs, cluster.ylocs))
-    xys_list.append(rot_fn(xys_list[0][0, :], xys_list[0][1, :]))
-    xys_list.append(rot_fn(xys_list[1][0, :], xys_list[1][1, :]))
-    xys_list.append(refl_fn(cluster.xlocs, cluster.ylocs))
-    xys_list.append(refl_fn(xys_list[0][0, :], xys_list[0][1, :]))
-    xys_list.append(refl_fn(xys_list[1][0, :], xys_list[1][1, :]))
-    xys_list.append(refl_fn(xys_list[2][0, :], xys_list[2][1, :]))
+    xys_list.append(np.round(rot_fn(cluster.xlocs, cluster.ylocs), places_round))
+    xys_list.append(np.round(rot_fn(xys_list[0][0, :], xys_list[0][1, :]), places_round))
+    xys_list.append(np.round(rot_fn(xys_list[1][0, :], xys_list[1][1, :]), places_round))
+    xys_list.append(np.round(refl_fn(cluster.xlocs, cluster.ylocs), places_round))
+    xys_list.append(np.round(refl_fn(xys_list[0][0, :], xys_list[0][1, :]), places_round))
+    xys_list.append(np.round(refl_fn(xys_list[1][0, :], xys_list[1][1, :]), places_round))
+    xys_list.append(np.round(refl_fn(xys_list[2][0, :], xys_list[2][1, :]), places_round))
 
     # add distinct clusters to a list
     for xys in xys_list:

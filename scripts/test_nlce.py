@@ -45,20 +45,17 @@ if not os.path.isfile(fname_full_cluster_ed):
     model = tvi.spinSystem(parent_geometry, jx, jy, jz, hx, hy, hz, use_ryd_detunes=False)
 
     # x-translation
-    xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
-    xtransl_cycles, max_cycle_len_translx = symm.findSiteCycles(xtransl_fn, model.geometry)
-    xtransl_op = model.get_xform_op(xtransl_cycles)
-    xtransl_op = xtransl_op
+    tx_fn = symm.getTranslFn(np.array([[1], [0]]))
+    tx_cycles, ntx = symm.findSiteCycles(tx_fn, model.geometry)
+    tx_op = model.get_xform_op(tx_cycles)
 
     # y-translations
-    ytransl_fn = symm.getTranslFn(np.array([[0], [1]]))
-    ytransl_cycles, max_cycle_len_transly = symm.findSiteCycles(ytransl_fn, model.geometry)
-    ytransl_op = model.get_xform_op(ytransl_cycles)
-    ytransl_op = ytransl_op
+    ty_fn = symm.getTranslFn(np.array([[0], [1]]))
+    ty_cycles, nty = symm.findSiteCycles(ty_fn, model.geometry)
+    ty_op = model.get_xform_op(ty_cycles)
 
     # symmetry projectors
-    symm_projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
-                                                      max_cycle_len_transly, print_results=True)
+    symm_projs, kxs, kys = symm.get2DTranslationProjectors(tx_op, ntx, ty_op, nty, print_results=True)
 
     # Calculate eigenvalues and expectation values for each symmetry sector
     eig_vals_sectors = []
@@ -91,8 +88,8 @@ if not os.path.isfile(fname_full_cluster_ed):
     specific_heat_full = np.zeros(len(temps))
     szsz_full = np.zeros(len(temps))
     for jj, temp in enumerate(temps):
-        energies_full[jj] = model.thermal_avg_combine_sectors(energy_exp_sectors[:, jj], eig_vals_sectors,
-                                                              temp) / model.geometry.nsites
+        energies_full[jj] = \
+            model.thermal_avg_combine_sectors(energy_exp_sectors[:, jj], eig_vals_sectors, temp) / model.geometry.nsites
         Z = np.sum(np.exp(- eigs_all / temp))
         # for entropy calculation, need full energy, so must multiply energy by number of sites again
         entropies_full[jj] = 1. / model.geometry.nsites * (np.log(Z) + energies_full[jj] * model.geometry.nsites / temp)
@@ -141,10 +138,9 @@ else:
     data_clusters = {"max_cluster_order": max_cluster_order, "cluster_multiplicities": cluster_multiplicities,
                      "clusters_list": clusters_list, "sub_cluster_mult": sub_cluster_mult,
                      "order_start_indices": order_start_indices}
+    # save cluster data
     with open(fname_clusters, 'wb') as f:
         pickle.dump(data_clusters, f)
-
-# save cluster data
 
 # initialize variables which will store expectation values
 energies = np.zeros((len(clusters_list), len(temps)))
@@ -158,15 +154,15 @@ for ii, cluster in enumerate(clusters_list):
     H = model.createH(print_results=True)
     eig_vals, eig_vects = model.diagH(H, print_results=True)
 
-
     t_start = time.process_time()
     for jj, T in enumerate(temps):
         # calculate properties for each temperature
         energies[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, T, 0)
         Z = np.sum(np.exp(-eig_vals / T))
         entropies[ii, jj] = (np.log(Z) + energies[ii, jj] / T)
-        specific_heats[ii, jj] = 1. / T ** 2 * \
-                                    (model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, T, 0) - energies[ii, jj] ** 2)
+        specific_heats[ii, jj] = \
+            1./T**2 * (model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, T, 0) - energies[ii, jj] ** 2)
+
         # sum over pairs
         szsz_corr[ii, jj] = 0
         for aa in range(0, model.geometry.nsites):
@@ -212,7 +208,8 @@ szsz_nlce, orders_szsz, weight_szsz = \
 
 szsz_nlce_euler_resum, szsz_euler_orders = nlce.euler_resum(orders_szsz, 1)
 
-data_nlce = {"cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult, "order_start_indices": order_start_indices,
+data_nlce = {"cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult,
+             "order_start_indices": order_start_indices,
              "energies": energies, "orders_energy": orders_energy, "weight_energy": weight_energy,
              "energy_nlce_euler_resum": energy_nlce_euler_resum, "energy_euler_order": energy_euler_orders,
              "entropies": entropies, "weight_entropy": weight_entropy,
@@ -232,7 +229,7 @@ with open(fname_nlce, 'wb') as f:
 # plot results
 ########################################
 if display_results:
-    fig_handle = plt.figure()
+    figh = plt.figure()
     nrows = 2
     ncols = 2
 
@@ -286,5 +283,5 @@ if display_results:
     plt.ylim([-1, 1])
 
     fig_name = os.path.join(save_dir, "nlce_results" + now_str + ".png")
-    fig_handle.savefig(fig_name)
+    figh.savefig(fig_name)
     plt.show()

@@ -1,12 +1,8 @@
-from __future__ import print_function
-import time
 import numpy as np
 import scipy.special
 import scipy.sparse as sp
 import ed_geometry as geom
 import ed_symmetry as symm
-import ed_fermions as hubb
-import ed_spins as tvi
 
 # TODO: some ideas
 # 1. Identify clusters which are topologically the same, to save on work done for diagonalization
@@ -16,21 +12,23 @@ import ed_spins as tvi
 #    I don't know a natural way to order clusters. A few ideas for doing this, which might speed up some functions,
 #    for example doing a binary search over a sorted list instead of searching through all clusters of the same order.
 
-def get_clusters_next_order(cluster_list=None, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=False):
+def get_clusters_next_order(cluster_list=None, lv1=np.array([1, 0]), lv2=np.array([0, 1]), use_symmetry=False):
     """
     Get all clusters that can be generated from a list of clusters with one fewer site.
-    TODO: should I be keeping track of the number of symmetric clusters? This is the multiplicity in the thermodynamic
-    limit, so probably need this...
-    :param cluster_list: List of clusters to used for generating the next clusters
-    :param lattice_vect1: Lattice vector 1, giving allowed moves to add sites to our cluster
-    :param lattice_vect2:
-    :param use_symmetry: Boolean. If using symmetry, will only keep a single cluster representing each symmetry group.
-    :return: cluster_list_next
-    cluster_list_next: a list of clusters of one higher order.
+    # TODO: should I be keeping track of the number of symmetric clusters?
+    # TODO: This is the multiplicity in the thermodynamic limit, so probably need this...
+
+    :param cluster_list: List of clusters to used for generating the new set of clusters
+    :param lv1: Lattice vector 1, giving allowed moves to add sites to our cluster
+    :param lv2:
+    :param bool use_symmetry: If using symmetry, will only keep a single cluster representing each symmetry group.
+
+    :return list cluster_list_next: clusters of one higher order.
+    :return multiplicity: multiplicities of each cluster
     """
     cluster_list_next = []
     multiplicity = []
-    vect_list = [lattice_vect1, -lattice_vect1, lattice_vect2, -lattice_vect2]
+    vect_list = [lv1, -lv1, lv2, -lv2]
 
     if cluster_list is None:
         # to zeroth order, cluster of one site
@@ -42,7 +40,7 @@ def get_clusters_next_order(cluster_list=None, lattice_vect1=np.array([1, 0]), l
         # counted that one
         for c_index, cluster in enumerate(cluster_list):
             # loop over clusters
-            coords = zip(cluster.xlocs, cluster.ylocs)
+            coords = list(zip(cluster.xlocs, cluster.ylocs))
             for (xloc, yloc) in coords:
                 # for each cluster, loop over sites
                 for vect in vect_list:
@@ -67,52 +65,60 @@ def get_clusters_next_order(cluster_list=None, lattice_vect1=np.array([1, 0]), l
 
     return cluster_list_next, multiplicity
 
-def get_all_clusters(max_cluster_order, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=True):
+def get_all_clusters(max_cluster_order, lv1=np.array([1, 0]), lv2=np.array([0, 1]), use_symmetry=True):
     """
     Get all clusters of infinite lattice up to a given order.
     :param max_cluster_order:
-    :param lattice_vect1:
-    :param lattice_vect2:
+    :param lv1:
+    :param lv2:
     :param bool use_symmetry: If True, will use D4 symmetry to reduce the number of clusters
-    :return: clusters, multiplicities, order_edge_indices
-    order_edge_indices is a list of indices, where the iith entry is the index of the first cluster of order ii.
-    multiplicities is a list of the number of times a given cluster can be embedded in an infinite lattice. It is equal
-    to the number of distinct clusters produced by point symmetry operations on the cluster
+
+    :return: clusters:
+    :return multiplicities: list of the number of times a given cluster can be embedded in an infinite lattice.
+     It is equal to the number of distinct clusters produced by point symmetry operations on the cluster
+    :return order_edge_indices:  is a list of indices, where the iith entry is the index of the first
+     cluster of order ii.
     """
 
-    first_cluster, first_multiplicity = get_clusters_next_order(lattice_vect1=lattice_vect1, lattice_vect2=lattice_vect2, use_symmetry=use_symmetry)
+    first_cluster, first_multiplicity = get_clusters_next_order(lv1=lv1, lv2=lv2, use_symmetry=use_symmetry)
 
-    order_edge_indices = [0, len(first_cluster)]
+    order_inds = [0, len(first_cluster)]
     cluster_list_list = [first_cluster]
     multiplicity_list_list = [first_multiplicity]
 
     for ii in range(1, max_cluster_order):
-        clust, mult = get_clusters_next_order(cluster_list_list[ii - 1], lattice_vect1, lattice_vect2, use_symmetry)
+        clust, mult = get_clusters_next_order(cluster_list_list[ii - 1], lv1, lv2, use_symmetry)
 
-        order_edge_indices.append(len(clust) + order_edge_indices[ii])
+        order_inds.append(len(clust) + order_inds[ii])
         cluster_list_list.append(clust)
         multiplicity_list_list.append(mult)
 
     clusters = [h for g in cluster_list_list for h in g]
     multiplicities = np.array([mult for g in multiplicity_list_list for mult in g])
 
-    return clusters, multiplicities, order_edge_indices
+    return clusters, multiplicities, order_inds
 
-def get_all_clusters_with_subclusters(max_cluster_order, lattice_vect1=np.array([1, 0]), lattice_vect2=np.array([0, 1]), use_symmetry=True, print_progress=False):
+def get_all_clusters_with_subclusters(max_order, lv1=np.array([1, 0]), lv2=np.array([0, 1]),
+                                      use_symmetry=True, print_progress=False):
     """
     Obtain all sub-clusters of the infinite lattice up to a given order, including their multiplicities and sub-clusters
-    :param max_cluster_order:
-    :param lattice_vect1:
-    :param lattice_vect2:
+    :param max_order:
+    :param lv1:
+    :param lv2:
     :param use_symmetry:
-    :return: return full_cluster_list, cluster_multiplicities, sub_cluster_mult_mat
+
+    :return full_cluster_list:
+    :return cluster_multiplicities:
+    :return sub_cluster_mult_mat:
     """
 
     full_cluster_list, cluster_multiplicities, order_indices_full = \
-        get_all_clusters(max_cluster_order, lattice_vect1=lattice_vect1, lattice_vect2=lattice_vect2, use_symmetry=use_symmetry)
+        get_all_clusters(max_order, lv1=lv1, lv2=lv2, use_symmetry=use_symmetry)
 
-    # for each of these clusters, we want to identify all subclusters with multiplicity. To that end we define a matrix
-    # sc[ii, jj] = m iff C[ii] > C[jj] exactly m times ... i.e. the iith row of this matrix tells you which clusters
+    # for each of these clusters, we want to identify all subclusters with multiplicity.
+    # To that end we define a matrix
+    # sc[ii, jj] = m iff C[ii] > C[jj] exactly m times ...
+    # i.e. the iith row of this matrix tells you which clusters
     # are contained in cluster C[ii] with what multiplicityn
     cluster_mult_mat = sp.csr_matrix((len(full_cluster_list), len(full_cluster_list)))
 
@@ -140,7 +146,8 @@ def get_all_clusters_with_subclusters(max_cluster_order, lattice_vect1=np.array(
 
     return full_cluster_list, cluster_multiplicities, cluster_mult_mat, order_indices_full
 
-def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluster_basis_smaller, order_indices_smaller, use_symmetry=True):
+def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluster_basis_smaller,
+                              order_indices_smaller, use_symmetry=True):
     """
     Create a matrix which maps between two different cluster bases.
     :param cluster_basis_larger: list of clusters. This list must contain all of the clusters in cluster_basis_smaller
@@ -148,7 +155,8 @@ def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluste
     :param cluster_basis_smaller: a list of clusters
     :param order_indices_smaller:
     :param use_symmetry:
-    :return: basis_change_mat
+
+    :return basis_change_mat:
     """
 
     # TODO: could I speed this up? Instead of a double sum, comparing all elements, can I assign a single
@@ -181,19 +189,20 @@ def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluste
 # functions work on subclusters
 def get_subclusters_next_order(parent_geometry, cluster_list=None):
     """
-    Given a list of subclusters of some parent geometry, generate all possible connected subclusters with one extra
-      site. Also return which of the initial subclusters are contained in the higher order subclusters. This is in the
-      form of a list of lists, where each each sublist corresponds to a cluster in cluster_list_next_order. Each sublist
-      contains the indices of the clusters in cluster_list that are contained within the cluster in
-      cluster_list_next_order. This is useful because in general we only care about subclusters one order lower
-      than the cluster we are considering.(???). All lower order clusters will also be subclusters of one of these.
+    Given a list of subclusters of some parent geometry, generate all possible connected subclusters with one
+    extra site. Also return which of the initial subclusters are contained in the higher order subclusters. This
+    is in the form of a list of lists, where each each sublist corresponds to a cluster in cluster_list_next_order.
+    Each sublist contains the indices of the clusters in cluster_list that are contained within the cluster in
+    cluster_list_next_order. This is useful because in general we only care about subclusters one order lower
+    than the cluster we are considering.(???). All lower order clusters will also be subclusters of one of these.
+
     :param parent_geometry: Geometry to generate subclusters from
     :param cluster_list: A collection of subclusters.
-    :return: cluster_list_next_order, old_cluster_contained_in_new_clusters
-    cluster_list_next_order, a list of clusters
-    old_cluster_contained_in_new_clusters, a list of lists. Each sublist contains the indices of the clusters of lower
-    order (i.e. the indices in the list cluster_list) representing clusters contained in the given cluster in
-    cluster_list_next_order
+
+    :return cluster_list_next_order: list of clusters
+    :return old_cluster_contained_in_new_clusters: a list of lists. Each sublist contains the
+    indices of the clusters of lower order (i.e. the indices in the list cluster_list)
+    representing clusters contained in the given cluster in cluster_list_next_order
     """
     cluster_list_next = []
     old_cluster_contained_in_new_clusters = []
@@ -206,17 +215,20 @@ def get_subclusters_next_order(parent_geometry, cluster_list=None):
     else:
         for c_index, cluster in enumerate(cluster_list):
             # need convenient way to switch between parent cluster and sub-cluster indexing
-            parent_coords = zip(parent_geometry.xlocs, parent_geometry.ylocs)
-            cluster_coords = zip(cluster.xlocs, cluster.ylocs)
+            parent_coords = list(zip(parent_geometry.xlocs, parent_geometry.ylocs))
+            cluster_coords = list(zip(cluster.xlocs, cluster.ylocs))
+
             # loop over sites in our cluster, and try to add additional sites adjacent to them
             for ii, (xloc, yloc) in enumerate(cluster_coords):
                 # parent cluster coordinate? Check this
                 jj = [aa for aa,coord in enumerate(parent_coords) if coord==(xloc, yloc)]
                 jj = jj[0]
+
                 # loop over sites in parent geometry and check if they are adjacent
                 for kk in range(0, parent_geometry.nsites):
                     xloc_kk = parent_geometry.xlocs[kk]
                     yloc_kk = parent_geometry.ylocs[kk]
+
                     # if site is adjacent and not already in our cluster, make a new cluster by adding that site
                     if parent_geometry.adjacency_mat[jj, kk] == 1 and (xloc_kk, yloc_kk) not in cluster_coords:
                         new_xlocs = np.concatenate((cluster.xlocs, np.array([xloc_kk])))
@@ -240,23 +252,27 @@ def get_subclusters_next_order(parent_geometry, cluster_list=None):
 
 def get_all_subclusters(parent_geometry):
     """
-      Find all subclusters containing up to max_order sites of a given parent geometry, and return them as a list of
-      lists. Each sublist contains all clusters with a given number of sites. The first sublist contains all clusters
-      with one site, the second sublist contains all clusters with two sites, etc. For the purposes of this function,
-      we regard clusters with different coordinates as being different clusters. This makes it easier to identify
-      the multiplicity of a given subcluster.
+    Find all subclusters containing up to max_order sites of a given parent geometry, and return them as a list of
+    lists. Each sublist contains all clusters with a given number of sites. The first sublist contains all clusters
+    with one site, the second sublist contains all clusters with two sites, etc. For the purposes of this function,
+    we regard clusters with different coordinates as being different clusters. This makes it easier to identify
+    the multiplicity of a given subcluster.
 
-      We can also think of these clusters as being numbered by their position in this list
-      (if we imagine we have flattened the list of lists into a single
-      list). Then for each cluster, sub_cluster_indices contains a list of the indices of all sub clusters of that
-      cluster, where the indices are interpreted as in the previous sentence. E.g., we have
-      cluster_order_list = [[gm00, gm01, gm02, ...], [gm10, gm11, ...], ...], then gm00 has index 0, gm01 has index 1,...
-      sub_cluster_indiex = [[], [], ..., [1, 3], ...]. In this case, we interpret this as gm00 has no subclusters, and
-      similarly for gm0n. Then gm10 has two subclusters, one with index 1 which is gm01, and on with index 3 which is
-      gm02.
+    We can also think of these clusters as being numbered by their position in this list
+    (if we imagine we have flattened the list of lists into a single
+    list). Then for each cluster, sub_cluster_indices contains a list of the indices of all sub clusters of that
+    cluster, where the indices are interpreted as in the previous sentence. E.g., we have
+    cluster_order_list = [[gm00, gm01, gm02, ...], [gm10, gm11, ...], ...], then gm00 has index 0, gm01 has index 1,...
+    sub_cluster_indiex = [[], [], ..., [1, 3], ...]. In this case, we interpret this as gm00 has no subclusters, and
+    similarly for gm0n. Then gm10 has two subclusters, one with index 1 which is gm01, and on with index 3 which is
+    gm02.
+
     :param parent_geometry:
-    :return: cluster_order_list, sub_cluster_indices, sub_cluster_mat, order_start_indices
-    cluster_order_list, a list of lists of clusters
+
+    :return cluster_order_list: a list of lists of clusters
+    :return sub_cluster_indices:
+    :return sub_cluster_mat:
+    :return order_start_indices:
     """
     # TODO sub_cluster_indices is redundant as an output, and should be removed...
 
@@ -272,7 +288,7 @@ def get_all_subclusters(parent_geometry):
     # cluster specified in parent_geometry
     while not clusters_next_order == [] and current_order < parent_geometry.nsites:
         # append new cluster indices
-        for jj,_ in enumerate(clusters_next_order):
+        for jj, _ in enumerate(clusters_next_order):
             curr_indices = []
             if not contained_cluster_indices[jj] == []:
                 curr_indices = [ci + total_clusters_previous for ci in contained_cluster_indices[jj]]
@@ -303,28 +319,25 @@ def get_all_subclusters(parent_geometry):
 
     # if you want a flattened version of cluster_orders_list, one way to get that is
     # flat = [g for h in cluster_orders_list for g in h]
-    # return cluster_orders_list, sub_cluster_indices, sub_cluster_mat
     return cluster_orders_list, sub_cluster_indices, sub_cluster_mat
 
 def reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=True):
     """
-    Reduce clusters to those which are geometrically and/or symmetrically distinct. In contrast to get_all_subclusters,
-    in this function we regard clusters with different coordinates for their sites as identical, provided their
-    adjacency matrices and distancs between sites agree. Checking this properly requires us_interspecies to put our clusters in
-    some sort of normal order before comparing them.
+    Reduce clusters to those which are geometrically and/or symmetrically distinct. In contrast to
+    get_all_subclusters, in this function we regard clusters with different coordinates for their sites as
+    identical, provided their adjacency matrices and distancs between sites agree. Checking this properly
+    requires us_interspecies to put our clusters in some sort of normal order before comparing them.
 
     :param cluster_orders_list:
-    :return: clusters_geom_distinct, clusters_geom_multiplicity, cluster_reduction_mat
 
-    clusters_geom_distinct is a list of lists. Each sublist contains all the distinct clusters for a given order.
-
-    clusters_geom_multiplicity is a list of lists. Each sublist contains the multiplicities of the corresponding
-    cluster in the corresponding sublist of clusters_geom_distinct. TODO: this is now redundant with the addition
-    of cluster_reduction_mat.
-
-    cluster_reduction_mat is an n_reduced_clusters x n_full_clusters matrix, where M[ii, jj] = 1 if and only if
-    the cluster with index ii in the full list of clusters is geometrically the same as the cluster with index jj
-    in the list of reduced clusters. In some sense we can think of this as a basis transformation matrix ...
+    :return clusters_geom_distinct: a list of lists. Each sublist contains all the distinct clusters for a given order.
+    :return clusters_geom_multiplicity: a list of lists. Each sublist contains the multiplicities of the corresponding
+    cluster in the corresponding sublist of clusters_geom_distinct.
+    TODO: this is now redundant with the addition of cluster_reduction_mat.
+    :return cluster_reduction_mat: is an n_reduced_clusters x n_full_clusters matrix, where M[ii, jj] = 1 if
+    and only if the cluster with index ii in the full list of clusters is geometrically the same as the cluster
+    with index jj in the list of reduced clusters. In some sense we can think of this as a basis
+    transformation matrix ...
     """
     # TODO: would like to rewrite thise to use cluster_list and order_start_indices instead of cluster_orders_list
     nclusters = np.sum(np.array([len(cl) for cl in cluster_orders_list]))
@@ -382,21 +395,21 @@ def get_reduced_subclusters(parent_geometry, print_progress=False):
     """
     For a given parent geometry, produce all subclusters and the number of times each subcluster is contained in the
     parent
-    :param parent_geometry:
-    :return: cluster_list, sub_cluster_mat, order_edge_indices
-    cluster_list is a list of distinct sub clusters of the parent_geometry (including the parent geometry itself)
 
-    sub_cluster_mat is a square matrix which gives the number of times cluster j can be embedded in cluster i, if
+    :param parent_geometry:
+
+    :return cluster_list: a list of distinct sub clusters of the parent_geometry (including the parent geometry itself)
+    :return sub_cluster_mat: a square matrix which gives the number of times cluster j can be embedded in cluster i, if
     cluster j is a proper sub-cluster of i (i.e. the diagonal of this matrix is zero).
     sub_cluster_mat[ii, jj] = # C_j < C_i
-
-    order_edge_indices give the indices in cluster_list where clusters of increasingly larger order appear.
+    :return order_edge_indices: give the indices in cluster_list where clusters of increasingly larger order appear.
     """
 
     cluster_orders_list, sub_cluster_indices, sub_cluster_mat = get_all_subclusters(parent_geometry)
 
     # get unique geometric clusters of each order and multiplicity
-    clusters_geom_distinct, clusters_geom_multiplicity, cluster_reduction_mat = reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=1)
+    clusters_geom_distinct, clusters_geom_multiplicity, cluster_reduction_mat = \
+        reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=True)
     clusters_list = [g for h in clusters_geom_distinct for g in h]
 
     # indices
@@ -458,16 +471,19 @@ def get_clusters_rel_by_symmetry(cluster, symmetry='d4'):
     return cluster_symm_partners
 
 # nlce functions
-
 def get_nlce_exp_val(exp_vals_clusters, sub_cluster_multiplicity_mat,
                      parent_clust_multiplicity_vect, order_start_indices, nsites):
     """
     Compute linked cluster expansion weights and expectation values from expectation values on individual clusters
+
     :param exp_vals_clusters:
     :param sub_cluster_multiplicity_mat:
+    :param parent_clust_multiplicity_vect:
+    :param order_start_indices:
     :param nsites:
-    :param include_full_cluster:
-    :return: expectation_vals, cluster_weights
+
+    :return expectation_vals:
+    :return cluster_weights:
     """
     # TODO: make this function flexible enough to handle NCLE for infinite cluster or finite cluster
     # TODO: ensure parent_clust_multiplicity_vect is a row vector
@@ -532,269 +548,4 @@ def wynn_resum(exp_vals_orders):
     pass
 
 if __name__ == "__main__":
-    import time
-    import datetime
-    import numpy as np
-    import cPickle as pickle
-    import ed_geometry as geom
-    from ed_nlce import *
-
-    ########################################
-    # general settings
-    ########################################
-
-    max_cluster_order = 9
-    do_thermodynamic_limit = 1
-    max_cluster_order_thermo_limit = 7
-    diag_full_cluster = 00
-    display_results = 1
-    temps = np.logspace(-1, 0.5, 50)
-
-    if display_results:
-        import matplotlib.pyplot as plt
-
-
-    ########################################
-    # create geometry
-    ########################################
-    # xlocs = [1, 1, 2, 2, 3, 3, 4, 4]
-    # ylocs = [1, 2, 2, 3, 3, 4, 4, 5]
-    # parent_geometry = geom.Geometry.createNonPeriodicGeometry(xlocs, ylocs)
-    parent_geometry = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=True, bc2_open=True)
-    parent_geometry.permute_sites(parent_geometry.get_sorting_permutation())
-    clusters_list, sub_cluster_mult, order_start_indices = get_reduced_subclusters(parent_geometry)
-
-    jx = 0.5
-    jy = 0.5
-    jz = 0.5
-    hx = 0.0
-    hy = 0.0
-    hz = 0.0
-
-    ########################################
-    # diagonalization of each cluster and computation of properties for each cluster
-    ########################################
-    # initialize variables which will store expectation values
-    energies = np.zeros((len(clusters_list), len(temps)))
-    entropies = np.zeros((len(clusters_list), len(temps)))
-    specific_heats = np.zeros((len(clusters_list), len(temps)))
-
-    for ii, cluster in enumerate(clusters_list):
-        if cluster.nsites > max_cluster_order:
-            continue
-        print("%d/%d" % (ii + 1, len(clusters_list)))
-        model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
-        H = model.createH(print_results=True)
-        eig_vals, eig_vects = model.diagH(H, print_results=True)
-
-        t_start = time.process_time()
-        for jj, T in enumerate(temps):
-            # calculate properties for each temperature
-            energies[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, T, 0)
-            Z = np.sum(np.exp(-eig_vals / T))
-            entropies[ii, jj] = (np.log(Z) + energies[ii, jj] / T)
-            specific_heats[ii, jj] = 1. / T ** 2 * \
-                                     (
-                                             model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, T, 0) - energies[ii, jj] ** 2)
-        t_end = time.process_time()
-        print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
-
-    # nlce computation
-    parent_cluster_mult_vector = sub_cluster_mult[-1, :]
-    if max_cluster_order == parent_geometry.nsites:
-        parent_cluster_mult_vector[0, -1] = 1
-
-    energy_nlce, orders_energy, weight_energy = \
-        get_nlce_exp_val(energies[0:order_start_indices[max_cluster_order], :],
-                         sub_cluster_mult[0:order_start_indices[max_cluster_order],
-                         0:order_start_indices[max_cluster_order]],
-                         parent_cluster_mult_vector[0, 0:order_start_indices[max_cluster_order]],
-                         order_start_indices[0:max_cluster_order + 1], parent_geometry.nsites)
-    entropy_nlce, order_entropy, weight_entropy = \
-        get_nlce_exp_val(entropies[0:order_start_indices[max_cluster_order], :],
-                         sub_cluster_mult[0:order_start_indices[max_cluster_order],
-                         0:order_start_indices[max_cluster_order]],
-                         parent_cluster_mult_vector[0, 0:order_start_indices[max_cluster_order]],
-                         order_start_indices[0:max_cluster_order + 1], parent_geometry.nsites)
-    specific_heat_nlce, orders_specific_heat, weight_specific_heat = \
-        get_nlce_exp_val(specific_heats[0:order_start_indices[max_cluster_order], :],
-                         sub_cluster_mult[0:order_start_indices[max_cluster_order],
-                         0:order_start_indices[max_cluster_order]],
-                         parent_cluster_mult_vector[0, 0:order_start_indices[max_cluster_order]],
-                         order_start_indices[0:max_cluster_order + 1], parent_geometry.nsites)
-
-    ########################################
-    # diagonalize full cluster
-    ########################################
-    if diag_full_cluster:
-        model = tvi.spinSystem(parent_geometry, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
-
-        cx, cy = model.geometry.get_center_of_mass()
-        # rot-fn
-        # TODO: not correclty detecting failure to close under rotations
-        rot_fn = symm.getRotFn(4, cx=cx, cy=cy)
-        rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, model.geometry)
-        rot_op = model.get_xform_op(rot_cycles)
-        # reflection about y-axis
-        refl_fn = symm.getReflFn(np.array([0, 1]), cx=cx, cy=cy)
-        refl_cycles, max_cycle_len_ref = symm.findSiteCycles(refl_fn, model.geometry)
-        refl_op = model.get_xform_op(refl_cycles)
-        # symmetry projectors
-        # symm_projs = symm.getC4VProjectors(rot_op, refl_op)
-        symm_projs, _ = symm.getZnProjectors(rot_op, 4, print_results=True)
-
-        # TODO calculate energy eigs for each...
-        eig_vals_sectors = []
-        energy_exp_sectors = np.zeros((len(symm_projs), len(temps)))
-        energy_sqr_exp_sectors = np.zeros((len(symm_projs), len(temps)))
-        for ii, proj in enumerate(symm_projs):
-            H = model.createH(projector=proj, print_results=True)
-            eig_vals, eig_vects = model.diagH(H, print_results=True)
-            eig_vals_sectors.append(eig_vals)
-            for jj in range(0, len(temps)):
-                energy_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, temps[jj], print_results=False)
-                energy_sqr_exp_sectors[ii, jj] = model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, temps[jj],
-                                                                            print_results=False)
-        eigs_all = np.sort(np.concatenate(eig_vals_sectors))
-
-        energies_full = np.zeros(len(temps))
-        entropies_full = np.zeros(len(temps))
-        specific_heat_full = np.zeros(len(temps))
-        for jj, temp in enumerate(temps):
-            energies_full[jj] = model.thermal_avg_combine_sectors(energy_exp_sectors[:, jj], eig_vals_sectors,
-                                                                  temp) / model.geometry.nsites
-            Z = np.sum(np.exp(- eigs_all / temp))
-            # for entropy calculation, need full energy, so must multiply energy by number of sites again
-            entropies_full[jj] = 1. / model.geometry.nsites * (
-                np.log(Z) + energies_full[jj] * model.geometry.nsites / temp)
-            # for specific heat, need full energy instead of energy per site
-            ham_sqr = model.thermal_avg_combine_sectors(energy_sqr_exp_sectors[:, jj], eig_vals_sectors, temp)
-            specific_heat_full[jj] = 1. / (temp ** 2 * model.geometry.nsites) * (
-                ham_sqr - (energies_full[jj] * model.geometry.nsites) ** 2)
-
-    ########################################
-    # generate all clusters up to certain order on the infinite lattice
-    ########################################
-
-    if do_thermodynamic_limit:
-        # clusters_list, sub_cluster_mult, order_start_indices = get_reduced_subclusters(parent_geometry)
-        # TODO: want cluster order indices from this function also
-        clusters_list_tl, cluster_multiplicities_tl, sub_cluster_mult_tl = \
-            get_all_clusters_with_subclusters(max_cluster_order_thermo_limit)
-
-        # initialize variables which will store expectation values
-        energies_tl = np.zeros((len(clusters_list_tl), len(temps)))
-        entropies_tl = np.zeros((len(clusters_list_tl), len(temps)))
-        specific_heats_tl = np.zeros((len(clusters_list_tl), len(temps)))
-
-        for ii, cluster in enumerate(clusters_list_tl):
-            print("%d/%d" % (ii + 1, len(clusters_list_tl)))
-            model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
-            H = model.createH(print_results=True)
-            eig_vals, eig_vects = model.diagH(H, print_results=True)
-
-            t_start = time.process_time()
-            for jj, T in enumerate(temps):
-                # calculate properties for each temperature
-                energies_tl[ii, jj] = model.get_exp_vals_thermal(eig_vects, H, eig_vals, T, 0)
-                Z_tl = np.sum(np.exp(-eig_vals / T))
-                entropies_tl[ii, jj] = (np.log(Z_tl) + energies_tl[ii, jj] / T)
-                specific_heats_tl[ii, jj] = 1. / T ** 2 * \
-                                            (model.get_exp_vals_thermal(eig_vects, H.dot(H), eig_vals, T, 0) - energies_tl[
-                                                ii, jj] ** 2)
-            t_end = time.process_time()
-            print("Computing %d finite temperature expectation values took %0.2fs" % (len(temps), t_end - t_start))
-
-        # nlce computation
-        energy_nlce_tl, weight_energy_tl = \
-            get_nlce_exp_val(energies_tl, sub_cluster_mult_tl, cluster_multiplicities_tl, 1)
-        entropy_nlce_tl, weight_entropy_tl = \
-            get_nlce_exp_val(entropies_tl, sub_cluster_mult_tl, cluster_multiplicities_tl, 1)
-        specific_heat_nlce_tl, weight_specific_heat_tl = \
-            get_nlce_exp_val(specific_heats_tl, sub_cluster_mult_tl, cluster_multiplicities_tl, 1)
-
-    ########################################
-    # plot results
-    ########################################
-    if display_results:
-        fig_handle = plt.figure()
-        nrows = 2
-        ncols = 2
-
-        plt.subplot(nrows, ncols, 1)
-        plt.semilogx(temps, energies[-1, :] / parent_geometry.nsites)
-        plt.semilogx(temps, energy_nlce)
-        for ii in range(6, orders_energy.shape[0]):
-            plt.semilogx(temps, np.sum(orders_energy[0:ii, ...], 0))
-
-        if diag_full_cluster:
-            plt.semilogx(temps, energies_full)
-        if do_thermodynamic_limit:
-            plt.semilogx(temps, energy_nlce_tl)
-
-        plt.grid()
-        plt.xlabel('Temperature (J)')
-        plt.ylabel('Energy/site (J)')
-        plt.title('Energy/site')
-        plt.ylim([-2, 0.25])
-        plt.legend(['last cluster', 'finite nlce', 'full cluster',
-                    'thermo limit nlce order = %d' % max_cluster_order_thermo_limit])
-
-        plt.subplot(nrows, ncols, 2)
-        plt.semilogx(temps, entropies[-1, :] / parent_geometry.nsites)
-        plt.semilogx(temps, entropy_nlce)
-        for ii in range(6, orders_energy.shape[0]):
-            plt.semilogx(temps, np.sum(order_entropy[0:ii, ...], 0))
-        if diag_full_cluster:
-            plt.semilogx(temps, entropies_full)
-        if do_thermodynamic_limit:
-            plt.semilogx(temps, entropy_nlce_tl)
-        plt.grid()
-        plt.xlabel('Temperature (J)')
-        plt.ylabel('Entropy/site ()')
-        plt.ylim([0, 2])
-        # plt.title('Entropy/site')
-
-        plt.subplot(nrows, ncols, 3)
-        plt.semilogx(temps, specific_heats[-1, :] / parent_geometry.nsites)
-        plt.semilogx(temps, specific_heat_nlce)
-        for ii in range(6, orders_energy.shape[0]):
-            plt.semilogx(temps, np.sum(orders_specific_heat[0:ii, ...], 0))
-        if diag_full_cluster:
-            plt.semilogx(temps, specific_heat_full)
-        if do_thermodynamic_limit:
-            plt.semilogx(temps, specific_heat_nlce_tl)
-        plt.grid()
-        plt.xlabel('Temperature (J)')
-        plt.ylabel('Specific heat/site ()')
-        plt.ylim([0, 2])
-        # plt.title('Specific heat / site')
-
-    ########################################
-    # save data
-    ########################################
-
-    data = [clusters_list, sub_cluster_mult, order_start_indices, temps,
-            energies, weight_energy, entropies, weight_entropy, specific_heats, weight_specific_heat,
-            energy_nlce, entropy_nlce, specific_heat_nlce]
-    if diag_full_cluster:
-        data.append([energies_full, entropies_full, specific_heat_full])
-    if do_thermodynamic_limit:
-        data.append([energies_tl, energy_nlce_tl, weight_energy_tl,
-                     entropies_tl, entropy_nlce_tl, weight_entropy_tl,
-                     specific_heats_tl, specific_heat_nlce_tl, weight_specific_heat_tl])
-
-    today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
-
-    if display_results:
-        fig_name = "nlce_results" + today_str + ".png"
-        fig_handle.savefig(fig_name)
-        plt.show()
-
-    fname = "nlce_test_" + today_str + "_pickle.dat"
-    with open(fname, 'wb') as f:
-        pickle.dump(data, f)
-
-    # read data example
-    # with open(fname, 'rb') as f:
-    #     f_loaded = pickle.load(f)
+    pass

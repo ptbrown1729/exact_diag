@@ -160,7 +160,7 @@ class ed_base:
 
         if print_results:
             tend = time.process_time()
-            print("Diagonalizing H of size %dx%d took %0.2f s" % (haml.shape[0], haml.shape[0], tend - tstart))
+            print("Diagonalizing H of size %d x %d took %0.2f s" % (haml.shape[0], haml.shape[1], tend - tstart))
 
         return eigvals, eigvects
 

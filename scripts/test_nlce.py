@@ -13,7 +13,7 @@ import ed_nlce as nlce
 ########################################
 
 now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
-max_cluster_order = 7
+max_cluster_order = 8
 display_results = True
 save_dir = "../data"
 fname_full_cluster_ed = os.path.join(save_dir, 'four_by_four_heisenberg_ed.pkl')
@@ -221,7 +221,7 @@ data_nlce = {"cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult
              "szsz_nlce_euler_resum": szsz_nlce_euler_resum, "szsz_euler_orders": szsz_euler_orders,
              "temps": temps}
 
-fname_nlce = "nlce_results_order_to=%d.pkl" % max_cluster_order
+fname_nlce = os.path.join(save_dir, "%s_nlce_results_order_to=%d.pkl" % (now_str, max_cluster_order))
 with open(fname_nlce, 'wb') as f:
     pickle.dump(data_nlce, f)
 
@@ -229,59 +229,60 @@ with open(fname_nlce, 'wb') as f:
 # plot results
 ########################################
 if display_results:
-    figh = plt.figure()
-    nrows = 2
-    ncols = 2
+    figh = plt.figure(figsize=(12, 8))
+    grid = plt.GridSpec(2, 2, wspace=0.4, hspace=0.2)
 
-    plt.subplot(nrows, ncols, 1)
+    plt.subplot(grid[0, 0])
     plt.semilogx(temps, energies_full)
     leg = ['4x4 cluster pbc']
     for ii in range(4, orders_energy.shape[0]):
-        plt.semilogx(temps, np.sum(orders_energy[0 : ii + 1, ...], 0))
+        plt.semilogx(temps, np.sum(orders_energy[0:ii + 1, ...], axis=0), '.')
         order_str = 'nlce order = %d' % (ii + 1)
         leg.append(order_str)
+
+    plt.semilogx(temps, energy_nlce_euler_resum, '.')
     leg.append('euler resum')
-    plt.semilogx(temps, energy_nlce_euler_resum)
+
 
     plt.grid()
-    plt.xlabel('Temperature (J)')
+    # plt.xlabel('Temperature (J)')
     plt.ylabel('Energy/site (J)')
-    plt.title('Energy/site')
+    # plt.title('Energy/site')
     plt.ylim([-2, 0.25])
     plt.legend(leg)
 
-    plt.subplot(nrows, ncols, 2)
+    plt.subplot(grid[0, 1])
     plt.semilogx(temps, entropies_full)
     for ii in range(4, orders_energy.shape[0]):
-        plt.semilogx(temps, np.sum(orders_entropy[0 : ii + 1, ...], 0))
-    plt.semilogx(temps, entropy_nlce_euler_resum)
+        plt.semilogx(temps, np.sum(orders_entropy[0 : ii + 1, ...], 0), '.')
+    plt.semilogx(temps, entropy_nlce_euler_resum, '.')
     plt.grid()
-    plt.xlabel('Temperature (J)')
-    plt.ylabel('Entropy/site ()')
+    # plt.xlabel('Temperature (J)')
+    plt.ylabel('Entropy/site')
     plt.ylim([0, 2])
     # plt.title('Entropy/site')
 
-    plt.subplot(nrows, ncols, 3)
+    plt.subplot(grid[1, 0])
     plt.semilogx(temps, specific_heat_full)
     for ii in range(4, orders_energy.shape[0]):
-        plt.semilogx(temps, np.sum(orders_specific_heat[0 : ii + 1, ...], 0))
-    plt.semilogx(temps, spheat_nlce_euler_resum)
+        plt.semilogx(temps, np.sum(orders_specific_heat[0 : ii + 1, ...], 0), '.')
+    plt.semilogx(temps, spheat_nlce_euler_resum, '.')
     plt.grid()
     plt.xlabel('Temperature (J)')
     plt.ylabel('Specific heat/site ()')
     plt.ylim([0, 2])
     # plt.title('Specific heat / site')
 
-    plt.subplot(nrows, ncols, 4)
-    #plt.semilogx(temps, szsz_full)
+    plt.subplot(grid[1, 1])
+    plt.semilogx(temps, szsz_full)
     for ii in range(4, orders_energy.shape[0]):
-        plt.semilogx(temps, np.sum(orders_szsz[0: ii + 1, ...], 0))
-    plt.semilogx(temps, szsz_nlce_euler_resum)
+        plt.semilogx(temps, np.sum(orders_szsz[0: ii + 1, ...], 0), '.')
+    plt.semilogx(temps, szsz_nlce_euler_resum, '.')
     plt.grid()
     plt.xlabel('Temperature (J)')
     plt.ylabel('SzSz mean ()')
     plt.ylim([-1, 1])
 
-    fig_name = os.path.join(save_dir, "nlce_results" + now_str + ".png")
+    fig_name = os.path.join(save_dir, "%s_nlce_results.png" % now_str)
     figh.savefig(fig_name)
     plt.show()

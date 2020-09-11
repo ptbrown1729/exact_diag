@@ -36,7 +36,7 @@ class TestNLCE(unittest.TestCase):
         max_cluster_order = 4
         lattice_vect1 = np.array([1, 0])
         lattice_vect2 = np.array([0, 1])
-        use_symmetry=1
+        use_symmetry = True
 
         full_cluster_list, cluster_multiplicities, order_start_indices = \
             ed_nlce.get_all_clusters(max_cluster_order, lv1=lattice_vect1, lv2=lattice_vect2,

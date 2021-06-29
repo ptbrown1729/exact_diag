@@ -2,7 +2,7 @@
 This project also includes tools for reducing the size of the matrices which must be
 diagonalized by taking advantage of symmetries of the Hamiltonians. The approach adopted
 here is described in detail in [ed-symmetries.tex](ed-symmetries.tex) and many useful references
-can be found both here and in [biliography.bib](bibliography.bib).
+can be found both here and in [bibliography.bib](bibliography.bib).
 
 ### [ed_base.py](ed_base.py)
 This file defines a base class for use with different exact diagonalization models. This class defines

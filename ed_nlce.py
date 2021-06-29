@@ -548,6 +548,3 @@ def euler_resum(exp_vals_orders, y):
 
 def wynn_resum(exp_vals_orders):
     pass
-
-if __name__ == "__main__":
-    pass

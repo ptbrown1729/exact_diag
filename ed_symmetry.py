@@ -202,7 +202,7 @@ def reduce_symm_projector(p_full, dim, states_related_by_symm, print_results=Fal
     projected subspace
     """
     if print_results:
-        tstart = time.time()
+        tstart = time.perf_counter()
 
     if not sp.isspmatrix_csr(p_full):
         print("warning, projop_full2full was not csr. Converted it to csr.")
@@ -288,7 +288,7 @@ def reduce_symm_projector(p_full, dim, states_related_by_symm, print_results=Fal
     p_red = sp.diags(np.reciprocal(norms), 0, format="csr") * p_red
 
     if print_results:
-        tend = time.time()
+        tend = time.perf_counter()
         print("Finding projector took %0.2f s" % (tend - tstart))
 
     return p_red

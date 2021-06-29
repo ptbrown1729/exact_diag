@@ -1,3 +1,6 @@
+"""
+Tools for working with Green's functions
+"""
 import numpy as np
 import warnings
 

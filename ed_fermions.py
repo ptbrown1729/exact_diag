@@ -162,7 +162,7 @@ class fermions(ed_base.ed_base):
         the column index.
         """
         if print_results:
-            tstart = time.time()
+            tstart = time.perf_counter()
 
         n_logical_sites = self.geometry.nsites * self.nspecies
         state_spin_labels = sp.csc_matrix((self.nstates, n_logical_sites))
@@ -182,7 +182,7 @@ class fermions(ed_base.ed_base):
             state_spin_labels = projector * state_spin_labels
 
         if print_results:
-            tend = time.time()
+            tend = time.perf_counter()
             print("Took %0.2f s to generate state vector labels" % (tend - tstart))
 
         text_labels = ''
@@ -244,7 +244,7 @@ class fermions(ed_base.ed_base):
         """
 
         if print_results:
-            tstart = time.process_time()
+            tstart = time.perf_counter()
 
         if projector is None:
             projector = sp.eye(self.nstates)
@@ -260,7 +260,7 @@ class fermions(ed_base.ed_base):
         haml = haml + self.get_potential_op(self.potentials, projector=projector)
 
         if print_results:
-            tend = time.process_time()
+            tend = time.perf_counter()
             print("Constructing hamiltonian of size %dx%d took %0.2f s" % (haml.shape[0], haml.shape[1], tend - tstart))
 
         return haml
@@ -468,7 +468,7 @@ class fermions(ed_base.ed_base):
         # conductivity, which excludes the zero frequency weights...
         # TODO: could also handle period_start = infinity case...
         if print_results:
-            tstart = time.process_time()
+            tstart = time.perf_counter()
 
         temperature = float(temperature)
         nsites = self.geometry.nsites
@@ -500,7 +500,7 @@ class fermions(ed_base.ed_base):
             sigma_re_two_sided_int = 2 * sigma_one_sided_int
 
         if print_results:
-            tend = time.process_time()
+            tend = time.perf_counter()
             print("integrate_current for %d x %d matrix took %0.2f s" %
                   (omegas.shape[0], omegas.shape[0], tend - tstart))
 
@@ -517,7 +517,7 @@ class fermions(ed_base.ed_base):
         :return:
         """
         if print_results:
-            tstart = time.process_time()
+            tstart = time.perf_counter()
 
         # normalized lorentzian function. Area is constant with changing eta
         # expected to need a factor of 1/pi here to normalize lorentzian area to 1
@@ -555,11 +555,7 @@ class fermions(ed_base.ed_base):
         opt_cond_fn = lambda wo, eta: np.pi / z / self.geometry.nsites * np.nansum(omega_fn(wo, eta, omegas, thermal_mat_elem))
 
         if print_results:
-            tend = time.process_time()
+            tend = time.perf_counter()
             print("get_optical_cond_fn took %0.2f s" % (tend - tstart))
 
         return opt_cond_fn
-
-
-if __name__ == "__main__":
-    pass

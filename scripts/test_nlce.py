@@ -13,7 +13,7 @@ import ed_nlce as nlce
 ########################################
 
 now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
-max_cluster_order = 8
+max_cluster_order = 9
 display_results = True
 save_dir = "../data"
 fname_full_cluster_ed = os.path.join(save_dir, 'four_by_four_heisenberg_ed.pkl')
@@ -221,7 +221,7 @@ data_nlce = {"cluster_list": clusters_list, "sub_cluster_mult": sub_cluster_mult
              "szsz_nlce_euler_resum": szsz_nlce_euler_resum, "szsz_euler_orders": szsz_euler_orders,
              "temps": temps}
 
-fname_nlce = os.path.join(save_dir, "%s_nlce_results_order_to=%d.pkl" % (now_str, max_cluster_order))
+fname_nlce = os.path.join(save_dir, "%s_nlce_results_to_order=%d.pkl" % (now_str, max_cluster_order))
 with open(fname_nlce, 'wb') as f:
     pickle.dump(data_nlce, f)
 
@@ -283,6 +283,6 @@ if display_results:
     plt.ylabel('SzSz mean ()')
     plt.ylim([-1, 1])
 
-    fig_name = os.path.join(save_dir, "%s_nlce_results.png" % now_str)
+    fig_name = os.path.join(save_dir, "%s_nlce_results_to_order=%d.png" % (now_str, max_cluster_order))
     figh.savefig(fig_name)
     plt.show()

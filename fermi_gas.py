@@ -1,3 +1,6 @@
+"""
+Compute properties of a one- or two-component non-interacting Fermi gas
+"""
 import numpy as np
 import scipy.optimize
 import warnings

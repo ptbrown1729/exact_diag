@@ -36,9 +36,6 @@ class spinSystem(ed_base.ed_base):
         :param use_ryd_detunes:
         """
         # TODO: update this to allow easy use of Heisenberg or Rydberg
-        # TODO: finish updating class to work appropriately with this...
-        # TODO: update base class to assume we have the geometry field,
-        #  which will make the signature of fns such as get_xform_op the same for the derived classes.
         self.nbasis = int(2 * spin + 1)
         self.splus = self.get_splus(spin)
         self.sminus = self.get_sminus(spin)
@@ -160,7 +157,7 @@ class spinSystem(ed_base.ed_base):
         the column index.
         """
         if print_results:
-            tstart = time.time()
+            tstart = time.perf_counter()
 
         nsites = self.geometry.nsites
         StateSpinLabels = sp.csc_matrix((2 ** nsites, nsites))  # csc 0.7s vs. csr 9s. As expected for vertical slicing.
@@ -174,7 +171,7 @@ class spinSystem(ed_base.ed_base):
         # self.StateSpinLabels = StateSpinLabels
         StateSpinLabels.eliminate_zeros()
         if print_results:
-            tend = time.time()
+            tend = time.perf_counter()
             print("Took %0.2f s to generate state vector labels" % (tend - tstart))
         return StateSpinLabels
 
@@ -187,10 +184,10 @@ class spinSystem(ed_base.ed_base):
         :return:
         """
         if print_results:
-            tstart = time.time()
+            tstart = time.perf_counter()
         StateParity = np.mod(np.array(self.get_state_vects(self.geometry.nsites, 2 ** self.geometry.nsites).sum(1)), 2)
         if print_results:
-            tend = time.time()
+            tend = time.perf_counter()
             print("get_state_parity took %0.2fs" % (tend - tstart))
         return StateParity
 
@@ -234,7 +231,7 @@ class spinSystem(ed_base.ed_base):
         nstates = self.nbasis ** nsites
 
         if print_results:
-            tstart = time.process_time()
+            tstart = time.perf_counter()
 
         if projector is None:
             projector = sp.eye(nstates)
@@ -294,7 +291,7 @@ class spinSystem(ed_base.ed_base):
                                 projector.conj().transpose()
 
         if print_results:
-            tend = time.process_time()
+            tend = time.perf_counter()
             print("Constructing H of size %d x %d took %0.2f s" % (H.shape[0], H.shape[0], tend - tstart))
 
         return H
@@ -425,7 +422,3 @@ class spinSystem(ed_base.ed_base):
                self.get_two_site_op(site1, species, site2, species, self.pauli_minus, self.pauli_plus, format="boson") + \
                0.5 * sp.eye(self.nstates) + \
                0.5 * self.get_two_site_op(site1, species, site2, species, self.pauli_z, self.pauli_z, format="boson")
-
-
-if __name__ == "__main__":
-    pass

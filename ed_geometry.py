@@ -1,3 +1,6 @@
+"""
+Tools for describing geometries of small clusters and clusters arranged on regular lattices
+"""
 import numpy as np
 import os
 

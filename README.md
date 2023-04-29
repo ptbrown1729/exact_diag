@@ -43,7 +43,7 @@ unfinished script to save ED data to a SQL database
 This directory contains various unittests for comparing exact diagonalization results with published data,
 and checking that the symmetry operators work appropriately.
 
-### [scripts](scripts)
+### [scripts](examples)
 This directory contains various examples which make use of the exact diagonalization code
 
 ### [cluster](cluster)

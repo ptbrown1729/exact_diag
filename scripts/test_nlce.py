@@ -3,10 +3,10 @@ import time
 import datetime
 import numpy as np
 import pickle
-import ed_spins as tvi
-import ed_geometry as geom
-import ed_symmetry as symm
-import ed_nlce as nlce
+import exact_diag.ed_spins as tvi
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
+import exact_diag.ed_nlce as nlce
 
 ########################################
 # general settings

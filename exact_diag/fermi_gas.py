@@ -311,8 +311,8 @@ def fg_realspace_gfn(beta, mu, corr_index=(1,0), time=0., nsites=100, dim='2d', 
     # TODO: implement so when calculating multiple temperatures don't need to calculate k-vector each time
 
     if beta.size > 1:
-        gfn = np.zeros(beta.shape, dtype=np.complex)
-        dgdmu = np.zeros(beta.shape, dtype=np.complex)
+        gfn = np.zeros(beta.shape, dtype=complex)
+        dgdmu = np.zeros(beta.shape, dtype=complex)
         for ii in range(beta.size):
             coord = np.unravel_index(ii, beta.shape)
             gfn[coord], dgdmu[coord] = fg_realspace_gfn(beta[coord], mu[coord], corr_index, time, nsites=nsites, dim=dim, type=type)

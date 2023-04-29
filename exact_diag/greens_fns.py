@@ -347,7 +347,7 @@ if __name__ == "__main__":
 
     # evaluate for all k's
     gfn_k_taus = np.zeros((taus.size, ks.size))
-    gfn_k_omegas = np.zeros((omegas_m.size, ks.size), dtype=np.complex)
+    gfn_k_omegas = np.zeros((omegas_m.size, ks.size), dtype=complex)
     spectral_fn = np.zeros((omegas.size, ks.size))
     for ii, k in enumerate(ks):
         gfn_k_taus[:, ii] = get_noninteracting_gfn_tau(taus, epsilon_k(k) - mu, beta, format="fermion")
@@ -356,7 +356,7 @@ if __name__ == "__main__":
 
     # calculate greens functions from spectral function
     gfn_k_taus_from_spectralfn = np.zeros((taus_half.size, ks.size))
-    gfn_k_omegas_from_spectralfn = np.zeros((omegas_m.size, ks.size), dtype=np.complex)
+    gfn_k_omegas_from_spectralfn = np.zeros((omegas_m.size, ks.size), dtype=complex)
     kernel_imagtime = get_grnfn_imagtime_spectralfn_kernel(taus_half, beta, omegas, format="fermion")
     kernel_imagfrq = get_grnfn_imagfrq_spectralfn_kernel(omegas_m, omegas)
     for ii, k in enumerate(ks):
@@ -366,7 +366,7 @@ if __name__ == "__main__":
 
     # calculate imaginary time/frequency greens functions from fourier transform of the other
     gfn_k_taus_from_imagfrq = np.zeros((taus.size, ks.size))
-    gfn_k_omegas_from_imagtime = np.zeros((omegas_m.size, ks.size), dtype=np.complex)
+    gfn_k_omegas_from_imagtime = np.zeros((omegas_m.size, ks.size), dtype=complex)
     for ii, k in enumerate(ks):
         gfn_k_taus_from_imagfrq[:, ii] = grnfn_imagfrq_ft(taus, omegas_m, gfn_k_omegas[:, ii], beta)
         gfn_k_omegas_from_imagtime[:, ii] = grnfn_imagtime_ft(omegas_m, taus, gfn_k_taus[:, ii], beta)

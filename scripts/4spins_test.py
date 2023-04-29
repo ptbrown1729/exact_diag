@@ -4,8 +4,8 @@ to handle calculated result.
 """
 
 import numpy as np
-import ed_geometry as geom
-import ed_spins
+import exact_diag.ed_geometry as geom
+from exact_diag import ed_spins
 
 spin = 2.5
 

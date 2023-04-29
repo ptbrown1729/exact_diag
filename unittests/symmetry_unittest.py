@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-import ed_geometry
-import ed_symmetry
+from exact_diag import ed_geometry
+from exact_diag import ed_symmetry
 
 
 class TestSymm(unittest.TestCase):

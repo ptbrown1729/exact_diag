@@ -4,9 +4,9 @@ Simple example of exact digaonalization of a spinless fermion system
 
 import numpy as np
 import matplotlib.pyplot as plt
-import ed_fermions
-import ed_geometry as geom
-import fermi_gas as fg
+from exact_diag import ed_fermions
+import exact_diag.ed_geometry as geom
+import exact_diag.fermi_gas as fg
 
 # set up system
 t = 1

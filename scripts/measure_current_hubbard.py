@@ -10,9 +10,9 @@ import os.path
 import numpy as np
 import scipy.integrate
 import scipy.sparse as sp
-import ed_fermions
-import ed_geometry as geom
-import ed_symmetry as symm
+from exact_diag import ed_fermions
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
 
 # parameters
 save_results = False

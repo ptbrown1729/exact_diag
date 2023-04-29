@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
-import ed_geometry as geom
-import ed_symmetry as symm
-import ed_fermions
-import fermi_gas as fg
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
+from exact_diag import ed_fermions
+import exact_diag.fermi_gas as fg
 
 class TestFermions(unittest.TestCase):
 
@@ -72,7 +72,6 @@ class TestFermions(unittest.TestCase):
 
             # non-interacting fg calc
             fg_dens[ii, :] = fg.fg_density(betas, mu, nsites=gm.nsites, dim='1d')
-
 
         max_diff = np.abs(fg_dens - ed_dens).max()
         self.assertAlmostEqual(max_diff, 0, 12)

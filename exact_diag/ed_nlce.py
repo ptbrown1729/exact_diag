@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.special
 import scipy.sparse as sp
-import ed_geometry as geom
-import ed_symmetry as symm
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
 
 # TODO: some ideas
 # 1. Identify clusters which are topologically the same, to save on work done for diagonalization

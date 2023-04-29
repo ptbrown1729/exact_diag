@@ -3,9 +3,9 @@ exact digaonalization of Heisenberg system
 """
 
 import numpy as np
-import ed_geometry as geom
-import ed_spins as spins
-import ed_symmetry as symm
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_spins as spins
+import exact_diag.ed_symmetry as symm
 
 # set up system
 J = 1

@@ -10,10 +10,10 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
-import ed_fermions
-import ed_geometry as geom
-import ed_symmetry as symm
-import fermi_gas as fg
+from exact_diag import ed_fermions
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
+import exact_diag.fermi_gas as fg
 
 # ############################
 # settings

@@ -1,4 +1,4 @@
-# folder scripts will save data to
+# folder examples will save data to
 data
 
 # latex files
@@ -15,3 +15,8 @@ data
 
 # pycharm project files
 .idea
+
+__pycache__
+
+build
+*.egg-info

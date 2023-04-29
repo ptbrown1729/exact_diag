@@ -11,7 +11,7 @@ from scipy.io import savemat, loadmat
 import scipy.sparse.linalg
 import scipy.linalg
 import scipy.sparse as sp
-import ed_geometry as geom
+import exact_diag.ed_geometry as geom
 
 class ed_base:
     # these must be overriden in derived classes
@@ -544,7 +544,7 @@ class ed_base:
         :param print_results:
         :return:
         """
-        temps = np.asarray(temps, dtype=np.float)
+        temps = np.asarray(temps, dtype=float)
 
         if projector is None:
             projector = sp.eye(eig_vects.shape[0])
@@ -617,7 +617,7 @@ class ed_base:
         :param print_results:
         :return:
         """
-        temps = np.asarray(temps, dtype=np.float)
+        temps = np.asarray(temps, dtype=float)
 
         if projector is None:
             projector = sp.eye(eig_vects.shape[0])
@@ -730,7 +730,7 @@ class ed_base:
         if print_results:
             tstart = time.perf_counter()
         # TODO: make capable of handling a vector of temperatures at once
-        temps = np.asarray(temps, dtype=np.float)
+        temps = np.asarray(temps, dtype=float)
         if temps.size > 1:
             thermal_exp_vals = np.zeros(temps.size)
             for ii in range(0, temps.size):

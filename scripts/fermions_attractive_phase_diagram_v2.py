@@ -8,10 +8,10 @@ import pickle
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import ed_fermions
-import ed_geometry as geom
-import ed_symmetry as symm
-import fermi_gas as fg
+from exact_diag import ed_fermions
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
+import exact_diag.fermi_gas as fg
 
 now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H;%M;%S')
 nsites = 16

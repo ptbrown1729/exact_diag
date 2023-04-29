@@ -11,9 +11,9 @@ import scipy.linalg
 import scipy.integrate
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
-import ed_spins
-import ed_geometry as geom
-import ed_symmetry as symm
+from exact_diag import ed_spins
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
 
 # parameters
 save_results = False

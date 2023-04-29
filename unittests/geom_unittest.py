@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-import ed_geometry
+from exact_diag import ed_geometry
 
 
 class TestGeom(unittest.TestCase):

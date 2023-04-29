@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-import ed_geometry as geom
-import ed_nlce
+from exact_diag import ed_geometry as geom
+from exact_diag import ed_nlce
 
 class TestNLCE(unittest.TestCase):
 

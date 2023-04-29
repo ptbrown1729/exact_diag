@@ -1,9 +1,9 @@
 import time
 import numpy as np
 import scipy.sparse as sp
-import ed_geometry as geom
-import ed_symmetry as symm
-import ed_base
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
+from exact_diag import ed_base
 
 class fermions(ed_base.ed_base):
 

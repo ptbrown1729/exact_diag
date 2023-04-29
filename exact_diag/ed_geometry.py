@@ -156,11 +156,11 @@ class Geometry():
         """
 
         if nx_sites == 1 and not bc1_open:
-            raise Exception('Invalid createSquareGeometry options specified. nx_sites = 1, '
+            raise ValueError('Invalid createSquareGeometry options specified. nx_sites = 1, '
                             'but periodic boundary conditions selected.')
 
         if ny_sites == 1 and not bc2_open:
-            raise Exception('Invalid createSquareGeometry options specified. ny_sites = 1, '
+            raise ValueError('Invalid createSquareGeometry options specified. ny_sites = 1, '
                             'but periodic boundary conditions selected.')
 
         latt_vect1 = np.array([[1], [0]])
@@ -582,10 +582,18 @@ class Lattice():
         # P1 = n * l1 + m * l2
         # P2 = i * l1 + j * l2
         # P1 + P2 = (n + i) * l1 + (m +j) * l
-        _, _, n, m = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect1[0, 0],
-                                    self.periodicity_vect1[1, 0], mode='positive')
+        _, _, n, m = reduce_vectors(self.lattice_vect1,
+                                    self.lattice_vect2,
+                                    self.periodicity_vect1[0, 0],
+                                    self.periodicity_vect1[1, 0],
+                                    mode='positive')
+        n = n[0, 0]
+        m = m[0, 0]
+
         _, _, i, j = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect2[0, 0],
                                     self.periodicity_vect2[1, 0], mode='positive')
+        i = i[0, 0]
+        j = j[0, 0]
 
         # Every lattice point in our parallelogram can be written in the form
         # v = a * l1 + entries * l2,
@@ -680,7 +688,7 @@ class Lattice():
         nsites = xdist_matrix.shape[0]
 
         # create phase factors
-        phase_mat = np.zeros([nsites, nsites], dtype=np.complex)
+        phase_mat = np.zeros([nsites, nsites], dtype=complex)
         for ii in range(0, nsites):
             for jj in range(0, nsites):
                 # phase_mat[ii, jj] = site_phases1[ii] * site_phases1[jj].conj() * site_phases2[ii] * site_phases2[
@@ -819,9 +827,10 @@ def get_reciprocal_vects(vect1, vect2):
 
 def reduce_vectors(vect1, vect2, xlocs, ylocs, mode='positive'):
     """
-    Given an arbitrary vector and a pair of basis vectors specifying a periodicity (TODO: sharpend this defn),
+    Given an arbitrary vector and a pair of basis vectors specifying a periodicity (TODO: sharpen this defn),
     reduce the arbitrary vector to its representative in the Brillouin zone (analog). (TODO: add support for
     either using a symmetric BZ or an always positive BZ).
+
     :param vect1: size 2 x 1, i.e. a column vector
     :param vect2: size 2 x 1, i.e. a column vector
     :param xlocs:

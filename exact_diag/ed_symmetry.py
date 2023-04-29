@@ -689,23 +689,23 @@ def validate_char_table(char_table, conj_classes):
     valid = True
 
     # check column orthogonality relation
-    col_cross_sums = np.zeros((n, n), dtype=np.int)
+    col_cross_sums = np.zeros((n, n), dtype=int)
     for ii in range(n):
         for jj in range(n):
             val = np.sum(char_table[:, ii] * char_table[:, jj].conj(), axis=0).real
             col_cross_sums[ii, jj] = np.round(val)
 
-    if not np.array_equal(np.diag(np.array(order / cc_sizes, dtype=np.int)), col_cross_sums):
+    if not np.array_equal(np.diag(np.array(order / cc_sizes, dtype=int)), col_cross_sums):
         valid = False
 
     # row orthogonality relation
-    row_cross_sums = np.zeros((n, n), dtype=np.int)
+    row_cross_sums = np.zeros((n, n), dtype=int)
     for ii in range(n):
         for jj in range(n):
             val = np.sum(char_table[ii, :] * char_table[jj, :].conj() * cc_sizes, axis=0).real
             row_cross_sums[ii, jj] = np.round(val)
 
-    if not np.array_equal(order * np.eye(n, dtype=np.int), row_cross_sums):
+    if not np.array_equal(order * np.eye(n, dtype=int), row_cross_sums):
         valid = False
 
     return valid

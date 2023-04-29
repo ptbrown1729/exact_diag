@@ -6,9 +6,9 @@ todo: not finished
 import numpy as np
 import matplotlib.pyplot as plt
 
-import ed_geometry as geom
-import ed_symmetry as symm
-import ed_fermions as hubbard
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
+import exact_diag.ed_fermions as hubbard
 
 bc1_open = False
 bc2_open = True

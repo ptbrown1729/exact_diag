@@ -3,9 +3,9 @@ Spinless Fermions in a tilted potential
 """
 
 import numpy as np
-import ed_fermions
-import ed_geometry as geom
-import ed_symmetry as symm
+from exact_diag import ed_fermions
+import exact_diag.ed_geometry as geom
+import exact_diag.ed_symmetry as symm
 import matplotlib.pyplot as plt
 
 nsites = 16

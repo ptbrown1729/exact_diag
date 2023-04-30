@@ -5,17 +5,18 @@ import numpy as np
 import scipy.optimize
 import warnings
 
-def fermi(beta, mu, energy):
+
+def fermi(beta,
+          mu,
+          energy) -> np.ndarray:
     """
     Fermi function, handling beta = 0 and infinity appropriately. Beta, mu, and energy should be provided in consistent
-    energy units.
+    energy units. This function is compatible with array broadcasting.
 
-    This function is compatible with array broadcasting.
     :param beta: inverse temperature
     :param mu: chemical potential
     :param energy: energy
-    :return:
-    nf: fermi function at given beta, mu, energy
+    :return: fermi function at given beta, mu, energy
     """
 
     # ensure numpy arrays of at least 1 dimension
@@ -31,7 +32,7 @@ def fermi(beta, mu, energy):
     if mu.ndim == 0:
         mu = mu[None]
 
-    nf = np.divide(1, np.exp( beta * (energy - mu)) + 1)
+    nf = np.divide(1, np.exp(beta * (energy - mu)) + 1)
     # handle zero temperature
     nf[np.logical_and(beta == np.inf, energy - mu <= 0)] = 1.
     nf[np.logical_and(beta == np.inf, energy - mu > 0)] = 0.
@@ -39,7 +40,11 @@ def fermi(beta, mu, energy):
 
     return nf
 
-def fermi_derivatives(beta, mu, energy, eta=0.1):
+
+def fermi_derivatives(beta,
+                      mu,
+                      energy,
+                      eta: float = 0.1):
     """
     Calculate the derivatives of the fermi function with respect to the various inputs. Beta, mu, and energy should be given in consistent units.
 
@@ -47,11 +52,7 @@ def fermi_derivatives(beta, mu, energy, eta=0.1):
     :param mu: chemical potential
     :param energy: energy
     :param eta: broadening parameter. TODO: Does this do anything?
-    :return:
-    dfdmu:
-    dfde:
-    dfdbeta:
-    dfdT:
+    :return: (dfdmu, dfde, dfdbeta, dfdT)
     """
 
     # ensure numpy arrays of at least 1 dimension
@@ -72,7 +73,7 @@ def fermi_derivatives(beta, mu, energy, eta=0.1):
     beta_times_e_minus_mu = beta * e_minus_mu
 
     #dfdu = np.array( np.multiply(beta, np.divide(np.exp(beta_times_e_minus_mu), (np.exp(beta_times_e_minus_mu) + 1 ) ** 2 ) ))
-    dfdx = -fermi(beta, mu, energy) * (1 - fermi(beta, mu, energy) )
+    dfdx = -fermi(beta, mu, energy) * (1 - fermi(beta, mu, energy))
     dfdu = -beta * dfdx
     dfde = beta * dfdx
     dfdbeta = (energy - mu) * dfdx
@@ -82,24 +83,25 @@ def fermi_derivatives(beta, mu, energy, eta=0.1):
     # TODO: is this implemented correctly/what does it do?
     infinite_t_pts = np.logical_or(beta_times_e_minus_mu == np.inf, np.isnan(beta_times_e_minus_mu))
     if np.any(infinite_t_pts):
-        dfdu[infinite_t_pts] = np.divide( np.pi / eta, e_minus_mu[infinite_t_pts] ** 2 + eta ** 2)
-        dfde[infinite_t_pts] = np.divide( np.pi / eta, e_minus_mu[infinite_t_pts] ** 2 + eta ** 2)
+        dfdu[infinite_t_pts] = np.divide(np.pi / eta, e_minus_mu[infinite_t_pts] ** 2 + eta ** 2)
+        dfde[infinite_t_pts] = np.divide(np.pi / eta, e_minus_mu[infinite_t_pts] ** 2 + eta ** 2)
         dfdbeta[infinite_t_pts] = np.divide(np.pi / eta, e_minus_mu[infinite_t_pts] ** 2 + eta ** 2)
 
     return dfdu, dfde, dfdbeta
 
-def get_allowed_kvects(nx, ny, mode='balanced'):
+
+def get_allowed_kvects(nx: int,
+                       ny: int,
+                       mode: str = 'balanced'):
     """
     Get k-vectors allowed on a periodic lattice of sizes Nx x Ny. 
     
     :param nx:
     :param ny:
     :param mode: either 'balanced' or
-    :return:
-    kxkx: grid of kx vectors of size Ny x Nx
-    kyky: grid of ky vectors of size Ny x Nx
-    dkx: kx  spacing
-    dky: ky spacing
+    :return: (kxkx, kyky, dkx, dky)
+      kxkx is a grid of kx vectors of size Ny x Nx
+      dkx is kx spacing
     """
     kxs = 2 * np.pi / nx * np.arange(0, nx)
     kys = 2 * np.pi / ny * np.arange(0, ny)
@@ -121,15 +123,16 @@ def get_allowed_kvects(nx, ny, mode='balanced'):
 
     return kxkx, kyky, dkx, dky
 
+
 def get_energy_spacing(es):
     """
     Compute mean energy spacing from a 1D or 2D distribution of energies
 
     :param es: energies, array of arbitrary shape.
-    :return:
-    emin: minimum spacing between adjacent energies.
-    emax: maximum spacing between adjacent energies.
-    emean: mean spacing between adjacent energies.
+    :return: (emin, emax, emean)
+      emin: minimum spacing between adjacent energies.
+      emax: maximum spacing between adjacent energies.
+      emean: mean spacing between adjacent energies.
     """
 
     es_list = np.sort(es.ravel())
@@ -137,7 +140,9 @@ def get_energy_spacing(es):
     ediff = ediff[ediff > 0]
     return np.min(ediff), np.max(ediff), np.mean(ediff)
 
-def get_dos(es, e_end_pts):
+
+def get_dos(es,
+            e_end_pts):
     """
     Determine density of states in energy bins for given energy spectrum
 
@@ -152,7 +157,15 @@ def get_dos(es, e_end_pts):
     dos = np.divide(num_in_bin, de) / es.size
     return dos
 
-def get_dos2(nsites=100, dim='2d'):
+
+def get_dos2(nsites: int = 100,
+             dim: str = '2d'):
+    """
+
+    :param nsites:
+    :param dim:
+    :return:
+    """
     # TODO: want function that will automatically choose good binning to get a smooth DOS
     if dim == '2d':
         kxkx, kyky, _, _ = get_allowed_kvects(nsites, nsites, 'balanced')
@@ -171,7 +184,7 @@ def get_dos2(nsites=100, dim='2d'):
     pts_per_bin = 2000
     de = pts_per_bin * emean
     # determine bin number from bin widths
-    nbins = np.floor( (np.max(es) - np.min(es)) / de)
+    nbins = np.floor((np.max(es) - np.min(es)) / de)
     # ensure odd number of bins
     if nbins % 2 == 0:
         nbins = nbins + 1
@@ -185,27 +198,40 @@ def get_dos2(nsites=100, dim='2d'):
 
     return dos, e_means
 
+
 # green's functions
-def fg_kspace_gfns(beta, mu, ks, time=0., type="greater", dim="2d"):
+def fg_kspace_gfns(beta,
+                   mu,
+                   ks,
+                   time: float = 0.,
+                   type: str = "greater",
+                   dim: str = "2d"):
     """
-    Calculate non-interacting gas green's function and their derivatives. All energies are in units of the tunneling energy.
+    Calculate non-interacting gas green's function and their derivatives.
+    All energies are in units of the tunneling energy.
 
     The various green's functions are defined as
-    G_greater(k, t) = -i <c_k(t) c^\dag_k(0)>
-    G_lesser(k, t) = i <c^\dag_k(0) c_k(t)>
-    G_retarded(k, t) = -i * heaviside(t) * <[c_k(t), c^\dag_k(0)]_+>
-    G_advanced(k, t) = i * heaviside(-t) * <[c_k(t), c^\dag_k(0)]_+>
-    G_time-ordered(k, t) = -i * <T c_k(t) c^\dag_k(0)>
+
+    .. math::
+
+      G_\\text{greater}(k, t) &= -i \\langle c_k(t) c^\\dagger_k(0) \\rangle
+
+      G_\\text{lesser}(k, t) &= i \\langle c^\\dagger_k(0) c_k(t) \\rangle
+
+      G_\\text{retarded}(k, t) &= -i \\theta(t) \\left \\langle \\left[c_k(t), c^\\dagger_k(0) \\right]_+ \\right \\rangle
+
+      G_\\text{advanced}(k, t) &= i \\theta(-t) \\left \\langle \\left[ c_k(t), c^\\dagger_k(0) \\right]_+ \\right \\rangle
+
+      G_\\text{time-ordered}(k, t) &= -i \\langle T c_k(t) c^\\dagger_k(0) \\rangle
 
     :param beta: inverse temperature, in units of the tunneling energy.
     :param mu: chemical potential, in units of the tunneling energy.
+    :param ks:
     :param time: Time argument to Green's function. In units of hbar/t.
-    :param nsites: Number of sites to use in the computation
     :param dim: dimensionality of gas: '1d' or '2d'
     :param type: type of Green's function to compute: "greater", "lesser", "retarded", "advanced" or "time-ordered"
-    :return:
-    gfn: Value of Green's function of given type at given parameters.
-    dgdmu:
+    :return: (gfn, dgdmu)
+      gfn: Value of Green's function of given type at given parameters.
     """
 
     # TODO: handle either multiple beta/mus or multiple times
@@ -246,38 +272,45 @@ def fg_kspace_gfns(beta, mu, ks, time=0., type="greater", dim="2d"):
 
     # calculations for various green's functions
     if type == "greater":
-        gfn = -1j * np.exp( -1j * (ek - mu) * time) * (1. - fermi(beta, mu, ek))
+        gfn = -1j * np.exp(-1j * (ek - mu) * time) * (1. - fermi(beta, mu, ek))
         dfdmu = fermi_derivatives(beta, mu, ek)[0]
-        dgdmu = time * np.exp( -1j * (ek - mu) * time) * (1. - fermi(beta, mu, ek)) + 1j * np.exp( -1j * (ek - mu) * time) * dfdmu
+        dgdmu = time * np.exp(-1j * (ek - mu) * time) * (1. - fermi(beta, mu, ek)) + 1j * np.exp(-1j * (ek - mu) * time) * dfdmu
 
     elif type == "lesser":
-        gfn = 1j * np.exp( -1j * (ek - mu) * time) * fermi(beta, mu, ek)
+        gfn = 1j * np.exp(-1j * (ek - mu) * time) * fermi(beta, mu, ek)
         dfdmu = fermi_derivatives(beta, mu, ek)[0]
-        dgdmu = -time * np.exp( -1j * (ek - mu) * time) * fermi(beta, mu, ek) + 1j * np.exp( -1j * (ek - mu) * time) * dfdmu
+        dgdmu = -time * np.exp(-1j * (ek - mu) * time) * fermi(beta, mu, ek) + 1j * np.exp(-1j * (ek - mu) * time) * dfdmu
 
     elif type == "retarded":
         # TODO: what is correct t=0 intepretation? I guess it should be taking limit from t>0?
-        gfn = -1j * np.heaviside(time, 1.) * np.exp( -1j * (ek - mu) * time)
-        dgdmu = time * np.heaviside(time, 1.) * np.exp( -1j * (ek - mu) * time)
+        gfn = -1j * np.heaviside(time, 1.) * np.exp(-1j * (ek - mu) * time)
+        dgdmu = time * np.heaviside(time, 1.) * np.exp(-1j * (ek - mu) * time)
 
     elif type == "advanced":
         gfn = 1j * np.heaviside(-time, 1.) * np.exp(-1j * (ek - mu) * time)
         dgdmu = -time * np.heaviside(-time, 1.) * np.exp(-1j * (ek - mu) * time)
 
     elif type == "time-ordered":
-        gfn = -1j * np.exp( -1j * (ek - mu) * time) * (np.heaviside(time, 1.) * (1. - fermi(beta, mu, ek))
+        gfn = -1j * np.exp(-1j * (ek - mu) * time) * (np.heaviside(time, 1.) * (1. - fermi(beta, mu, ek))
                                                      - np.heaviside(-time, 1.) * fermi(beta, mu, ek))
         # TODO: implement
         dgdmu = 0 * ek
 
     else:
-        raise Exception("Expected type argument to be 'greater', 'lesser', 'retarded', 'advanced' or 'time-ordered', but it was '%s'." % type)
+        raise ValueError("Expected type argument to be 'greater', 'lesser', 'retarded', 'advanced' or 'time-ordered', but it was '%s'." % type)
 
     return gfn, dgdmu
 
-def fg_realspace_gfn(beta, mu, corr_index=(1,0), time=0., nsites=100, dim='2d', type="greater"):
+
+def fg_realspace_gfn(beta,
+                     mu,
+                     corr_index: tuple = (1, 0),
+                     time: float = 0.,
+                     nsites: int = 100,
+                     dim: str = '2d',
+                     type: str = "greater"):
     """
-    Calculate real space green's functions G(t-t', r-r') by Fourier transforming momentum spacing functions.
+    Calculate real space green's functions :math:`G(t-t', r-r')` by Fourier transforming momentum spacing functions.
 
     :param beta: inverse temperature
     :param mu: chemical potential
@@ -306,7 +339,8 @@ def fg_realspace_gfn(beta, mu, corr_index=(1,0), time=0., nsites=100, dim='2d', 
     elif beta.size == mu.size:
         pass
     else:
-        raise Exception('mu and beta must be the same size, or one of them should be a single number and the other an array.')
+        raise ValueError('mu and beta must be the same size, or one of them should be a single number'
+                         ' and the other an array.')
 
     # TODO: implement so when calculating multiple temperatures don't need to calculate k-vector each time
 
@@ -348,8 +382,12 @@ def fg_realspace_gfn(beta, mu, corr_index=(1,0), time=0., nsites=100, dim='2d', 
 
     return gfn, dgdmu
 
+
 # thermodynamic quantities
-def fg_density(beta, mu, nsites=100, dim='2d'):
+def fg_density(beta,
+               mu,
+               nsites: int = 100,
+               dim: str = '2d'):
     """
     Compute the density of a Fermi gas in a lattice with tight-binding dispersion
 
@@ -357,8 +395,7 @@ def fg_density(beta, mu, nsites=100, dim='2d'):
     :param mu: chemical potential in units of the tunneling
     :param nsites: number of sites along each dimension to use in the calculation
     :param dim: '1d' or '2d'
-    :return:
-    density:
+    :return: density
     """
 
     density, _ = fg_realspace_gfn(beta, mu, corr_index=[0, 0], time=0., nsites=nsites, dim=dim, type="lesser")
@@ -366,10 +403,15 @@ def fg_density(beta, mu, nsites=100, dim='2d'):
 
     return density
 
-def fg_mu(beta, density, nsites=100, dim='2d'):
+
+def fg_mu(beta,
+          density,
+          nsites: int = 100,
+          dim: str = '2d'):
     """
     Compute the chemical potential for a non-interacting Fermi gas with tightbinding dispersion at given temperature
     and density.
+
     :param beta:
     :param density:
     :param nsites:
@@ -426,17 +468,22 @@ def fg_mu(beta, density, nsites=100, dim='2d'):
 
     return mu
 
-def fg_compressibility(beta, mu, nsites=100, dim='2d'):
+
+def fg_compressibility(beta,
+                       mu,
+                       nsites: int = 100,
+                       dim: str = '2d'):
     """
     Compute the compressibility of a single component Fermi gas in a lattice with tight-binding dispersion
+
     :param beta: temperature in units of the tunneling
     :param mu: chemical potential in units of the tunneling
     :param nsites: number of sites along each dimension to use in the calculation
     :param dim: '1d' or '2d'
-    :return:
-    density
-    TODO: doesn't work for zero temperature...
+    :return: density
     """
+
+    # TODO: doesn't work for zero temperature...
 
     _, dgdmu = fg_realspace_gfn(beta, mu, corr_index=[0, 0], time=0., nsites=nsites, dim=dim, type="lesser")
     dndmu = np.abs(dgdmu)
@@ -444,9 +491,14 @@ def fg_compressibility(beta, mu, nsites=100, dim='2d'):
     return dndmu
 
 # correlators and response function
-def fg_corr(beta, mu, corr_index=(1, 0), nsites=100, dim='2d'):
+def fg_corr(beta,
+            mu,
+            corr_index: tuple = (1, 0),
+            nsites: int = 100,
+            dim: str = '2d'):
     """
-    Compute the correlator <ni nj> - <n>**2 for a single component non-interacting fermi gas with a lattice dispersion.
+    Compute the correlator :math:`\\left \\langle n_i n_j \\right \\rangle - \\left \\langle n \\right \\rangle^2` for a single component non-interacting fermi gas with a lattice dispersion.
+
     :param beta: Inverse temperature, in units of the hopping
     :param mu: Chemical potential, in units of the hopping.
     :param corr_index:
@@ -459,7 +511,25 @@ def fg_corr(beta, mu, corr_index=(1, 0), nsites=100, dim='2d'):
 
     return corr
 
-def fg_density_response(beta, mu, k=np.array([0.,0.]), omega=0., eta=0., nsites=100, dim='2d'):
+
+def fg_density_response(beta,
+                        mu,
+                        k: np.ndarray = np.array([0., 0.]),
+                        omega: float = 0.,
+                        eta: float = 0.,
+                        nsites: int = 100,
+                        dim: str = '2d'):
+    """
+
+    :param beta:
+    :param mu:
+    :param k:
+    :param omega:
+    :param eta:
+    :param nsites:
+    :param dim:
+    :return:
+    """
     # ensure numpy arrays of at least 1 dimension
 
     # TODO: is there a better way to do broadcasting etc?
@@ -532,21 +602,35 @@ def fg_density_response(beta, mu, k=np.array([0.,0.]), omega=0., eta=0., nsites=
 
     return chi_real, chi_imag
 
-def fg_magnetic_response(beta, mu, k, omega=0., eta=0., nsites=100, dim='2d'):
+
+def fg_magnetic_response(beta,
+                         mu,
+                         k,
+                         omega: float = 0.,
+                         eta: float = 0.,
+                         nsites: int = 100,
+                         dim: str = '2d'):
     """
     Fermi gas magnetic response function
+
     :param beta:
     :param mu:
     :param k:
     :param omega:
+    :param eta:
     :param nsites:
     :param dim:
     :return:
     """
     return fg_density_response(beta, mu, k, omega, eta, nsites, dim)
 
+
 # non-interacting fg of two species
-def fg_singles(beta, mu_up, mu_dn, nsites=100, dim='2d'):
+def fg_singles(beta,
+               mu_up,
+               mu_dn,
+               nsites: int = 100,
+               dim: str = '2d'):
     """
     Compute singles density for a two-component non-interacting Fermi gas
 
@@ -575,18 +659,42 @@ def fg_singles(beta, mu_up, mu_dn, nsites=100, dim='2d'):
     singles = n_up + n_dn - 2 * n_up * n_dn
     return singles
 
-def fg_singles_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
+
+def fg_singles_corr(beta,
+                    mu_up,
+                    mu_dn,
+                    corr_index: tuple = (0, 1),
+                    nsites: int = 100,
+                    dim: str = '2d'):
     """
     Compute correlations between singles for a two-component non-interacting Fermi gas
 
-    < [nup(i) + ndn(i) - 2 * nup(i) * ndn(i)] [nup(j) + ndn(j) - 2 * nup(j) * ndn(j)]>
-    = < nup(i) nup(j)> + <ndn(i) ndn(j)> + 4 <d(i) d(j)> ...
-      - 2 < nup(i) d(j)> - 2 < ndn(i) d(j)> - 2 <d(i) nup(j)> - 2 < d(i)ndn(j)>
+    .. math::
 
-    We also evaluate the <n_i_up d_j> term using Wick's theorem.
+      \\left \\langle n_s(i) n_s(j) \\right \\rangle &=
+
+      &= \\left \\langle [n_\\uparrow(i) + n_\\downarrow(i) - 2 n_\\uparrow(i) n_\\downarrow(i)]
+      [n_\\uparrow (j) + n_\\downarrow(j) - 2 n_\\uparrow(j) n_\\downarrow(j)] \\right \\rangle
+
+      &= \\left \\langle n_\\uparrow(i) n_\\uparrow(j) \\right \\rangle
+      + \\left \\langle n_\\downarrow (i) n_\\downarrow(j) \\right \\rangle
+      + 4 \\left \\langle d(i) d(j) \\right \\rangle
+      - 2 \\left \\langle n_\\uparrow (i) d(j) \\right \\rangle
+      - 2 \\left \\langle n_\\downarrow(i) d(j) \\right \\rangle
+      - 2 \\left \\langle d(i) n_\\uparrow(j) \\right \\rangle
+      - 2 \\left \\langle d(i) n_\\downarrow(j) \\right \\rangle
+
+    We also evaluate the :math:`\\left \\langle n_{i \\uparrow} d_j \\right \\rangle` term using Wick's theorem.
     Only one term contributes ...
-    < nup(i) d(j)> = - <c^dag_up(i) c_up(j)><c^dag_j_upc_i_up><c^dag_j_down c_j_down> ...
-    = <nup(i) nup(j)>_c <ndn(j)>
+
+    .. math::
+
+      \\left \\langle n_\\uparrow(i) d(j) \\right \\rangle =&
+      -\\left \\langle c^\\dagger_\\uparrow(i) c_\\uparrow(j) \\right \\rangle
+      \\left \\langle c^\\dagger_{j \\uparrow} +
+      c_{i \\uparrow} \\right \\rangle \\left \\langle c^\\dagger_{j \\downarrow} c_{j \\downarrow} \\right \\rangle + ...
+
+      &= \\left \\langle n_\\uparrow(i) n_\\uparrow(j) \\right \\rangle_c \\left \\langle n_\\downarrow(j) \\right \\rangle
 
     :param beta:
     :param mu_up:
@@ -619,7 +727,12 @@ def fg_singles_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d')
 
     return singles_corr
 
-def fg_doubles(beta, mu_up, mu_dn, nsites=100, dim='2d'):
+
+def fg_doubles(beta,
+               mu_up,
+               mu_dn,
+               nsites: int = 100,
+               dim: str = '2d'):
     """
     Compute doubles density for a two-component non-interacting Fermi gas
 
@@ -649,14 +762,23 @@ def fg_doubles(beta, mu_up, mu_dn, nsites=100, dim='2d'):
 
     return d
 
-def fg_doubles_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
-    """
-    Compute correlations between doubles for a two-component non-interacting Fermi gas
 
-   Wick's theorem according to
-   <d(i) d(j)>_c = n_up^2 * <n_up(i) n_up(j)>_c
-                   n_dn^2 * <n_dn(i) n_dn(j)>_c
-                   + <n_up(i) n_up(j)>_c * <n_dn(i) n_dn(j)>_c
+def fg_doubles_corr(beta,
+                    mu_up,
+                    mu_dn,
+                    corr_index: tuple = (0, 1),
+                    nsites: int = 100,
+                    dim: str = '2d'):
+    """
+    Compute correlations between doubles for a two-component non-interacting Fermi gas. Using
+    Wick's theorem we can write this as
+
+     .. math::
+
+       \\left \\langle d(i) d(j) \\right \\rangle_c = n_\\uparrow^2 \\left \\langle n_\\uparrow(i) n_\\uparrow(j) \\right \\rangle_c
+                     n_\\downarrow^2 \\left \\langle n_\\downarrow(i) n_\\downarrow(j) \\right \\rangle_c
+                     + \\left \\langle n_\\uparrow(i) n_\\uparrow(j) \\right \\rangle_c  \\left \\langle n_\\downarrow(i) n_\\downarrow(j) \\right \\rangle_c
+
 
     :param beta:
     :param mu_up:
@@ -687,9 +809,18 @@ def fg_doubles_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d')
 
     return doubles_corr
 
-def fg_sz_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
+
+def fg_sz_corr(beta,
+               mu_up,
+               mu_dn,
+               corr_index: tuple = (0, 1),
+               nsites: int = 100,
+               dim: str = '2d'):
     """
-    4*<S^z S^z>_c = <(n_up - n_dn)*(n_up - n_dn)> spin correlations for Fermi gas
+    Spin correlations for Fermi gas
+    :math:`4 \\left \\langle S^z S^z \\right \\rangle_c =
+    \\left \\langle(n_\\uparrow - n_\\downarrow) (n_\\uparrow - n_\\downarrow) \\right \\rangle`
+
     :param beta:
     :param mu_up:
     :param mu_dn:
@@ -702,9 +833,16 @@ def fg_sz_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
     n_dn_corr = fg_corr(beta, mu_dn, corr_index, nsites, dim)
     return n_up_corr + n_dn_corr
 
-def fg_sx_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
+
+def fg_sx_corr(beta,
+               mu_up,
+               mu_dn,
+               corr_index: tuple = (0, 1),
+               nsites: int = 100,
+               dim: str = '2d'):
     """
     Sx or Sy spin correlations for Fermi gas
+
     :param beta:
     :param mu_up:
     :param mu_dn:
@@ -716,6 +854,6 @@ def fg_sx_corr(beta, mu_up, mu_dn, corr_index=(0, 1), nsites=100, dim='2d'):
     gfn_lesser_up = fg_realspace_gfn(beta, mu_up, corr_index, 0., nsites, dim, type="lesser")[0]
     gfn_lesser_dn = fg_realspace_gfn(beta, mu_dn, corr_index, 0., nsites, dim, type="lesser")[0]
     delta = not np.any(corr_index)
-    corr_sx = np.real(delta * (np.abs(gfn_lesser_up) + np.abs(gfn_lesser_dn)) -gfn_lesser_up * gfn_lesser_dn.conj() - gfn_lesser_dn * gfn_lesser_up.conj())
+    corr_sx = np.real(delta * (np.abs(gfn_lesser_up) + np.abs(gfn_lesser_dn)) - gfn_lesser_up * gfn_lesser_dn.conj() - gfn_lesser_dn * gfn_lesser_up.conj())
 
     return corr_sx

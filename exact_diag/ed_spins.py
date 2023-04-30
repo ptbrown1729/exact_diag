@@ -5,9 +5,10 @@ import exact_diag.ed_geometry as geom
 import exact_diag.ed_symmetry as symm
 from exact_diag import ed_base
 
+
 class spinSystem(ed_base.ed_base):
 
-    #nbasis = 2
+    # nbasis = 2
     nspecies = 1
     # index that "looks" the same as the spatial index from the perspective of constructing operators. E.g. for
     # fermions we have spatial index + spin index, but it is convenient to treat this like an enlarged set of
@@ -18,14 +19,29 @@ class spinSystem(ed_base.ed_base):
     nminus = 0.5 * np.array([[1, -1], [-1, 1]])
     swap_op = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
-    def __init__(self, geometry, jx=0.0, jy=0.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0, spin=0.5):
+    def __init__(self,
+                 geometry: geom.Geometry,
+                 jx: float = 0.0,
+                 jy: float = 0.0,
+                 jz: float = 0.0,
+                 hx: float = 0.0,
+                 hy: float = 0.0,
+                 hz: float = 0.0,
+                 use_ryd_detunes: bool = False,
+                 spin: float = 0.5):
         """
         This class implements a spin system with the following Hamiltonian:
-        H = \sum_<i, j, \alpha=x,y,z> 0.5 * j_alpha * \sigma_i^\alpha * \sigma_j^\alpha -
-            \sum_{i, \alpha=x,y,z} 0.5 * h_\alpha * \sigma_i^\alpha
-        If write this in terms of spin operators instead of Pauli matrices, S_i^\alpha = 0.5 * \sigma_i^\alpha
-        H = \sum_<i, j, \alpha=x,y,z> 2 * j_\alpha * S_i^\alpha * \S_j^\alpha -
-             \sum_{i, \alpha=x,y,z} h_\alpha * S_i^\alpha
+
+        .. math::
+
+          H = \\sum_{ \\left \\langle i, j \\right \\rangle, \\alpha=x,y,z} \\frac{1}{2} j_\\alpha \\sigma_i^\\alpha \\sigma_j^\\alpha - \\sum_{i, \\alpha=x,y,z} \\frac{1}{2} h_\\alpha \\sigma_i^\\alpha
+
+        If write this in terms of spin operators instead of Pauli matrices, :math:`S_i^\\alpha = \\frac{1}{2} \\sigma_i^\\alpha`
+
+        .. math::
+
+          H = \\sum_{\\left \\langle i, j \\right \\rangle, \\alpha=x,y,z} 2 j_\\alpha S_i^\\alpha S_j^\\alpha - \\sum_{i, \\alpha=x,y,z} h_\\alpha S_i^\\alpha
+
         :param geometry:
         :param jx:
         :param jy:
@@ -35,6 +51,7 @@ class spinSystem(ed_base.ed_base):
         :param hz:
         :param use_ryd_detunes:
         """
+
         # TODO: update this to allow easy use of Heisenberg or Rydberg
         self.nbasis = int(2 * spin + 1)
         self.splus = self.get_splus(spin)
@@ -55,56 +72,65 @@ class spinSystem(ed_base.ed_base):
             self.rydberg_detunings = self.get_rydberg_detunes(self.jz)
             self.hz = self.hz + self.rydberg_detunings
 
-    def get_splus(self, spin):
+    def get_splus(self,
+                  spin):
         """
-        S^+ |s m> = sqrt( (s-m) * (s+m+1) ) |s (m+1)>
+        :math:`S^+ \\left | s m \\right \\rangle = \\sqrt{ (s-m) (s+m+1) } \\left | s (m+1) \\right \\rangle`
+
         :param spin:
         :return:
         """
         ms = np.arange(spin - 1, -spin - 1, -1)
         return sp.diags(np.sqrt((spin - ms) * (spin + ms + 1)), -1)
 
-    def get_sminus(self, spin):
+    def get_sminus(self,
+                   spin):
         """
-        S^- |s m> = sqrt( (s+m) * (s_m+1) ) |s (m-1)>
+        :math:`S^- \\left | s m \\right \\rangle = \\sqrt{(s+m) (s_m+1)} \\left | s (m-1) \\right \\rangle`
+
         :param spin:
         :return:
         """
         ms = np.arange(spin, -spin, -1)
         return sp.diags(np.sqrt((spin + ms) * (spin - ms + 1)), 1)
 
-    def get_sx(self, spin):
+    def get_sx(self,
+               spin):
         """
-        s^x = 0.5 * (s^+ + s^-)
+        :math:`S^x = \\frac{1}{2} \\left(s^+ + s^- \\right)`
+
         :param spin:
         :return:
         """
         return 0.5 * (self.get_splus(spin) + self.get_sminus(spin))
 
-    def get_sy(self, spin):
+    def get_sy(self,
+               spin):
         """
-        s^y = 0.5 * (s^+ - s^-)
+        :math:`S^y = \\frac{1}{2} \\left(s^+ - s^- \\right)`
+
         :param spin:
         :return:
         """
         return 0.5 * (self.get_splus(spin) - self.get_sminus(spin)) / 1j
 
-    def get_sz(self, spin):
+    def get_sz(self,
+               spin):
         """
-        S^z |s m> = m |s m>
+        :math:`S^z \\left | s m \\right \\rangle = m \\left |s m \\right \\rangle`
+
         :param spin:
         :return:
         """
         return sp.diags(np.arange(spin, -spin - 1, -1))
 
-    def get_interaction_mat_c6(self, C6, cutoff_dist=1.5):
+    def get_interaction_mat_c6(self,
+                               C6,
+                               cutoff_dist: float = 1.5):
         """
         Get interaction matrix by using real space distances. This allows, e.g. anisotropic interactions_4.
-        :param xlocs:
-        :param ylocs:
+
         :param C6:
-        :param xscale:
-        :param yscale:
         :param cutoff_dist:
         :return:
         """
@@ -113,10 +139,12 @@ class spinSystem(ed_base.ed_base):
         jmat[distmat != 0] = C6*np.power(np.reciprocal(distmat[distmat != 0]), 6)
         return jmat
 
-    def get_interaction_mat(self, j):
+    def get_interaction_mat(self,
+                            j):
         """
         Get interaction matrix, which is a matrix of size nsites x nsites where m[ii, jj] gives the interaction
         strength between sites ii and jj
+
         :param j: integer giving uniform interaction strength for all sites
         :return:
         """
@@ -135,26 +163,29 @@ class spinSystem(ed_base.ed_base):
 
         return j_mat
 
-    def get_field_mat(self, h):
+    def get_field_mat(self,
+                      h):
         if isinstance(h, (int, float)):
             h_mat = h * np.ones(self.geometry.nsites)
         elif isinstance(h, np.ndarray):
             if h.size != self.geometry.nsites:
-                raise Exception('j was a numpy array, but size did not match geometry.')
+                raise ValueError('j was a numpy array, but size did not match geometry.')
             h_mat = h
         else:
-            raise Exception('j was not integer, float, or numpy array.')
+            raise ValueError('j was not integer, float, or numpy array.')
 
         return h_mat
 
-    def get_state_vects(self, print_results=False):
+    def get_state_vects(self,
+                        print_results: bool = False):
         """
         Generate a description of the basis states in the full tensor product of spins space
-        :param nsites: Int, total number of sites in the system
+
         :param print_results:
         :return: NumPy array of size 2 ** nsites x nsites describing each basis state in the tensor product spin space.
-        Each row represents the spins for a given state according to |up> = 1, |down> = 0 on the site corresponding to
-        the column index.
+          Each row represents the spins for a given state according to
+          :math:`\\left | \\uparrow \\right \\rangle = 1, \\left | \\downarrow \\right \\rangle = 0`
+          on the site corresponding to the column index.
         """
         if print_results:
             tstart = time.perf_counter()
@@ -175,11 +206,11 @@ class spinSystem(ed_base.ed_base):
             print("Took %0.2f s to generate state vector labels" % (tend - tstart))
         return StateSpinLabels
 
-    def get_state_parity(self, print_results=False):
+    def get_state_parity(self,
+                         print_results: bool = False):
         """
         Get parity of basis states
-        :param nsites:
-        :param nstates:
+
         :param print_results:
         :return:
         """
@@ -195,16 +226,17 @@ class spinSystem(ed_base.ed_base):
     # Build and diagonalize H
     # ########################
 
-    def get_rydberg_detunes(self, jsmat):
+    def get_rydberg_detunes(self,
+                            jsmat):
         """
         Generate rydberg detuning terms for each site.
-        :param nsites: Int, number of sites
+
         :param jsmat: nsites x nsites NumPy array
         :return: rydberg_detunings, an nsites NumPy array
         """
 
         nsites = self.geometry.nsites
-        rydberg_detunings = np.zeros(nsites, dtype = np.complex)
+        rydberg_detunings = np.zeros(nsites, dtype=complex)
         for ii in range(0, nsites):
             rydberg_detunings[ii] = 0.5 * np.sum(jsmat[ii, :])
         rydberg_detunings = -2.0*rydberg_detunings  # need this to keep same term in Hamiltonian had before.
@@ -214,14 +246,12 @@ class spinSystem(ed_base.ed_base):
 
         return rydberg_detunings
 
-    def createH(self, projector=None, print_results=False):
+    def createH(self,
+                projector=None,
+                print_results: bool = False):
         """
+        Create Hamiltonian
 
-        :param nsites: Int, total number of sites
-        :param detunes: Int or NumPy array of length nsites, specifying detuning (longitudinal field) at each site
-        :param rabis: Int or NumPy array of length nsites, specifying rabi frequency (transverse field) at each site
-        :param jsmat: NumPy array of size nsites x nsites x 3. Interaction term between sites ii, jj is jsmat[ii,jj,kk]*sigma^kk_i*sigma^kk_j
-        where kk = x, y, or z.
         :param projector:
         :param print_results:
         :return:
@@ -296,25 +326,41 @@ class spinSystem(ed_base.ed_base):
 
         return H
 
-    def get_interaction_op(self, projector=None):
+    def get_interaction_op(self,
+                           projector=None):
+        """
+
+        :param projector:
+        :return:
+        """
         pass
 
-    def get_field_op(self, projector=None):
+    def get_field_op(self,
+                     projector=None):
+        """
+
+        :param projector:
+        :return:
+        """
         pass
 
     # ########################
     # miscellanoues functions
     # ########################
-    def find_special_states(self, xsites, ysites, number_left2right_top2bottom=0):
+    def find_special_states(self,
+                            xsites,
+                            ysites,
+                            number_left2right_top2bottom: bool = False):
         """
         Generate state vectors for special states. Currently, the ferromagnetic states, anti-ferromagnetic states,
         and plus and minus product states
+
         :param xsites:
         :param ysites:
         :param number_left2right_top2bottom:
         :return:
         """
-        NSites = self.geometry.nsites#XSites * YSites
+        NSites = self.geometry.nsites  # XSites * YSites
         NStates = 2 ** NSites
 
         AllUpStateInd = 0
@@ -337,7 +383,7 @@ class spinSystem(ed_base.ed_base):
                 AFMState1Ind = (2 + NStates) / 3 - 1
             AFMState2Ind = NStates - AFMState1Ind
         else:
-            print('AFM State finder not implemented for even number of sites in X-direction when using ' \
+            print('AFM State finder not implemented for even number of sites in X-direction when using '
                       'conventional number, or not implemented for only a single site. Will return FM states instead')
             AFMState1Ind = 0
             AFMState2Ind = NStates - 1
@@ -364,11 +410,12 @@ class spinSystem(ed_base.ed_base):
     # ########################
     # Calculate operators
     # ########################
-    def get_npairs_op(self, corr_sites_conn):
+    def get_npairs_op(self,
+                      corr_sites_conn):
         """
         Get operator that counts number of pairs of rydbergs. (i.e. spin-ups on NN sites)
+
         :param corr_sites_conn:
-        :param nsites:
         :return:
         """
         nsites = self.geometry.nsites
@@ -382,10 +429,11 @@ class spinSystem(ed_base.ed_base):
             op = op + self.get_two_site_op(i_corr[ii], 0, j_corr[ii], 0, self.nr, self.nr, format="boson")
         return op
 
-    def get_allsite_op(self, op_onsite):
+    def get_allsite_op(self,
+                       op_onsite):
         """
         operators which are product of nsites copies of a single operator.
-        :param nsites: Int, total number of sites
+
         :param op_onsite:
         :return: op_full, sparse COO matrix
         """
@@ -395,10 +443,11 @@ class spinSystem(ed_base.ed_base):
             op_full = sp.kron(op_full, op_onsite, 'coo')
         return op_full
 
-    def get_sum_op(self, op):
+    def get_sum_op(self,
+                   op):
         """
         Get operator that counts the number of spins ups/rydberg excitations
-        :param nsites: Int, total number of sites
+
         :param op: 2x2 operator acting on each site
         :return: OpMat, sparse matrix
         """
@@ -406,13 +455,22 @@ class spinSystem(ed_base.ed_base):
         return ed_base.ed_base.get_sum_op(self, op, species_index, format="boson", print_results=False)
 
     def get_swap_up_down_op(self):
+        """
+
+        :return:
+        """
+
         swapped_state = self.nstates - 1 - np.arange(self.nstates)
         op = sp.csc_matrix((np.ones(self.nstates), swapped_state, np.arange(self.nstates+1)))
         return op
 
-    def get_swap_op(self, site1, site2, species=0):
+    def get_swap_op(self,
+                    site1: int,
+                    site2: int,
+                    species: int = 0):
         """
         Construct an operator that swaps the states of two sites. This version does not require any recursion.
+
         :param site1: Integer value specifying first site
         :param site2: Integer value specifying second site
         :param species: Integer specifying species (should always be zero in this case)

@@ -10,6 +10,15 @@ Welcome to exact_diag's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   base
+   fermions
+   spins
+   geometry
+   symmetry
+   fermi_gas
+   greens_fns
+   nlce
+
 
 
 Indices and tables

@@ -1,5 +1,5 @@
 """
-Base class that Fermion and Spin-Systems inhereit from
+Base class that other exact diagonalization classes inherit from
 """
 import time
 import datetime
@@ -12,6 +12,7 @@ import scipy.sparse.linalg
 import scipy.linalg
 import scipy.sparse as sp
 import exact_diag.ed_geometry as geom
+
 
 class ed_base:
     # these must be overriden in derived classes
@@ -26,7 +27,7 @@ class ed_base:
     pauli_minus = np.array([[0, 0], [1, 0]])
     parity_op = np.array([[1, 0], [0, -1]])
 
-    def __init__(self, geometry):
+    def __init__(self, geometry: geom.Geometry):
         """
         Base class for exact diagonalizations. Classes for Bosons and Fermions will inherit from this class.
 
@@ -43,13 +44,22 @@ class ed_base:
         In the case of bosons, we need only expand the allowed numbers in the vector. However, in this case it will
         be necessary to truncate each site to only allow a finite number of bosons. If we restrict each site to have
         no more than two, then the basis states would be
-        [0, 0, 0, 0] = |0>
-        [0, 0, 0, 1] = a_4^\dag |0>
-        [0, 0, 0, 2] = a_4^\dag * a_4^\dag |0>
-        [0, 0, 1, 0] = a_3^\dag |0>
-        [0, 0, 2, 0] = a_3^\dag * a_3^\dag |0>
-        [0, 0, 2, 1] = a_4^\dag * a_3^\dag * a_3^\dag |0>
-        ...
+
+        .. math::
+
+          (0, 0, 0, 0) &= \\left | 0 \\right \\rangle
+
+          (0, 0, 0, 1) &= a_4^\\dagger \\left | 0 \\right \\rangle
+
+          (0, 0, 0, 2) &= a_4^\\dagger a_4^\\dagger \\left | 0 \\right \\rangle
+
+          (0, 0, 1, 0) &= a_3^\\dagger \\left | 0 \\right \\rangle
+
+          (0, 0, 2, 0) &= a_3^\\dagger a_3^\\dagger \\left | 0 \\right \\rangle
+
+          (0, 0, 2, 1) &= a_4^\\dagger a_3^\\dagger a_3^\\dagger \\left | 0 \\right \\rangle
+
+        and so on
 
         For Fermions (and bosons) basis states are combinations of creation operators acting on the vacuum
         state. For Fermions, the order of these creation operators matters. In that case, creation operators are
@@ -57,19 +67,26 @@ class ed_base:
         higher site index further to the left within each spin index.
 
         Having established the order of creation operators within a basis state, we can now write our fermion
-        occupations like spins, using a vector like [0, 0, 0, 1] to mean that there are no fermions on the first three logical
-        sites, and one fermion on the fourth. The order of these vectors will mimic the order of the tensor product state
-        We take the leftmost element of the vector to be the 'smallest' index. We say that the 'smallest' index has the
-        lowest site number and the smallest spin (i.e. most down spin). Note that there is no necessary connection
-        between the ordering of the basis states and the ordering of creation operators within a basis state.
+        occupations like spins, using a vector like [0, 0, 0, 1] to mean that there are no fermions on the
+        first three logical sites, and one fermion on the fourth. The order of these vectors will mimic the
+        order of the tensor product state We take the leftmost element of the vector to be the 'smallest' index.
+        We say that the 'smallest' index has the lowest site number and the smallest spin (i.e. most down spin).
+        Note that there is no necessary connection between the ordering of the basis states and the
+        ordering of creation operators within a basis state.
 
         For example, consider a fermions model on two sites. The spin-like vectors specifying the basis states are
         [site 0 spin down, site 1 spin down, site 0 spin up, site 1 spin up], and the first few basis states in order are
-        [0, 0, 0, 0]
-        [0, 0, 0, 1] = c_{1,up}^\dag |0>
-        [0, 0, 1, 0] = c_{0,up}^\dag |0>
-        [0, 0, 1, 1] = c_{1,up}^\dag c_{0,up}^\dag |0>
-        ...
+
+        .. math ::
+
+          (0, 0, 0, 0) &= |0>
+
+          (0, 0, 0, 1) &= c_{1,\\uparrow}^\\dagger |0>
+
+          (0, 0, 1, 0) &= c_{0,\\uparrow}^\\dagger |0>
+
+          (0, 0, 1, 1) &= c_{1,\\uparrow}^\\dagger c_{0,\\uparrow}^\\dagger |0>
+
         """
 
         self.check_version()
@@ -80,28 +97,29 @@ class ed_base:
     def check_version(self):
         """
         Check which version of python is being used.
+
         :return:
         """
 
         if ctypes.sizeof(ctypes.c_voidp) == 4:
             print("Warning: using 32-bit python. Array size is limited. Recommend switching to 64-bit")
 
-    def get_state_vects(self, print_results=False):
+    def get_state_vects(self, print_results: bool = False):
         pass
 
     # ########################
     # Funtions to construct transformation operators
     # ########################
 
-    def get_xform_op(self, cycles, print_results=False):
+    def get_xform_op(self, cycles, print_results: bool = False):
         """
         Get transformation operator acting on our space (in same basis as Hamiltonian). Construct this by
         decomposing the transformation into cycles, and decomposing cycles into swap operations.
 
         :param cycles: A list of lists. Each sub-list is an ordered collection of sites, where one site transforms
-        into the next under the actaion of whichever symmetry transformation we are using. Determine cycles using the
-        ed_geometry package function findSiteCycles
-        :param print_results: Boolean specifying whether or not to print results
+          into the next under the actaion of whichever symmetry transformation we are using. Determine cycles using the
+          ed_geometry package function findSiteCycles
+        :param print_results: Whether to print results
         :return: Sparse matrix representing transformation operator in Hilbert space.
         """
         if print_results:
@@ -128,17 +146,25 @@ class ed_base:
     # ########################
 
     def createH(self):
+        """
+        Create the Hamiltonian of the system
+        :return:
+        """
         pass
 
-    def diagH(self, haml, neigs=200, use_sparse=False, print_results=False):
+    def diagH(self,
+              haml,
+              neigs: int = 200,
+              use_sparse: bool = False,
+              print_results: bool = False):
         """
-        Diagonalize Hamiltonian, or, if using spares matrices, get NEigs eigenvalues and eigenvectors
+        Diagonalize Hamiltonian, or, if using spares matrices, get neigs eigenvalues and eigenvectors
+
         :param haml: Hamiltonian of the system as a sparse matrix.
         :param neigs: Optional, number of eigenvalues to compute.
         :param use_sparse:
         :param print_results:
-        :return eigvals:
-        :return eigvects:
+        :return: (eigvals, eigvects)
         """
         if print_results:
             tstart = time.perf_counter()
@@ -167,10 +193,16 @@ class ed_base:
 
         return eigvals, eigvects
 
-    def quench_time_evolve(self, initial_states, eig_vects, eig_energies, times, print_results=False):
+    def quench_time_evolve(self,
+                           initial_states,
+                           eig_vects,
+                           eig_energies,
+                           times,
+                           print_results: bool = False):
         """
         Do quench time evolution in subspace we've diagonalized. Take initial state and times to compute quench at
         as arguments. Return Times and resulting states, which is an NStates x NTimes array.
+
         :param initial_states:
         :param eig_vects:
         :param eig_energies:
@@ -220,7 +252,7 @@ class ed_base:
         init_states_expanded = np.tile(np.expand_dims(init_states_eig_basis, axis=1), (1, times.size, 1))
         # do time evolution
         evolved_states_eig_basis = np.multiply(np.exp(-1j * np.multiply(expanded_times, expanded_energies)),
-                                             init_states_expanded)
+                                               init_states_expanded)
         # transform back to initial basis. Need to multiply a stack of matrices by the same matrix. So want to do
         # matrix multiplication along the first two dimensions (0 and 1) and ignore the 3rd dimension (2)
         evolved_states = np.tensordot(eig_vects, evolved_states_eig_basis, axes=([1], [0]))
@@ -241,7 +273,10 @@ class ed_base:
     # Calculate operators
     # ########################
 
-    def spinful2spinlessIndex(self, spinful_site_index, n_physical_sites, spin_index):
+    def spinful2spinlessIndex(self,
+                              spinful_site_index: int,
+                              n_physical_sites: int,
+                              spin_index: int) -> int:
         """
         Convert from spinful fermion indexing to spinless fermion indexing. i.e. convert from double index to single
         index. Assumes that you are using the Fermion basis where creation operators are organized first by spin index,
@@ -251,27 +286,35 @@ class ed_base:
         :param spinful_site_index: Int, site index = {0,...nsites-1}
         :param n_physical_sites: Int, total number of physical sites
         :param spin_index: Int, spin state. |Down> = 0, |Up> = 1. Can also have more spin states.
-        :return: Int, "spinless" index
+        :return: "spinless" index
         """
         return n_physical_sites * spin_index + spinful_site_index
 
-    def spinless2spinfullIndex(self, spinless_site_index, n_physical_sites):
+    def spinless2spinfullIndex(self,
+                               spinless_site_index: int,
+                               n_physical_sites: int) -> (int, int):
         """
         Convert from spinless fermion indexing to spinful fermion indexing. i.e. convert from single index to double
         index. Assumes that you are using the Fermion basis where creation operators are organized first by spin index,
         with higher spin indexes further to the left, and then by site indexing, with higher site index further to the
         left within each spin index.
-        :param spinless_site_index: Int, spinless site index
-        :param n_physical_sites: Int, number of physical sites
-        :return: Int, Int spinfull site index and spin index
+
+        :param spinless_site_index: spinless site index
+        :param n_physical_sites: number of physical sites
+        :return: (spinfull site index, spin index)
         """
         site_index = np.mod(spinless_site_index, n_physical_sites)
         spin_index = (spinless_site_index - site_index) / n_physical_sites
         return site_index, spin_index
 
-    def get_single_site_op(self, site_index, species_index, op, format="fermion"):
+    def get_single_site_op(self,
+                           site_index: int,
+                           species_index: int,
+                           op,
+                           format: str = "fermion"):
         """
         Compute operator for a single site.
+
         :param int site_index: site to compute operator on
         :param int species_index:
         :param op: 2x2 operator, acting on a single site. e.g. Sz
@@ -293,11 +336,19 @@ class ed_base:
 
         return sp.kron(sp.kron(sp.eye(self.nbasis ** site_index_logical), op, "coo"), endmat, "coo")
 
-    def get_two_site_op(self, site1, species1, site2, species2, op1, op2, format="fermion"):
+    def get_two_site_op(self,
+                        site1: int,
+                        species1: int,
+                        site2: int,
+                        species2: int,
+                        op1,
+                        op2,
+                        format: str = "fermion"):
         """
         Compute product of operators on two separate sites. First must sort the operators so that the first operator
         is the lower site.
-        :param int site1: first site
+
+        :param site1: first site
         :param species1:
         :param site2:
         :param species2:
@@ -347,13 +398,17 @@ class ed_base:
             return (sp.kron(sp.kron(sp.kron(sp.eye(self.nbasis ** site_a), op_a, "coo"), middlemat, "coo"),
                             sp.kron(op_b, sp.eye(self.nbasis ** (n_logical_sites - site_b - 1)), "coo"), "coo"))
 
-    def get_sum_op(self, op, species, format="fermion", print_results=False):
+    def get_sum_op(self,
+                   op,
+                   species,
+                   format: str = "fermion",
+                   print_results: bool = False):
         """
         Get operator that is the sum of identical single site operators
 
         :param op: 2x2 operator acting on each site
-        :param int species: index of species operators act on
-        :param str format: "fermion" or "
+        :param species: index of species operators act on
+        :param format: "fermion" or "
         :param print_results:
         :return opmat: sparse matrix representing the sum operator
         """
@@ -369,7 +424,12 @@ class ed_base:
             print("getSumOptook %0.2f s" % (tend - tstart))
         return opmat.tocsr()
 
-    def get_sum_op_q(self, species, q_vector, op, format="fermion", print_results=False):
+    def get_sum_op_q(self,
+                     species,
+                     q_vector,
+                     op,
+                     format: str = "fermion",
+                     print_results: bool = False):
         """
 
         :param species:
@@ -396,21 +456,34 @@ class ed_base:
 
         return sum_op_q
 
-    def get_swap_op(self, site1, site2, species):
+    def get_swap_op(self,
+                    site1: int,
+                    site2: int,
+                    species: int):
+        """
+
+        :param site1:
+        :param site2:
+        :param species:
+        :return:
+        """
         pass
 
     # ##################################
     # General overlaps/expectation value functions
     # ##################################
 
-    def get_exp_vals(self, states, full_op, print_results=False):
+    def get_exp_vals(self,
+                     states,
+                     full_op,
+                     print_results: bool = False) -> np.ndarray:
         """
         Compute the expectation values for a number of states and a single operator. The operator and states must be
         written in the same basis. This may be the basis of the full space, or a projected subspace.
 
         :param states: NumPy array  or sparse matrix of size nbasis x nvectors. The columns represent state vectors.
         :param full_op: Sparse matrix of size nbasis x nbasis
-        :param bool print_results: If true print information to terminal
+        :param print_results: If true print information to terminal
         :return: NumPy array of size ???
         """
         if print_results:
@@ -432,7 +505,10 @@ class ed_base:
 
         return exp_vals
 
-    def get_overlaps(self, states1, states2, print_results=False):
+    def get_overlaps(self,
+                     states1,
+                     states2,
+                     print_results: bool = False):
         """
         Compute the overlap of two collections of states.
 
@@ -469,9 +545,12 @@ class ed_base:
 
         return np.squeeze(overlaps)
 
-    def get_norms(self, states, print_results=False):
+    def get_norms(self,
+                  states,
+                  print_results: bool = False) -> np.ndarray:
         """
         Compute the norms for a collction of states
+
         :param states: NumPy array or sparse matrix of size nbasis x numvectors. Columns represent state vectors.
         :param print_results:
         :return: NumPy array of size numvectors, giving the norms of each column of states
@@ -497,18 +576,23 @@ class ed_base:
     # ##################################
     # utility functions for correlators
     # ##################################
-    def get_exp_vals_sites(self, states, site_op, species, sites=None, projector=None, format="fermion"):
+    def get_exp_vals_sites(self,
+                           states,
+                           site_op,
+                           species,
+                           sites=None,
+                           projector=None,
+                           format: str = "fermion"):
         """
         Get single-site operator expectation value given sites
+
         :param states: states to compute correlators
         :param site_op: single site operator
         :param species: species to use
         :param sites: if no argument is supplied, do computation at all sites
         :param projector:
         :param format:
-
-        :return exp_vals:
-        :return sites:
+        :return: (exp_vals, sites)
         """
         if states.ndim == 1:
             # states = states[:, None]
@@ -529,8 +613,16 @@ class ed_base:
 
         return exp_vals, sites
 
-    def get_thermal_exp_sites(self, eig_vects, eig_vals, site_op, species, temps, sites=None,
-                              projector=None, format="fermion", print_results=False):
+    def get_thermal_exp_sites(self,
+                              eig_vects,
+                              eig_vals,
+                              site_op,
+                              species,
+                              temps,
+                              sites=None,
+                              projector=None,
+                              format: str = "fermion",
+                              print_results: bool = False):
         """
 
         :param eig_vects:
@@ -556,12 +648,24 @@ class ed_base:
         exp_vals = np.zeros((len(sites), temps.size))
         for ii, site in enumerate(sites):
             full_op = projector * self.get_single_site_op(site, species, site_op, format=format) * projector.conj().transpose()
-            exp_vals[ii, :] = self.get_exp_vals_thermal(eig_vects, full_op, eig_vals, temps, print_results=print_results)
+            exp_vals[ii, :] = self.get_exp_vals_thermal(eig_vects,
+                                                        full_op,
+                                                        eig_vals,
+                                                        temps,
+                                                        print_results=print_results)
 
         return exp_vals, sites
 
-    def get_corr_sites(self, states, species1, species2, op1, op2, sites1=None, sites2=None,
-                       projector=None, format="fermion"):
+    def get_corr_sites(self,
+                       states,
+                       species1,
+                       species2,
+                       op1,
+                       op2,
+                       sites1=None,
+                       sites2=None,
+                       projector=None,
+                       format: str = "fermion"):
         """
         Compute correlators between sites1 and sites2
         :param states: States to compute correlators at
@@ -573,10 +677,7 @@ class ed_base:
         :param sites2: site2s If no argument is provided, will generate all possible site2s.
         :param projector: Projector to apply to expectation values
         :param format: "boson" or "fermion" depending on type of operator
-        :return:
-        exp_vals
-        sites1
-        sites2
+        :return: (exp_vals, sites1, sites2)
         """
         if states.ndim == 1:
             # states = states[:, None]
@@ -600,7 +701,19 @@ class ed_base:
 
         return exp_vals, sites1, sites2
 
-    def get_thermal_corr_sites(self, eig_vects, eig_vals, species1, species2, op1, op2, temps, sites1=None, sites2=None, projector=None, format="fermion", print_results=False):
+    def get_thermal_corr_sites(self,
+                               eig_vects,
+                               eig_vals,
+                               species1,
+                               species2,
+                               op1,
+                               op2,
+                               temps,
+                               sites1=None,
+                               sites2=None,
+                               projector=None,
+                               format: str = "fermion",
+                               print_results: bool = False):
         """
 
         :param eig_vects:
@@ -642,7 +755,10 @@ class ed_base:
     # Subspace overlaps
     # ##################################
 
-    def get_subspace_overlaps(self, states, projectors, print_results=False):
+    def get_subspace_overlaps(self,
+                              states,
+                              projectors,
+                              print_results: bool = False):
         """
         Given a list of projectors and a matrix of states, compute the overlaps of each state with the subspace
         defined by each projector.
@@ -671,7 +787,10 @@ class ed_base:
             print("get_subspace_overlaps took %0.2f s" % (tend - tstart))
         return np.squeeze(projections)
 
-    def get_subspace_projs(self, diagonal_op, eig_vals=None, print_results=False):
+    def get_subspace_projs(self,
+                           diagonal_op,
+                           eig_vals=None,
+                           print_results: bool = False):
         """
         Given a diagonal operator, get projection onto subspace with a given eigenvalue. For example, you can use
         this function in combination with get_npairs_op to create an operator that projects onto the subspace of all
@@ -710,22 +829,28 @@ class ed_base:
         if print_results:
             tend = time.perf_counter()
             print("get_subspace_projs took %0.2f s" % (tend - tstart))
+
         return projs, eig_vals
 
     # ##################################
     # finite temperature properties
     # ##################################
 
-    def get_exp_vals_thermal(self, eig_vects, op, eig_vals, temps, print_results=False):
+    def get_exp_vals_thermal(self,
+                             eig_vects,
+                             op,
+                             eig_vals,
+                             temps,
+                             print_results: bool = False):
         """
         Calculate thermal expectation values
+
         :param eig_vects:
         :param op:
         :param eig_vals:
         :param temps:
         :param print_results:
         :return:
-
         """
         if print_results:
             tstart = time.perf_counter()
@@ -755,17 +880,19 @@ class ed_base:
 
         return thermal_exp_vals
 
-    def get_thermal_weights(self, energies, temps, use_energies_offset=False):
+    def get_thermal_weights(self,
+                            energies,
+                            temps,
+                            use_energies_offset: bool = False):
         """
         Get partition function and thermal weights for a set of energies at given temperature.
         The probability have a having a given state is then thermal_weight / Z.
-
         Correctly accounts for degenerate states.
-        Assume energies are sorted
-        :param energies: numpy array of energies
+
+        :param energies: numpy array of energies. Assume energies are sorted
         :param temps: temperatures at which to compute thermal weights
         :param use_energies_offset: if 1 will first shift the lowest energy eigenvalue to occur at zero. Otherwise,
-        will not
+          will not
         :return:
         """
 
@@ -800,9 +927,12 @@ class ed_base:
 
         return thermal_weights, z
 
-    def get_partition_fn_hamiltonian(self, hamiltonian, beta):
+    def get_partition_fn_hamiltonian(self,
+                                     hamiltonian,
+                                     beta: float):
         """
         Compute partition function from Hamiltonian via trace
+
         :param hamiltonian:
         :param beta:
         :return:
@@ -813,15 +943,18 @@ class ed_base:
         else:
             return np.trace(scipy.linalg.expm(- beta * hamiltonian).toarray().real)
 
-    def get_partition_fn_sectors(self, energies_sectors, temp):
+    def get_partition_fn_sectors(self,
+                                 energies_sectors: list,
+                                 temp: np.ndarray) -> np.ndarray:
         """
         Get partition functions for each symmetry sector of our problem from the energies.
 
         This way we can shift the smallest eigenvalue to zero which simplifies numerical issues (i.e. too large or
         small values in the exponential).
+
         :param energies_sectors: a list of numpy arrays. Each array gives the eigenvalues for a sub-block of the
-        Hamiltonian
-        :param temp: temperature, numpy array
+          Hamiltonian
+        :param temp: temperature
         :return: z_sectors, a numpy array where each entry is the partition function of the given sub-block
         """
         temp = np.asarray(temp)
@@ -860,16 +993,21 @@ class ed_base:
 
         return z_sectors
 
-    def thermal_avg_combine_sectors(self, expvals_sectors, eigvals_sectors, temps):
+    def thermal_avg_combine_sectors(self,
+                                    expvals_sectors: list,
+                                    eigvals_sectors: list,
+                                    temps: np.ndarray) -> np.ndarray:
         """
         Get the thermal expectation value for a Hamiltonian diagonalized on multiple sectors
         TODO: is there a less confusing way to do this???
-        :param expvals_sectors: should be of size n_sectors x n_temps x arbitrary size, where the hamiltonian is divided
-        into n_sector sub-blocks and we have evaluated the expectation values for each sub-block at n_temps temperatures.
+
+        :param expvals_sectors: should be of size n_sectors x n_temps x arbitrary size, where the
+          hamiltonian is divided into n_sector sub-blocks and we have evaluated the expectation values
+          for each sub-block at n_temps temperatures.
         :param eigvals_sectors: a list of numpy arrays, where each array gives all of the eigenvalues in a single
-        sub-block of the Hamiltonian
+          sub-block of the Hamiltonian
         :param temps: numpy array of temperatures
-        :return:
+        :return: thermal_exp_vals
         """
         temps = np.asarray(temps)
 
@@ -889,7 +1027,8 @@ class ed_base:
             for ii in range(0, temps.size):
                 # expvals_sectors_temp = np.zeros((shape))
                 expvals_sectors_temp = expvals_sectors[:, ii, :]
-                thermal_exp_vals[ii, :] = self.thermal_avg_combine_sectors(expvals_sectors_temp, eigvals_sectors, temps[ii])
+                thermal_exp_vals[ii, :] = self.thermal_avg_combine_sectors(expvals_sectors_temp,
+                                                                           eigvals_sectors, temps[ii])
         else:
             z_sector = self.get_partition_fn_sectors(eigvals_sectors, temps)
             z = np.sum(z_sector)
@@ -901,7 +1040,18 @@ class ed_base:
 
         return thermal_exp_vals
 
-    def get_matrix_elems(self, eig_vects, op, print_results=False):
+    def get_matrix_elems(self,
+                         eig_vects,
+                         op,
+                         print_results: bool = False):
+        """
+
+        :param eig_vects:
+        :param op:
+        :param print_results:
+        :return:
+        """
+
         if print_results:
             tstart = time.perf_counter()
 
@@ -915,12 +1065,19 @@ class ed_base:
 
         return matrix_elems
 
-    def get_response_fn_retarded(self, a_matrix_elems, b_matrix_elems, eig_vals, temperature,
-                                 format="boson", print_results=False):
+    def get_response_fn_retarded(self,
+                                 a_matrix_elems,
+                                 b_matrix_elems,
+                                 eig_vals,
+                                 temperature,
+                                 format: str = "boson",
+                                 print_results: bool = False):
         """
         Create a function for computing the optical conductivity at arbitrary frequency omega_start and arbitrary broadening
         paramter eta
+
         :param a_matrix_elems: the current operator in the eigenvector basis
+        :param b_matrix_elems:
         :param eig_vals: eigenvalues corresponding to the eigenvectors
         :param temperature:
         :param format:
@@ -981,10 +1138,16 @@ class ed_base:
 
         return response_fn_imag_part
 
-    def get_response_fn_time_ordered(self, a_matrix_elems, b_matrix_elems, eig_vals, temperature, print_results=False):
+    def get_response_fn_time_ordered(self,
+                                     a_matrix_elems,
+                                     b_matrix_elems,
+                                     eig_vals,
+                                     temperature,
+                                     print_results: bool = False):
         """
-        Create a function for computing the optical conductivity at arbitrary frequency omega_start and arbitrary broadening
-        paramter eta
+        Create a function for computing the optical conductivity at arbitrary frequency
+        omega_start and arbitrary broadening paramter eta
+
         :param a_matrix_elems: the current operator in the eigenvector basis
         :param b_matrix_elems: the current operator in the eigenvector basis
         :param eig_vals: eigenvalues corresponding to the eigenvectors
@@ -1040,7 +1203,8 @@ class ed_base:
     # Load and save
     # ########################
 
-    def save(self, file_name=None):
+    def save(self,
+             file_name: str = None):
         """
         Save class as .mat file or .pkl. Defaults to .pkl
 
@@ -1065,7 +1229,8 @@ class ed_base:
         print("Saved file to %s" % file_name)
         return file_name
 
-    def load(self, file_name):
+    def load(self,
+             file_name: str):
         """
         Load saved file to class. Also return as dictionary.
         :param file_name:

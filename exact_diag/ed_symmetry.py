@@ -1,16 +1,33 @@
+"""
+
+Character tables
+######################
+Many function refer to the character table of a given symmetry group. The character table can be interpreted as
+follows. The labels in the leftmost column label the irreducible representations. Each row is associated with
+a single irreducible representation. The columns are associated with each conjugacy class of the symmetry group.
+The members of each conjugacy class are listed at the top of the column.
+
+"""
+
 import time
 import numpy as np
 import scipy.sparse as sp
+from exact_diag.ed_geometry import Geometry
 
 # #################################################
 # coordinate transformation functions
 # #################################################
 
-def getRotFn(n_rotations, cx=0, cy=0):
+
+def getRotFn(n_rotations: int,
+             cx: float = 0.,
+             cy: float = 0.):
     """
     Returns a function which performs a coordinate rotation about a given origin
 
     :param n_rotations: Int, number of rotations required to go 360 deg. Rotation angle = 2pi/NumRots
+    :param cx:
+    :param cy:
     :return: function
     """
     angle = 2 * np.pi / n_rotations
@@ -22,15 +39,19 @@ def getRotFn(n_rotations, cx=0, cy=0):
 
     return rotation_fn
 
-def getReflFn(reflection_vect, cx=0, cy=0):
+
+def getReflFn(reflection_vect: np.ndarray,
+              cx: float = 0.,
+              cy: float = 0.):
     """
     Returns a function which performs a coordinate reflection about a given axis.
 
     # TODO: the reflection center implementation is not correct...
 
     :param reflection_vect: vector about which to do the reflection
-    :return:
-    reflection_fn:
+    :param cx:
+    :param cy:
+    :return: reflection_fn:
     """
 
     # ensure Vect is the correct shape
@@ -55,7 +76,9 @@ def getReflFn(reflection_vect, cx=0, cy=0):
 
     return reflection_fn
 
-def getInversionFn(cx=0, cy=0):
+
+def getInversionFn(cx: float = 0.,
+                   cy: float = 0.):
     """
     Returns a function that performs inversion of coordinates about a given center.
 
@@ -63,8 +86,9 @@ def getInversionFn(cx=0, cy=0):
     :param cy: y coordinate of inversion center
     :return:
     """
-    inversion_fn = lambda xs, ys: np.concatenate([ -(xs[None, :] - cx) + cx, -(ys[None, :]- cy) + cy])
+    inversion_fn = lambda xs, ys: np.concatenate([ -(xs[None, :] - cx) + cx, -(ys[None, :] - cy) + cy])
     return inversion_fn
+
 
 def getTranslFn(translation_vector):
     """
@@ -86,17 +110,20 @@ def getTranslFn(translation_vector):
 # Functions to determine how sites transform
 # #################################################
 
-def getTransformedSites(transform_fn, sites, geom_obj, tol=1e-10):
+
+def getTransformedSites(transform_fn,
+                        sites,
+                        geom_obj: Geometry,
+                        tol: float = 1e-10):
     """
     Determine how sites are permuted under the action of a given transformation.
 
     :param transform_fn: A function of the form f(x, y) which returns a 2 x n matrix where each column represents the
-    transformed position of site at (x,y).
+      transformed position of site at (x,y).
     :param sites: list of initial sites by index e.g. [0, 1, 2, ..., n]
     :param geom_obj: instances of geometry class
-    :return:
-    initial_sites:
-    transformed_sites:
+    :param tol:
+    :return: (initial_sites, transformed_sites)
     """
 
     # use periodicity vectors to get reduced locations, to avoid problems where two equivalent locations
@@ -136,7 +163,10 @@ def getTransformedSites(transform_fn, sites, geom_obj, tol=1e-10):
     # TODO: add descriptive error when one site doesn't have a partner under transformation.
     return np.array(sites), trans_sites
 
-def findSiteCycles(transform_fn, geom_obj, tol=1e-10):
+
+def findSiteCycles(transform_fn,
+                   geom_obj: Geometry,
+                   tol: float = 1e-10):
     """
     Find closed cycles of sites which transform into each other under a given transformation.
     The transformation operator should be unity after NumTransToClose.
@@ -144,9 +174,10 @@ def findSiteCycles(transform_fn, geom_obj, tol=1e-10):
 
     :param transform_fn:
     :param geom_obj:
-    :return:
-    cycles: a list of lists, where each list defines a cycle of sites mapped to each other by successive transformations
-    max_cycle_len: length of the longest cycle
+    :param tol:
+    :return: (cycles, max_cycle_len)
+      cycles is a list of lists, where each list defines a cycle of sites mapped to each other
+      by successive transformations. max_cycle_len is the length of the longest cycle
     """
 
     nsites = geom_obj.nsites
@@ -185,21 +216,25 @@ def findSiteCycles(transform_fn, geom_obj, tol=1e-10):
 # Functions to determine how states transform
 # #################################################
 
-def reduce_symm_projector(p_full, dim, states_related_by_symm, print_results=False):
+
+def reduce_symm_projector(p_full,
+                          dim,
+                          states_related_by_symm,
+                          print_results: bool = False):
     """
     Create an operator which projects onto a certain subspace which has definite transformation properties with
     respect to a given transformation operator.
 
-    Typically this function is called on the output of the getCyclicProj function, which produces projop_full2full
+    Typically this function is called on the output of getCyclicProj(), which produces projop_full2full
 
     :param p_full: Needs to be a csc sparse matrix. Takes a state in the full space and projects it onto
-    a state of a given symmetry. Returns a state in the initial basis. Does not reduce the size of the space.
-    projOp_full2full * vector does not necessarily produce a normalized vector.
+      a state of a given symmetry. Returns a state in the initial basis. Does not reduce the size of the space.
+      projOp_full2full * vector does not necessarily produce a normalized vector.
     :param dim: dimension of the irreducible representation in question
-    :param bool print_results: Boolean indicating whether or not to print information to the terminal
-
-    :return proj_full2reduced: sparse csr matrix. symm_proj is defined such that symm_proj*Op*symm_proj.transpose() is the operator Op in the
-    projected subspace
+    :param states_related_by_symm:
+    :param print_results: Whether to print information to the terminal
+    :return proj_full2reduced: sparse csr matrix. symm_proj is defined such that
+      symm_proj*Op*symm_proj.transpose() is the operator Op in the projected subspace
     """
     if print_results:
         tstart = time.perf_counter()
@@ -266,7 +301,7 @@ def reduce_symm_projector(p_full, dim, states_related_by_symm, print_results=Fal
                                   states_related_by_symm.indptr[unique_inv_sorted[inv_counter] + 1]]
 
             # get relevant matrices, only keep nonzero rows and columns for this subpsace
-            ccols, rrows = np.meshgrid(cols, unique_inv_sorted[inv_counter : inv_counter + counts[ii]])
+            ccols, rrows = np.meshgrid(cols, unique_inv_sorted[inv_counter: inv_counter + counts[ii]])
 
             mat = p_full[rrows, ccols].todense()
             rank = np.linalg.matrix_rank(mat)
@@ -293,11 +328,14 @@ def reduce_symm_projector(p_full, dim, states_related_by_symm, print_results=Fal
 
     return p_red
 
-def get_symmetry_projectors(character_table, conjugacy_classes, print_results=False):
+
+def get_symmetry_projectors(character_table,
+                            conjugacy_classes,
+                            print_results: bool = False):
     """
 
     :param character_table: each row gives the characters of a different irreducible rep. Each column
-    corresponds to a different conjugacy classes
+      corresponds to a different conjugacy classes
     :param conjugacy_classes: List of lists of conjugacy class elements
     :param print_results:
     :return projs:
@@ -328,34 +366,35 @@ def get_symmetry_projectors(character_table, conjugacy_classes, print_results=Fa
 # implementations for specific groups
 # #################################################
 
-def getZnProjectors(xform_op, n_xforms, print_results=False):
+
+def getZnProjectors(xform_op,
+                    n_xforms,
+                    print_results: bool = False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
     symmetry transformation if the symmetry group is a cyclic group. Examples of appropriate
     symmetries are translational or pure rotational symmetry.
 
-    Representations of Z_n, the nth cyclic group: There are n irreducible representations, and
-    all are one dimensional (since Z_n is abelian). Let zr be the nth root of unity,
-    zr = exp(-2*pi*1j/n * r) = z1^r.
-    We can regard 2*pi*r/n as the wave-vector (kr) associated with a representation.
+    Representations of :math:`Z_n`, the nth cyclic group: There are n irreducible representations, and
+    all are one dimensional (since Z_n is abelian). Let :math:`z_r` be the nth root of unity given by
+    :math:`z_r = \\exp \\left[ -2 \\pi i \\frac{r}{n} \\right] = z_1^r.`
+    We can regard :math:`2 \\pi r/n` as the wave-vector (:math:`k_r`) associated with a representation.
     The character table is given by:
-           ----------------------------------------------------
-    IrrRep |E,    R,    R^2,    ...,    R^l,   ...,    R^(n-1)|
-           ----------------------------------------------------
-         0 |1,    1,    1  ,    ...,    1  ,   ...,    1      |
-         1 |1,   z1,   z1^2,    ...,   z1^l,   ...,   z1^(n-1)|
-       ... |                                                  |
-         p |1,   zp,    zp^2,   ...,   zp^l,   ...,   zp^(n-1)|
-       ... |                                                  |
-       n-1 |...                                               |
-           ----------------------------------------------------
+
+    .. csv-table:: Irreducibles representations of :math:`Z_n`
+      :header: "Rep", ":math:`E`", ":math:`R`", ":math:`R^2`", "...", ":math:`R^l`", "...", ":math:`R^{n-1}`"
+
+      "0", "1", "1",                    "1",    "...",          "1",   "...",           "1"
+      "1", "1", ":math:`z_1`", ":math:`z_1^2`", "...", ":math:`z_1^l`", ...,   ":math:`z_1^{n-1}`"
+      "..."
+      "p", "1", ":math:`z_p`", ":math:`z_p^2`", "...", ":math:`z_p^l`", ...,   ":math:`z_p^{n-1}`"
+      "..."
+      "n-1", "..."
 
     :param xform_op: transformation operator acting on state space
     :param n_xforms: minimum number of transformations to return to the starting condition, i.e. xform_op**n = 1
     :param print_results: if 1, print timing information
-    :return:
-    projs: a list of projectors
-    ks: a numpy array of ks associated with each projector
+    :return: (projs, ks) a list of projectors and a numpy array of ks associated with each projector
     """
 
     kx, ky = np.meshgrid(range(n_xforms), range(n_xforms))
@@ -369,7 +408,12 @@ def getZnProjectors(xform_op, n_xforms, print_results=False):
     ks = 2 * np.pi * np.arange(0, n_xforms) / n_xforms
     return projs, ks
 
-def get2DTranslationProjectors(translation_op1, n1, translation_op2, n2, print_results=False):
+
+def get2DTranslationProjectors(translation_op1,
+                               n1,
+                               translation_op2,
+                               n2,
+                               print_results: bool = False):
     """
 
     :param translation_op1:
@@ -407,25 +451,28 @@ def get2DTranslationProjectors(translation_op1, n1, translation_op2, n2, print_r
 
     return all_projs, ks1, ks2
 
-def getD2Projectors(rot_op, refl_op, print_results=False):
+
+def getD2Projectors(rot_op,
+                    refl_op,
+                    print_results: bool = False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
-    symmetry transformation if the symmetry group is C_2v = D_2, the 2nd dihedral group.
+    symmetry transformation if the symmetry group is :math:`C_{2v} = D_2`, the 2nd dihedral group.
     This is the symmetry group of the rectangle, generated by a two-fold rotation and a reflection and
-    has 4 element, i.e. |D_2] = 4.
+    has 4 element, i.e. :math:`|D_2] = 4`.
 
-    Irreducible representions of D_2 = C_2V: There are four irreducible representations. All are one dimensional.
-    The character table is given by:
-    IrrRep |E, [R = C_2(z)] ,    [sigma = C_2(y)],    [R*sigma = C_2(x)]
-           ------------------------------------------------------------
-        A  |1,            1 ,                 1  ,              1
-        B1 |1,            1 ,                -1  ,             -1
-        B2 |1,           -1 ,                 1  ,             -1
-        B3 |1,           -1 ,                -1  ,              1
+    .. csv-table:: Irreducible representations of :math:`D_2`
+       :header: "Rep", ":math:`E`", ":math:`R = C_2(z)`", ":math:`sigma = C_2(y)`", ":math:`R*sigma = C_2(x)`"
 
-    The labels in the leftmost column label the irreducible representations. Each row is associated with a single
-    irreducible representation. The columns are associated with each conjugacy class of the symmetry group. The members
-    of each conjugacy class are listed at the top of the column.
+       ":math:`A`",   "1",  "1",  "1",  "1"
+       ":math:`B_1`", "1",  "1", "-1", "-1"
+       ":math:`B_2`", "1", "-1", "1",  "-1"
+       ":math:`B_3`", "1", "-1", "-1",  "1"
+
+    :param rot_op:
+    :param refl_op:
+    :param print_results:
+    :return:
     """
 
     # Project onto subspaces associated with each irreducible representation of C_4v
@@ -439,29 +486,29 @@ def getD2Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
-def getD3Projectors(rot_op, refl_op, print_results=False):
+
+def getD3Projectors(rot_op,
+                    refl_op,
+                    print_results: bool = False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
-    symmetry transformation if the symmetry group is C_3v = D_3, the 3rd dihedral group.
+    symmetry transformation if the symmetry group is :math:`C_{3v} = D_3`, the 3rd dihedral group.
     This is the symmetry group of the triangle, generated by a three-fold rotation and a reflection and
-    has 6 element, i.e. |D_3] = 4.
+    has 6 element, i.e. :math:`|D_3] = 4`.
 
+    There are three irreducible representations of D_3, and the character table is given by
 
-    Irreducible representations of D_3: There are three irreducible representations.
-    The character table is given by:
-    IrrRep |E, [R, R^2] = 2C_3 ,    [sigma, R*sigma, R^2*sigma] = 3C_2
-        A1 |1,               1 ,                          1
-        A2 |1,               1 ,                         -1
-        E  |2,              -1 ,                          0
-    The labels in the leftmost column label the irreducible representations. Each row is associated with a single
-    irreducible representation. The columns are associated with each conjugacy class of the symmetry group. The members
-    of each conjugacy class are listed at the top of the column.
+    .. csv-table:: Irreducible representations of :math:`D_3`
+      :header: "Rep", ":math:`E`", ":math:`2C_3 = (R, R^2)`", ":math:`3C_2 = (\\sigma, R\\sigma, R^2\\sigma)`"
+
+      ":math:`A_1`", "1", "1", "1"
+      ":math:`A_2`", "1", "1", "-1"
+      ":math:`E`", "2", "-1", "0"
 
     :param rot_op:
     :param refl_op:
     :param print_results:
-    :return:
-    projs: list of projection operators on to symmetry subspaces
+    :return: list of projection operators on to symmetry subspaces
     """
 
     # Project onto subspaces associated with each irreducible representation of C_4v
@@ -477,33 +524,33 @@ def getD3Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
-def getD4Projectors(rot_op, refl_op, print_results=False):
+
+def getD4Projectors(rot_op,
+                    refl_op,
+                    print_results: bool = False):
     """
     Returns operators which project on to symmetry subspaces associated with a given
-    symmetry transformation if the symmetry group is C_4V or D_4, the 4th dihedral group.
+    symmetry transformation if the symmetry group is :math:`C_{4v} = D_4`, the 4th dihedral group.
     This is the symmetry group of the square, generated by a four-fold rotation and a reflection and
-    has 8 element, i.e. |C_4V] = 8.
+    has 8 element.
 
-    Irreducible representations of C_4v = D_4: There are five irreducible representations. Four are
-    one dimensional and one (E) is two dimensional.
-    The character table is given by:
-    IrrRep |E, [R,R^3], [R^2], [Refl, R^2*Refl], [R*Refl, R^3*Refl]
-           ---------------------------------------------------
-        A1 |1,    1   ,   1  ,         1       ,         1
-        A2 |1,    1   ,   1  ,         -1      ,         -1
-        B1 |1,    -1  ,   1  ,         1       ,         -1
-        B2 |1,    -1  ,   1  ,         -1      ,         1
-         E |2,     0  ,   -2  ,         0      ,         0
-           ---------------------------------------------------
-    The labels in the leftmost column label the irreducible representations. Each row is associated with a single
-    irreducible representation. The columns are associated with each conjugacy class of the symmetry group. The members
-    of each conjugacy class are listed at the top of the column.
+    There are five irreducible representations of :math:`D_4`.
+    Four are one dimensional and one (E) is two dimensional.
+
+    .. csv-table:: Irreducible representations of :math:`D_4`
+      :header: "Rep", ":math:`E`", ":math:`(R,R^3)`", ":math:`(R^2)`", ":math:`(\\sigma, R^2\\sigma)`", ":math:`(R \\sigma, R^3 \\sigma)`"
+      :align: center
+
+      ":math:`A_1`", "1",  "1", "1",  "1",  "1"
+      ":math:`A_2`", "1",  "1", "1", "-1", "-1"
+      ":math:`B_1`", "1", "-1", "1",  "1", "-1"
+      ":math:`B_2`", "1", "-1", "1", "-1",  "1"
+      ":math:`E`",   "2", "0", "-2",  "0",  "0"
 
     :param rot_op: sparse matrix. fourfold rotation operator, acting on state space.
     :param refl_op: sparse matrix. reflection operator, acting on state space
     :param print_results:
-    :return:
-    projs: list of projection operators onto symmetry subspaces
+    :return: list of projection operators onto symmetry subspaces
     """
     id = sp.eye(refl_op.shape[0], format="csr")
     char_table = np.array([[1,  1,  1,  1,  1],
@@ -520,7 +567,17 @@ def getD4Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
-def getD5Projectors(rot_op, refl_op, print_results=False):
+
+def getD5Projectors(rot_op,
+                    refl_op,
+                    print_results: bool = False):
+    """
+
+    :param rot_op:
+    :param refl_op:
+    :param print_results:
+    :return:
+    """
     id = sp.eye(refl_op.shape[0], format="csr")
 
     char_table = np.array([[1,  1,  1, 1],
@@ -536,7 +593,17 @@ def getD5Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
-def getD6Projectors(rot_op, refl_op, print_results=False):
+
+def getD6Projectors(rot_op,
+                    refl_op,
+                    print_results: bool = False):
+    """
+
+    :param rot_op:
+    :param refl_op:
+    :param print_results:
+    :return:
+    """
     id = sp.eye(refl_op.shape[0], format="csr")
 
     char_table = np.array([[1,  1,  1,  1,  1,  1],
@@ -556,7 +623,17 @@ def getD6Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
-def getD7Projectors(rot_op, refl_op, print_results=False):
+
+def getD7Projectors(rot_op,
+                    refl_op,
+                    print_results: bool = False):
+    """
+
+    :param rot_op:
+    :param refl_op:
+    :param print_results:
+    :return:
+    """
     id = sp.eye(refl_op.shape[0], format="csr")
 
     char_table = np.array([[1,  1, 1, 1, 1],
@@ -575,40 +652,62 @@ def getD7Projectors(rot_op, refl_op, print_results=False):
 
     return projs
 
-def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
+
+def getC4V_and_3byb3(rot_op,
+                     refl_op,
+                     tx_op,
+                     ty_op,
+                     print_results: bool = False):
     """
-    Symmetry group = semidirect product (Z3 + Z3, C4V)
-            #1 #6 #9 #6 #18#4 #12#12 #4
-            C1 C2 C3 C4 C5 C6 C7 C8 C9
-    X.1     1  1  1  1  1  1  1  1  1
-    X.2     1 -1  1 -1  1  1 -1 -1  1
-    X.3     1 -1  1  1 -1  1 -1  1  1
-    X.4     1  1  1 -1 -1  1  1 -1  1
-    X.5     2  . -2  .  .  2  .  .  2
-    X.6     4 -2  .  .  .  1  1  . -2
-    X.7     4  .  . -2  . -2  .  1  1
-    X.8     4  .  .  2  . -2  . -1  1
-    X.9     4  2  .  .  .  1 -1  . -2
+    Symmetry group = semidirect product of :math:`Z3 + Z3` and :math:`C_{4v}`
+
+    .. csv-table:: Irreducible representations
+       :header: "Rep", ":math:`C_1`", ":math:`C_2`", ":math:`C_3`", ":math:`C_4`", ":math:`C_5`", ":math:`C_6`", ":math:`C_7`", ":math:`C_8`", ":math:`C_9`"
+
+       "X.1",     "1",  "1",  "1",  "1",  "1",  "1",  "1",  "1",  "1"
+       "X.2",     "1", "-1",  "1", "-1",  "1",  "1", "-1", "-1",  "1"
+       "X.3",     "1", "-1",  "1",  "1", "-1",  "1", "-1",  "1",  "1"
+       "X.4",     "1",  "1",  "1", "-1", "-1",  "1",  "1", "-1",  "1"
+       "X.5",     "2",  ".", "-2",  ".",  ".",  "2",  ".",  ".",  "2"
+       "X.6",     "4", "-2",  ".",  ".",  ".",  "1",  "1",  ".", "-2"
+       "X.7",     "4",  ".",  ".", "-2",  ".", "-2",  ".",  "1",  "1"
+       "X.8",     "4",  ".",  ".",  "2",  ".", "-2",  ".", "-1",  "1"
+       "X.9",     "4 ", "2",  ".",  ".",  ".",  "1", "-1",  ".", "-2"
 
     SmallGroup(72, 40) in GAP. (S3 x S3) : C2 AKA the Wreath product of S3 and C2
     semi_direct_prod(C3 x C3, D4)
     more info here https://people.maths.bris.ac.uk/~matyd/GroupNames/61/S3wrC2.html
+    #1 #6 #9 #6 #18#4 #12#12 #4
+    C1 C2 C3 C4 C5 C6 C7 C8 C9
 
-    Conjugacy classes
+    Conjugacy classes:
+
     C1 = {e} (order=1, #=1)
-    C2 = {Refl, R^2*Refl, Tx*Refl, Tx^2*Refl,
-          Ty*R^2*Refl, Ty^2*R^2*Refl} (order=2, #=6)
+
+    C2 = {Refl, R^2*Refl, Tx*Refl, Tx^2*Refl, Ty*R^2*Refl, Ty^2*R^2*Refl} (order=2, #=6)
+
     C3 = {R^2, Tx^nTy^mR^2} (order=2, #=9)
-    C4 = {R*Refl, R^3*Refl,
-          Tx*Ty^2*R*Refl, Tx^2*Ty*R*Refl,
-          Tx*Ty*R^3*Refl, Tx^2*Ty^2*R^3*Refl} (order=2, #=6)
+
+    C4 = {R*Refl, R^3*Refl, Tx*Ty^2*R*Refl, Tx^2*Ty*R*Refl, Tx*Ty*R^3*Refl, Tx^2*Ty^2*R^3*Refl} (order=2, #=6)
+
     C5 = {R, R^3, Tx^n*Ty^m*R, Tx^n*Ty^m*R^3} (order=4, #=18)
+
     C6 = {Tx, Tx^2, Ty, Ty^2} (order=3, #=4)
+
     C7 = {Tx^n*Ty^m*Refl except (n,m) = (0,0), (1,0) and (2,0)
           Tx^n*Ty^m*R^2*Refl except (n,m) = (0,0), (0,1), and (0, 2)} (order=6, #=12)
+
     C8 = {Tx^n*Ty^m*R*Refl except (n,m) = (0,0), (1,2) and (2, 1),
           Tx^n*Ty^m*R^3*Refl except (n,m) = (0,0), (1,1) and (2,2)} (order=6, #=12)
+
     C9 = {TxTy, Tx^2Ty, TxTy^2 Tx^2Ty^2} (order=3, #=4)
+
+    :param rot_op:
+    :param refl_op:
+    :param tx_op:
+    :param ty_op:
+    :param print_results:
+    :return:
     """
     #(c2, c7, c6) 0.335493
     #(c2, c7, c9) dim 1856
@@ -672,12 +771,29 @@ def getC4V_and_3byb3(rot_op, refl_op, tx_op, ty_op, print_results=False):
 
     return projs
 
-def getC4V_and_4by4(rot_op, refl_op, tx_op, ty_op, print_results=False):
-    pass
 
-def validate_char_table(char_table, conj_classes):
+def getC4V_and_4by4(rot_op,
+                    refl_op,
+                    tx_op,
+                    ty_op,
+                    print_results: bool = False):
+    """
+
+    :param rot_op:
+    :param refl_op:
+    :param tx_op:
+    :param ty_op:
+    :param print_results:
+    :return:
+    """
+    raise NotImplementedError()
+
+
+def validate_char_table(char_table,
+                        conj_classes):
     """
     Verify character table is sensible by checking row/column orthogonality relations
+
     :param char_table:
     :param conj_classes:
     :return:

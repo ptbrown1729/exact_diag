@@ -4,9 +4,13 @@ Tools for working with Green's functions
 import numpy as np
 import warnings
 
-def get_matsubara_frqs(beta, max_frq=30, format="fermion"):
+
+def get_matsubara_frqs(beta,
+                       max_frq: int = 30,
+                       format: str = "fermion"):
     """
     Calculate matsubara frequencies up to a cutoff
+
     :param beta: inverse temperature
     :param max_frq: maximum frequency that could be returend
     :param format: "fermion" for fermionic matsubara frequencies or "boson" for bosonic matsubara frequencies
@@ -27,19 +31,26 @@ def get_matsubara_frqs(beta, max_frq=30, format="fermion"):
 
     return np.sort(matsubara_frqs)
 
+
 # compute imaginary time or frequency green's functions from the spectral fn
-def get_grnfn_imagfrq_spectralfn(matsubara_frqs, omegas, spectral_fn):
+def get_grnfn_imagfrq_spectralfn(matsubara_frqs,
+                                 omegas,
+                                 spectral_fn):
     """
     Compute the imaginary frequency green's function associated with a given spectral function.
-    G(i*omega_n) = 1 / (2*pi) \int A(k, w) / (i * \omega_n - w).
 
-    Here we assume that the spectral function is normalized such that \int dw A(k, w) = 2*pi
+    .. math::
+
+      G(i \\omega_n) = \\frac{1}{2 \\pi} \\int \\frac{A(k, w)}{i \\omega_n - w}.
+
+    Here we assume that the spectral function is normalized such that :math:`\\int dw A(k, w) = 2 \\pi`
+
     :param matsubara_frqs:
     :param omegas: frequency data
     :param spectral_fn: spectral function evaluate at the omegas
     """
 
-    #matsubara_frqs = get_matsubara_frqs(beta, format="fermion")
+    # matsubara_frqs = get_matsubara_frqs(beta, format="fermion")
 
     matsubara_frqs_expanded = np.repeat(matsubara_frqs[:, None], len(omegas), 1)
     spectral_fn_expanded = np.repeat(spectral_fn[None, :], len(matsubara_frqs), 0)
@@ -51,12 +62,21 @@ def get_grnfn_imagfrq_spectralfn(matsubara_frqs, omegas, spectral_fn):
 
     return gfn_imag_frq
 
-def get_grnfn_imagtime_spectralfn(taus, beta, omegas, spectral_fn, format="fermion"):
+
+def get_grnfn_imagtime_spectralfn(taus,
+                                  beta,
+                                  omegas,
+                                  spectral_fn,
+                                  format: str = "fermion"):
     """
     Compute the imaginary time green's function associated with a certain spectral function.
-    G(\tau) = - \int A(k,w) * exp(-\tau * w) / ( 1 + exp(-\beta * w))
 
-    Here we assume that the spectral function is normalized such that \int dw A(k, w) = 2*pi
+    .. math::
+
+      G(\\tau) = - \\int A(k,w)  \\frac{exp(-\\tau * w)}{ 1 + e^(-\\beta w)}
+
+    Here we assume that the spectral function is normalized such that :math:`\\int dw A(k, w) = 2 \\pi`
+
     :param taus:
     :param beta: the inverse temperature
     :param omegas:
@@ -85,16 +105,20 @@ def get_grnfn_imagtime_spectralfn(taus, beta, omegas, spectral_fn, format="fermi
 
     integrand = np.divide(np.multiply(spectral_fn_expanded, np.exp(- np.multiply(omegas_expanded, tau_expanded))),
                                       1 + factor * np.exp(- beta * omegas_expanded))
-    #a = np.divide(np.exp(-omegas_expanded * tau_expanded), 1 + factor * np.exp(- beta * omegas_expanded))
-    gfn_imag_time = -np.trapz(integrand, omegas_expanded, axis = 1) / (2 * np.pi)
+    # a = np.divide(np.exp(-omegas_expanded * tau_expanded), 1 + factor * np.exp(- beta * omegas_expanded))
+    gfn_imag_time = -np.trapz(integrand, omegas_expanded, axis=1) / (2 * np.pi)
 
     return gfn_imag_time
 
+
 # alternatively, get kernels
-def get_grnfn_imagfrq_spectralfn_kernel(matsubara_frqs, omegas, format="fermion"):
+def get_grnfn_imagfrq_spectralfn_kernel(matsubara_frqs,
+                                        omegas,
+                                        format: str = "fermion"):
     """
-    Produce kernel such that G_n = G(iw_n) = K * A(w_m). This multiplication is equivalent to supplying spectral_fn to
-    get_frnfn_imagfrq_spectralfn.
+    Produce kernel such that :math:`G_n = G(iw_n) = K * A(w_m)`.
+    This multiplication is equivalent to supplying spectral_fn to get_frnfn_imagfrq_spectralfn.()
+
     :param matsubara_frqs: imaginary frequencies
     :param omegas: real frequencies
     :param format:
@@ -114,10 +138,15 @@ def get_grnfn_imagfrq_spectralfn_kernel(matsubara_frqs, omegas, format="fermion"
 
     return kernel
 
-def get_grnfn_imagtime_spectralfn_kernel(taus, beta, omegas, format="fermion"):
+
+def get_grnfn_imagtime_spectralfn_kernel(taus,
+                                         beta,
+                                         omegas,
+                                         format: str = "fermion"):
     """
-    Compute the kernel which related G_k = G(tau_k) = K * A_n = K * A(\omega_n). This multiplication is equivalent to
-    supplying the spectral function to get_grnfn_imagtime_spectralfn.
+    Compute the kernel which related :math:`G_k = G(\\tau_k) = K * A_n = K * A(\\omega_n)`.
+    This multiplication is equivalent to supplying the spectral function to get_grnfn_imagtime_spectralfn()
+
     :param taus: Imaginary time points to evaluate the kernel at
     :param beta: Inverse temperature
     :param omegas: Real frequency
@@ -146,10 +175,15 @@ def get_grnfn_imagtime_spectralfn_kernel(taus, beta, omegas, format="fermion"):
 
     return kernel
 
+
 # fourier transform, convert between imaginary time and frequency
-def grnfn_imagtime_ft(matsubara_frqs, taus, grn_fn_imagtime, beta):
+def grnfn_imagtime_ft(matsubara_frqs,
+                      taus,
+                      grn_fn_imagtime,
+                      beta):
     """
     Fourier transform an imaginary time green's function to produce the imaginary frequency version
+
     :param matsubara_frqs: matsubara frequencies to evaluate the fourier transform at
     :param taus: imaginary time points
     :param grn_fn_imagtime: imaginary time green's function evaluated at taus
@@ -182,9 +216,14 @@ def grnfn_imagtime_ft(matsubara_frqs, taus, grn_fn_imagtime, beta):
 
     return grn_fn_imagfrq
 
-def grnfn_imagfrq_ft(taus, matsubara_frqs, grn_fn_imagfrq, beta):
+
+def grnfn_imagfrq_ft(taus,
+                     matsubara_frqs,
+                     grn_fn_imagfrq,
+                     beta):
     """
     Fourier transform an imaginary frequency green's function to produce the imaginary time version
+
     :param taus: imaginary time points to evaluate FT at
     :param matsubara_frqs: matsubara frequency for imaginary frequency greens function
     :param grn_fn_imagfrq: imaginary frequency greens function evaluated at the matsubara_frqs
@@ -203,10 +242,15 @@ def grnfn_imagfrq_ft(taus, matsubara_frqs, grn_fn_imagfrq, beta):
 
     return grnfn_imagtime
 
+
 # routines to simulate a non-interacting gas
-def get_noninteracting_gfn_tau(taus, epsilon_k, beta, format="fermion"):
+def get_noninteracting_gfn_tau(taus,
+                               epsilon_k,
+                               beta,
+                               format: str = "fermion"):
     """
     Compute the Green's function
+
     :param taus: imaginary times to evaluate the function at. These must be in the interval [-beta, beta]
     :param epsilon_k: energy dispersion evaluated at momentum k
     :param beta: inverse temperature
@@ -226,9 +270,14 @@ def get_noninteracting_gfn_tau(taus, epsilon_k, beta, format="fermion"):
 
     return greens_fn
 
-def get_noninteracting_gfn_imagfrq(max_frq_index, epsilon_k, beta, format="fermion"):
+
+def get_noninteracting_gfn_imagfrq(max_frq_index,
+                                   epsilon_k,
+                                   beta,
+                                   format: str = "fermion"):
     """
     Compuate the imaginary frequency green's function for a noninteracting problem
+
     :param max_frq_index:
     :param epsilon_k:
     :param beta:
@@ -246,7 +295,10 @@ def get_noninteracting_gfn_imagfrq(max_frq_index, epsilon_k, beta, format="fermi
 
     return greens_fn, omega_matsubara
 
-def get_noninteracting_spectral_fn(omegas, epsilon_k, eta):
+
+def get_noninteracting_spectral_fn(omegas,
+                                   epsilon_k,
+                                   eta):
     """
 
     :param omegas:
@@ -259,10 +311,17 @@ def get_noninteracting_spectral_fn(omegas, epsilon_k, eta):
     spectral_fn = 2 * np.pi * np.divide(eta / np.pi, eta ** 2 + (omegas - epsilon_k)**2)
     return spectral_fn
 
+
 # linear response functions
-def chi_hydro(ws, k, chi0, d0, d2=0, gamma=np.inf):
+def chi_hydro(ws,
+              k,
+              chi0,
+              d0,
+              d2=0,
+              gamma=np.inf):
     """
     Hydrodynamic susceptibility function
+
     :param ws:
     :param k:
     :param chi0:
@@ -278,9 +337,13 @@ def chi_hydro(ws, k, chi0, d0, d2=0, gamma=np.inf):
 
     return chi
 
-def field_snap_off_w(ws, ho, eta=0.1):
+
+def field_snap_off_w(ws,
+                     ho,
+                     eta: float = 0.1):
     """
     Field frequency dependence for h(t) = theta(t) * Ho
+
     :param ws:
     :param ho:
     :param eta: broadening parameter
@@ -289,9 +352,13 @@ def field_snap_off_w(ws, ho, eta=0.1):
     h_w = np.divide(ho, 1j * ws + eta)
     return h_w
 
-def phi_t(ts, ws, chi_ws):
+
+def phi_t(ts,
+          ws,
+          chi_ws):
     """
     Get real time response function from real frequency
+
     :param ts:
     :param ws:
     :param chi_ws:
@@ -303,9 +370,13 @@ def phi_t(ts, ws, chi_ws):
     phi_t = 1 / (2 * np.pi) * np.trapz(chichi * np.exp(-1j * wsws * tsts), ws, axis=1)
     return phi_t
 
-def obs_kt(ts, ws, chi_ws, field_ws):
+def obs_kt(ts,
+           ws,
+           chi_ws,
+           field_ws):
     """
-    Get observable response <O(t)> = \int dw e^{-iwt)* chi(w) * H(w)
+    Get observable response :math:`<O(t)> = \\int dw e^{-iwt} \\chi(w) H(w)`
+
     :param ts:
     :param ws:
     :param chi_ws:

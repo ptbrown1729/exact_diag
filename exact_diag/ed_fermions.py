@@ -5,6 +5,7 @@ import exact_diag.ed_geometry as geom
 import exact_diag.ed_symmetry as symm
 from exact_diag import ed_base
 
+
 class fermions(ed_base.ed_base):
 
     nbasis = 2
@@ -17,7 +18,15 @@ class fermions(ed_base.ed_base):
                         [0, 1, 0, 0],
                         [0, 0, 0, -1]])
 
-    def __init__(self, geometry, us_interspecies, ts, ns=None, mus=0, potentials=0, us_same_species=0, nspecies=2):
+    def __init__(self,
+                 geometry: geom.Geometry,
+                 us_interspecies,
+                 ts,
+                 ns=None,
+                 mus=0,
+                 potentials=0,
+                 us_same_species=0,
+                 nspecies: int = 2):
         """
         For Fermions (and bosons) basis states are combinations of creation operators acting on the vacuum
         state. For Fermions, the order of these creation operators matters. In that case, creation operators are
@@ -33,11 +42,19 @@ class fermions(ed_base.ed_base):
 
         For example, consider a fermions model on two sites. The spin-like vectors specifying the basis states are
         [site 0 spin down, site 1 spin down, site 0 spin up, site 1 spin up], and the first few basis states in order are
-        [0, 0, 0, 0]
-        [0, 0, 0, 1] = c_{1,up}^\dag |0>
-        [0, 0, 1, 0] = c_{0,up}^\dag |0>
-        [0, 0, 1, 1] = c_{1,up}^\dag c_{0,up}^\dag |0>
+
+        .. math::
+
+          (0, 0, 0, 0) &= \\left | 0 \\right \\rangle
+
+          (0, 0, 0, 1) &= c_{1 \\uparrow}^\dagger \\left | 0 \\right \\rangle
+
+          (0, 0, 1, 0) &= c_{0 \\uparrow}^\dagger \\left | 0 \\right \\rangle
+
+          (0, 0, 1, 1) &= c_{1 \\uparrow}^\dagger c_{0 \\uparrow}^\dagger \\left | 0 \\right \\rangle
+
         ...
+
         :param geometry: geometry object, specifying the number of lattice sites, their connections, and positions
         :param us_interspecies: interactions between up and down fermions
         :param ts: tunneling matrix, nsites x nsites
@@ -152,14 +169,17 @@ class fermions(ed_base.ed_base):
 
         self.n_projector = running_projector
 
-    def get_state_vects(self, projector=None, print_results=False):
+    def get_state_vects(self,
+                        projector=None,
+                        print_results: bool = False):
         """
         Generate a description of the basis states in the full tensor product of spins space
+
         :param projector:
         :param print_results:
         :return: NumPy array of size 2 ** nsites x nsites describing each basis state in the tensor product spin space.
-        Each row represents the spins for a given state according to |up> = 1, |down> = 0 on the site corresponding to
-        the column index.
+          Each row represents the spins for a given state according to |up> = 1, |down> = 0 on the site corresponding
+          to the column index.
         """
         if print_results:
             tstart = time.perf_counter()
@@ -198,12 +218,14 @@ class fermions(ed_base.ed_base):
     # ########################
     # build hamiltonian
     # ########################
-    def get_hopping_mat(self, t):
+    def get_hopping_mat(self,
+                        t) -> np.ndarray:
         """
         Create a matrix representing the amplitude of hopping between any two sites. This is an nsites x nsites matrix,
         where M[ii, jj] is the prefactor of c^\dag_i c_j in the Hamiltonian. This matrix must be hermitian.
+
         :param t:
-        :return:
+        :return: hopping matrix
         """
         # hopping_mat = np.multiply(tunn * geom_obj.is_x_neighbor + ty * geom_obj.is_y_neighbor, geom_obj.phase_mat)
         if t.size == 1:
@@ -218,9 +240,11 @@ class fermions(ed_base.ed_base):
 
         return hopping_mat
 
-    def get_samespecies_int_mat(self, interaction):
+    def get_samespecies_int_mat(self,
+                                interaction) -> np.ndarray:
         """
         Get matrix representing nearest-neighbor interactions
+
         :param interaction: either a single number or an array of length self.nspecies
         :return:
         """
@@ -234,11 +258,14 @@ class fermions(ed_base.ed_base):
 
         return int_mat
 
-    def createH(self, projector=None, print_results=False):
+    def createH(self,
+                projector=None,
+                print_results: bool = False):
         """
         Construct Fermi-Hubbard Hamiltonian
+
         :param projector: Sparse matrix, projection operator to be applied to each term of the Hamiltonian as it is
-        constructed. Applied as P * H * P.conj().transpose()
+          constructed. Applied as P * H * P.conj().transpose()
         :param print_results:
         :return: Sparse matrix, H, the Hamiltonian
         """
@@ -265,9 +292,12 @@ class fermions(ed_base.ed_base):
 
         return haml
 
-    def get_kinetic_op(self, projector=None, direction_vect=np.array([1, 0])):
+    def get_kinetic_op(self,
+                       projector=None,
+                       direction_vect: np.ndarray = np.array([1, 0])):
         """
         Compute the kinetic energy operator for a specific hopping connection matrix
+
         :param projector:
         :param direction_vect:
         :return:
@@ -305,10 +335,13 @@ class fermions(ed_base.ed_base):
                                         )
         return ke_op
 
-    def get_u_interspecies_op(self, us, projector=None):
+    def get_u_interspecies_op(self,
+                              us,
+                              projector=None):
         """
         Get operator representing onsite interaction between spin-up and spin-down fermions. Right now, only works if
         class has two spin species
+
         :param us: Int or NumPy array of length n_physical_sites, specifying interaction term between up and down spins
         :param projector:
         :return:
@@ -332,9 +365,12 @@ class fermions(ed_base.ed_base):
 
         return u_op
 
-    def get_u_samespecies_op(self, us, projector=None):
+    def get_u_samespecies_op(self,
+                             us,
+                             projector=None):
         """
         Get operator representing offsite interaction between fermions of the same species
+
         :param us:
         :param projector:
         :return:
@@ -355,7 +391,15 @@ class fermions(ed_base.ed_base):
 
         return u_op
 
-    def get_potential_op(self, vs, projector=None):
+    def get_potential_op(self,
+                         vs: np.ndarray,
+                         projector=None):
+        """
+
+        :param vs:
+        :param projector:
+        :return:
+        """
         if projector is None:
             projector = sp.eye(self.nstates)
         nstates = projector.shape[0]
@@ -370,7 +414,9 @@ class fermions(ed_base.ed_base):
 
         return v_op
 
-    def get_chemical_pot_op(self, mus, projector=None):
+    def get_chemical_pot_op(self,
+                            mus,
+                            projector=None):
         """
 
         :param mus: Int or NumPy array of size n_physical_sites x nspins, specifying chemical potential
@@ -399,12 +445,15 @@ class fermions(ed_base.ed_base):
     # calculate operators
     # ########################
 
-    def get_swap_op(self, site1, site2, species):
+    def get_swap_op(self,
+                    site1: int,
+                    site2: int,
+                    species: int):
         """
         Construct an operator that swaps the states of two sites. This version does not require any recursion.
-        :param int site1: index of first site
-        :param int site2: index of second site
-        :param int species: index of fermion species
+        :param site1: index of first site
+        :param site2: index of second site
+        :param species: index of fermion species
         :return: Sparse matrix
         """
         return self.get_two_site_op(site1, species, site2, species, self.cdag_op, self.c_op, "fermion") + \
@@ -412,9 +461,11 @@ class fermions(ed_base.ed_base):
                sp.eye(self.nstates) - self.get_single_site_op(site1, species, self.n_op, format="boson") - \
                self.get_single_site_op(site2, species, self.n_op, format="boson")
 
-    def get_current_op(self, direction_vector=np.array([[1], [0]])):
+    def get_current_op(self,
+                       direction_vector: np.ndarray = np.array([[1], [0]])):
         """
         Get the paramagnetic current operator along a specific spatial direction.
+
         :param direction_vector: spatial direction to compute the current operator along. By default, the x direction.
         :return:
         """
@@ -451,10 +502,15 @@ class fermions(ed_base.ed_base):
 
         return current_op
 
-    def integrate_conductivity(self, current_matrix_elems, eig_vals, temperature, print_results=False):
+    def integrate_conductivity(self,
+                               current_matrix_elems,
+                               eig_vals,
+                               temperature,
+                               print_results: bool = False):
         """
         Computes the two-sided integral of the optical conductivity in frequency space. This does not require any
         broadening, unlike computing the optical conductivity directly.
+
         :param current_matrix_elems: the current operator in the eigenvector basis
         :param eig_vals: eigenvalues corresponding to the eigenvectors
         :param temperature:
@@ -506,10 +562,15 @@ class fermions(ed_base.ed_base):
 
         return sigma_re_two_sided_int
 
-    def get_optical_cond_fn(self, current_matrix_elems, eig_vals, temperature, print_results=False):
+    def get_optical_cond_fn(self,
+                            current_matrix_elems,
+                            eig_vals,
+                            temperature,
+                            print_results: bool = False):
         """
         Create a function for computing the optical conductivity at arbitrary frequency omega_start and
         arbitrary broadening paramter eta
+
         :param current_matrix_elems: the current operator in the eigenvector basis
         :param eig_vals: eigenvalues corresponding to the eigenvectors
         :param temperature:

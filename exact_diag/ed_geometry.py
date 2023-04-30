@@ -6,10 +6,16 @@ import os
 
 # TODO: need to modify get reciprocal vectors for case when matrix inverse fails
 
+
 class Geometry():
     _round_decimals = 14
 
-    def __init__(self, xlocs=None, ylocs=None, adjacency_mat=None, phase_mat=None, lattice=None):
+    def __init__(self,
+                 xlocs=None,
+                 ylocs=None,
+                 adjacency_mat=None,
+                 phase_mat=None,
+                 lattice=None):
         """
         Initialize for Geometry class. This should never be called directly. Instead, you should use one of the
         classmethods createPeriodicGeometry or createNonPeriodicGeometry. Those should be thought of as alternate
@@ -21,8 +27,51 @@ class Geometry():
         :param xlocs: x location of sites in real space. 1D numpy array.
         :param ylocs: y location of sites in real space. 1D numpy array.
         :param adjacency_mat: nsites x nsites numpy 2D array. M[i,j] = 1 if two sites are "connected". M[i,j] = M[j,i]
-        :param phase_mat: nsites x nsites numpy 2D complex array. M[i, j] is the phase acquired moving from site i to j.
-        M[i,j] = M[i, j]*
+        :param phase_mat: nsites x nsites numpy 2D complex array. M[i, j] is the
+          phase acquired moving from site i to j. M[i,j] = M[i, j]*
+
+        Examples
+        ###############
+
+        8 x 1 chain geometry
+
+        >>> gm = Geometry.createSquareGeometry(8, 1, phi1=np.pi/3, phi2=0, bc_open1=False, bc_open2=True)
+        >>> gm.dispGeometry()
+
+        permute 8 x 1 chain
+
+        >>>  permutation = [3, 2, 1, 0, 4, 7, 6, 5]
+        >>> gm.permute_sites(permutation)
+        >>> gm.dispGeometry()
+
+        10 site square
+
+        >>> nr = 3
+        >>> nv = 1
+        >>> geom_tilted = Geometry.createTiltedSquareGeometry(nr, nv, 0, 0, bc1_open=False, bc2_open=False)
+        >>> geom_tilted.dispGeometry()
+
+        triangular lattice
+
+        >>> n1 = 4
+        >>> n2 = 4
+        >>> geom_triangle = Geometry.createTriangleGeometry(n1, n2, 0, 0, bc1_open=True, bc2_open=True)
+        >>> geom_triangle.dispGeometry()
+
+        hexagonal lattice
+
+        >>> n1 = 4
+        >>> n2 = 4
+        >>> geom_hex = Geometry.createHexagonalGeometry(n1, n2, 0, 0, bc1_open=False, bc2_open=False)
+        >>> geom_hex.dispGeometry()
+
+        non-periodic geometry
+
+        >>> xlocs = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
+        >>> ylocs = [1, 2, 2, 3, 3, 4, 4, 5, 5, 6]
+        >>> geom_arb = Geometry.createNonPeriodicGeometry(xlocs, ylocs)
+        >>> geom_arb.dispGeometry()
+
         """
 
         # class storing periodicity vectors, and other lattice information if our geometry is part of a lattice
@@ -77,8 +126,16 @@ class Geometry():
     # #################################
 
     @classmethod
-    def create_lattice_geom(cls, latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2,
-                            phase1=0, phase2=0, bc1_open=True, bc2_open=True):
+    def create_lattice_geom(cls,
+                            latt_vect1,
+                            latt_vect2,
+                            basis_vects,
+                            periodicity_vect1,
+                            periodicity_vect2,
+                            phase1: float = 0,
+                            phase2: float = 0,
+                            bc1_open: bool = True,
+                            bc2_open: bool = True):
         """
         Create a Geometry instance by specifying an underlying lattice
 
@@ -110,7 +167,11 @@ class Geometry():
         return cls(xlocs, ylocs, lattice=lattice)
 
     @classmethod
-    def createNonPeriodicGeometry(cls, xlocs, ylocs, adjacency_mat=None, phase_mat=None):
+    def createNonPeriodicGeometry(cls,
+                                  xlocs,
+                                  ylocs,
+                                  adjacency_mat=None,
+                                  phase_mat=None):
         """
         Create a geometry without specifying an underlying lattice
 
@@ -123,7 +184,17 @@ class Geometry():
         return cls(xlocs, ylocs, adjacency_mat, phase_mat)
 
     @classmethod
-    def createRegularPolygonGeometry(cls, nsides, adjacency_mat=None, phase_mat=None):
+    def createRegularPolygonGeometry(cls,
+                                     nsides: int,
+                                     adjacency_mat=None,
+                                     phase_mat=None):
+        """
+
+        :param nsides:
+        :param adjacency_mat:
+        :param phase_mat:
+        :return:
+        """
 
         if adjacency_mat is None:
             adjacency_mat = np.zeros((nsides, nsides))
@@ -142,7 +213,13 @@ class Geometry():
         return cls(xlocs, ylocs, adjacency_mat, phase_mat)
 
     @classmethod
-    def createSquareGeometry(cls, nx_sites, ny_sites, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
+    def createSquareGeometry(cls,
+                             nx_sites: int,
+                             ny_sites: int,
+                             phase1: float = 0.,
+                             phase2: float = 0.,
+                             bc1_open: bool = True,
+                             bc2_open: bool = True):
         """
         Create a Geometry instance for a square cluster on a square lattice
 
@@ -174,7 +251,13 @@ class Geometry():
                                        phase2, bc1_open, bc2_open)
 
     @classmethod
-    def createTiltedSquareGeometry(cls, nsites_right, nsites_up, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
+    def createTiltedSquareGeometry(cls,
+                                   nsites_right: int,
+                                   nsites_up: int,
+                                   phase1: float = 0.,
+                                   phase2: float = 0.,
+                                   bc1_open: bool = True,
+                                   bc2_open: bool = True):
         """
         Create a geometry instance for a tilted square cluster on a square lattice
 
@@ -197,7 +280,13 @@ class Geometry():
                                        periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
 
     @classmethod
-    def createTriangleGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
+    def createTriangleGeometry(cls,
+                               n1_sites: int,
+                               n2_sites: int,
+                               phase1: float = 0.,
+                               phase2: float = 0.,
+                               bc1_open: bool = True,
+                               bc2_open: bool = True):
         """
         Create a geometry instance for a triangular lattice on a 'square' cluster
 
@@ -228,7 +317,13 @@ class Geometry():
                                        periodicity_vect2, phase1, phase2, bc1_open, bc2_open)
 
     @classmethod
-    def createHexagonalGeometry(cls, n1_sites, n2_sites, phase1=0, phase2=0, bc1_open=True, bc2_open=True):
+    def createHexagonalGeometry(cls,
+                                n1_sites: int,
+                                n2_sites: int,
+                                phase1: float = 0.,
+                                phase2: float = 0.,
+                                bc1_open: bool = True,
+                                bc2_open: bool = True):
         """
         Create a geometry instance for a hexagonal lattice
 
@@ -266,22 +361,23 @@ class Geometry():
     def get_center_of_mass(self):
         """
         Find the center of mass of the given geometry
+
         :return: cx, cy
         """
         cx = np.mean(self.xlocs)
         cy = np.mean(self.ylocs)
         return cx, cy
 
-    def get_sorting_permutation(self, sorting_mode='top_alternating'):
+    def get_sorting_permutation(self,
+                                sorting_mode: str = 'top_alternating'):
         """
         Sort lattice sites using a type of lexographical order
 
         :param sorting_mode: the type of sorting mode to be used. The available options are
-        'top_alternating': order sites top-to-bottom, and then alternating left-to-right then right-to-left for each row.
-        'top_left': order sites top-to-bottom then left-to-right
-        'bottom_right': order sites bottom-to-top, then left-to-right
-        'adjacency': sort sites by the number of adjacent sites
-
+          'top_alternating': order sites top-to-bottom, and then alternating left-to-right then right-to-left for each row.
+          'top_left': order sites top-to-bottom then left-to-right
+          'bottom_right': order sites bottom-to-top, then left-to-right
+          'adjacency': sort sites by the number of adjacent sites
         :return: sorted_indices
         """
 
@@ -325,6 +421,7 @@ class Geometry():
     def get_site_distance(self):
         """
         Return the x and y distances between sites
+
         :return: xdist, ydist
         """
         xdist = np.zeros([self.nsites, self.nsites])
@@ -336,12 +433,14 @@ class Geometry():
         return xdist, ydist
 
     @staticmethod
-    def get_neighbors_by_distance(xdist_mat, ydist_mat):
+    def get_neighbors_by_distance(xdist_mat,
+                                  ydist_mat):
         """
         Determine which sites are neighbors. Two sites are neighbors if either their x or y coordinates differ by one
         (but not both).
+
         :param xdist_mat: An nsites x nsites matrix where M[ii, jj] is the distance between sites ii and jj in the
-         x-direction
+          x-direction
         :param ydist_mat:
         :return: is_x_neighbor, is_y_neighbor, is_neighbor
         """
@@ -362,12 +461,14 @@ class Geometry():
     # #################################
     # transformation functions
     # #################################
-    def permute_sites(self, permutation):
+    def permute_sites(self,
+                      permutation):
         """
         Rearrange sites according to a given permutation. Transform all other quantities of the instance, including
         the adjacency matrix, etc. to match the new ordering.
+
         :param permutation: permutation[jj] = ii means that site ii before the transformation becomes site jj after.
-        permutation should be a list.
+          permutation should be a list.
         :return:
         """
         if not np.array_equal(np.array(sorted(permutation)), np.array(range(0, self.nsites))):
@@ -395,6 +496,7 @@ class Geometry():
     def dispGeometry(self):
         """
         Display the connection matrix which defines our geometry.
+
         :return:
         """
 
@@ -435,58 +537,63 @@ class Geometry():
     # Validation functions
     # #################################
 
-    def validate_instance(self):
+    def validate_instance(self) -> bool:
         """
         validate entire instance
+
         :return:
         """
         if not self.validate_adjacency_mat():
-            return 0
+            return False
         if not self.validate_phase_mat():
-            return 0
+            return False
         # TODO: add more validation checks
-        return 1
+        return True
 
-    def validate_adjacency_mat(self):
+    def validate_adjacency_mat(self) -> bool:
         """
         Check that adjacency_mat is sensible
-        :return: bool
+
+        :return:
         """
         if not np.array_equal(self.adjacency_mat, np.transpose(self.adjacency_mat)):
             # ensure symmetric under transpose
-            return 0
+            return False
         if not np.sum(np.logical_or(self.adjacency_mat == 0, self.adjacency_mat == 1)) == self.adjacency_mat.size:
             # ensure matrix of zeros and ones
-            return 0
+            return False
         if not self.adjacency_mat.shape == (self.nsites, self.nsites):
             # check matrix is the correct size
-            return 0
-        return 1
+            return False
+        return True
 
-    def validate_phase_mat(self):
+    def validate_phase_mat(self) -> bool:
         """
         check that phase_mat is sensible
+
         :return:
         """
         if not np.sum(np.round(np.abs(self.phase_mat - self.phase_mat.conj().transpose()), self._round_decimals) == 0) == self.phase_mat.size:
             # ensure symmetric under conjugate transpose
-            return 0
+            return False
         if not np.sum(np.round(np.abs(self.phase_mat), self._round_decimals) == 1) == self.phase_mat.size:
             # ensure matrix of phases
-            return 0
+            return False
         if not self.phase_mat.shape == (self.nsites, self.nsites):
             # check matrix is the correct size
-            return 0
-        return 1
+            return False
+        return True
 
     # #################################
     # Comparison functions
     # #################################
 
-    def isequal_adjacency(self, other):
+    def isequal_adjacency(self,
+                          other) -> bool:
         """
         Compare two geometry instances based only on distance between sites and adjacency. In particular, ignore
         absolute coordinate positions
+
         :param other:
         :return:
         """
@@ -531,16 +638,22 @@ class Geometry():
 class Lattice():
     _round_decimals = 14
 
-    def __init__(self, lattice_vect1, lattice_vect2, basis_vects=[[0, 0]], periodicity_vect1=(0, 0),
-                 periodicity_vect2=(0, 0), phase1=0., phase2=0.):
+    def __init__(self,
+                 lattice_vect1,
+                 lattice_vect2,
+                 basis_vects=[[0, 0]],
+                 periodicity_vect1: tuple = (0, 0),
+                 periodicity_vect2: tuple = (0, 0),
+                 phase1: float = 0.,
+                 phase2: float = 0.):
         """
 
         :param lattice_vect1:
         :param lattice_vect2:
         :param basis_vects: #TODO: need to change way this is handled as default argument
         :param periodicity_vect1: Cell periodicity vector 1. Given a lattice site, if you add periodicity vector 1 to
-        its coordinates, you will find yourself at an equivalent lattice site. i.e. at a lattice site that is identified
-        with the first one.
+          its coordinates, you will find yourself at an equivalent lattice site. i.e. at a lattice site that is identified
+          with the first one.
         :param periodicity_vect2: Cell periodicity vector 2. Periodicity vectors 1 and 2 should not be linearly dependent
         :param phase1: Phase which is picked up along reciprocal vector 1. Useful for imposing twisted boundary conditions
         :param phase2: Phase which is picked up along reciprocal vector 2
@@ -567,13 +680,8 @@ class Lattice():
     def get_unique_sites(self):
         """
         Returns sites within the unit periodicity cell of the lattice
+
         :return: nsites, xlocs, ylocs
-
-        nsites:
-
-        xlocs:
-
-        ylocs:
         """
 
         # the origin, periodicity vector 1, periodicity vector 2, and their sum form a parallelogram
@@ -635,21 +743,17 @@ class Lattice():
 
         return nsites, xlocs, ylocs
 
-    def get_reduced_distance(self, xlocs, ylocs):
+    def get_reduced_distance(self,
+                             xlocs,
+                             ylocs):
         """
         Returns the distance between two sites taking into account the periodicity of our lattice.
 
         :param xlocs: a list of the x-coordinates of the lattice sites
         :param ylocs: a list of the y-coordinates of the lattice sites
         :return: xdist_min, ydist_min, latt_vect1_dist, latt_vect2_dist
-
-        xdist_min: is an nsites x nsites matrix where M[ii, jj] is the x-distance between sites i and j
-
-        ydist_min:
-
-        latt_vect1_dist: is an nsites x nsites matrix where M[ii, jj] is the number latt_vect1's separating sites i and j
-
-        latt_vect2_dist:
+          xdist_min is an nsites x nsites matrix where M[ii, jj] is the x-distance between sites i and j.
+          latt_vect1_dist is an nsites x nsites matrix where M[ii, jj] is the number latt_vect1's separating sites i and j
         """
         nsites = len(xlocs)
 
@@ -674,10 +778,13 @@ class Lattice():
 
         return xdist_min, ydist_min, latt_vect1_dist, latt_vect2_dist
 
-    def get_phase_mat(self, xdist_matrix, ydist_matrix):
+    def get_phase_mat(self,
+                      xdist_matrix,
+                      ydist_matrix):
         """
         Create a matrix of phase factors that should be included on e.g. hoppings or interaction terms between sites i
         and j, based on the phases given by the class.
+
         :param xdist_matrix: matrix of size nsites x nsites, where M[i,j] is the minimum distance between sites i and j
         :param ydist_matrix:
         :return: phase_mat
@@ -706,38 +813,57 @@ class Lattice():
 
         return phase_mat
 
-    def reduce_to_unit_cell(self, xlocs, ylocs, mode='positive'):
+    def reduce_to_unit_cell(self,
+                            xlocs,
+                            ylocs,
+                            mode: str = 'positive'):
+        """
+
+        :param xlocs:
+        :param ylocs:
+        :param mode:
+        :return:
+        """
+
         return reduce_vectors(self.periodicity_vect1, self.periodicity_vect2, xlocs, ylocs, mode=mode)
 
     # #################################
     # Validation functions
     # #################################
 
-    def validate_instance(self):
+    def validate_instance(self) -> bool:
         """
         Validate if the lattice class instance is correctly formed
+
         :return:
         """
         if not self.validate_latt_vects():
-            return 0
+            return False
 
         if not self.validate_periodicity_vects():
-            return 0
+            return False
 
         # check compatibility or periodicity vectors with lattice vectors
-        xred_p1, yred_p1, _, _ = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect1[0, 0],
-                                                self.periodicity_vect1[1, 0], mode='positive')
+        xred_p1, yred_p1, _, _ = reduce_vectors(self.lattice_vect1,
+                                                self.lattice_vect2,
+                                                self.periodicity_vect1[0, 0],
+                                                self.periodicity_vect1[1, 0],
+                                                mode='positive')
         if not np.array_equiv(xred_p1, 0) and np.array_equiv(yred_p1, 0):
-            return 0
+            return False
 
         xred_p2, yred_p2, _, _ = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect2[0, 0],
                                                 self.periodicity_vect2[1, 0], mode='positive')
         if not np.array_equiv(xred_p2, 0) and np.array_equiv(yred_p2, 0):
-            return 0
+            return False
 
-        return 1
+        return True
 
-    def validate_latt_vects(self):
+    def validate_latt_vects(self) -> bool:
+        """
+
+        :return:
+        """
         # validate lattice vectors
         norm1 = np.sqrt(self.lattice_vect1.transpose().dot(self.lattice_vect1))
         norm2 = np.sqrt(self.lattice_vect2.transpose().dot(self.lattice_vect2))
@@ -746,14 +872,18 @@ class Lattice():
         if np.round(norm1, self._round_decimals) == 0 or \
            np.round(norm2, self._round_decimals) == 0 or \
            np.round(det, self._round_decimals) == 0:
-            return 0
+            return False
 
-        return 1
+        return True
 
-    def validate_periodicity_vects(self):
+    def validate_periodicity_vects(self) -> bool:
+        """
+
+        :return:
+        """
         # ensure periodicity vectors exist
         if self.periodicity_vect1 is None or self.periodicity_vect2 is None:
-            return 0
+            return False
 
         # ensure periodicity vectors are not linearly dependent, if they are non-zero
         # TODO: want to allow periodicity vectors to be zero in some cases ... maybe don't want this test
@@ -765,8 +895,8 @@ class Lattice():
                np.round(norm2, self._round_decimals) == 0 and \
                np.round(det, self._round_decimals) == 0:
             # i.e. if our periodicity vectors are linearly dependent but non-zero
-            return 0
-        return 1
+            return False
+        return True
 
     # #################################
     # Comparison functions
@@ -790,11 +920,16 @@ class Lattice():
 # module functions
 # ##########################
 
-def get_reciprocal_vects(vect1, vect2):
+
+def get_reciprocal_vects(vect1,
+                         vect2) -> (np.ndarray, np.ndarray):
     """
     Compute the reciprocal vectors. If we call the periodicity vecors a_i and the
     reciprocal vectors b_j, then these should be defined such that dot(a_i, b_j) = delta_{ij}.
-    :return: reciprocal_vect1, reciprocal_vect2
+
+    :param vect1:
+    :param vect2:
+    :return: (reciprocal_vect1, reciprocal_vect2)
     """
 
     vect1 = ensure_column_vect(vect1)
@@ -822,10 +957,14 @@ def get_reciprocal_vects(vect1, vect2):
         reciprocal_vect1 = np.zeros((2, 1))
         reciprocal_vect2 = np.zeros((2, 1))
 
-
     return reciprocal_vect1, reciprocal_vect2
 
-def reduce_vectors(vect1, vect2, xlocs, ylocs, mode='positive'):
+
+def reduce_vectors(vect1,
+                   vect2,
+                   xlocs,
+                   ylocs,
+                   mode: str = 'positive'):
     """
     Given an arbitrary vector and a pair of basis vectors specifying a periodicity (TODO: sharpen this defn),
     reduce the arbitrary vector to its representative in the Brillouin zone (analog). (TODO: add support for
@@ -836,10 +975,9 @@ def reduce_vectors(vect1, vect2, xlocs, ylocs, mode='positive'):
     :param xlocs:
     :param ylocs:
     :param mode: "positive" or "centered"
-    :return: xs_red, xs reduced to lie within the symmetry region
-    :return: ys_red, ys reduced to lie within the symmetry region
-    :return: n1s number of bvect1's subtracted from vects to get vects_reduced
-    :return: n2s number of bvect2's subtracted from vects to get vects_reduced
+    :return: (xs_red, ys_red, n1s, n2s)
+      xs_red are xs reduced to lie within the symmetry region and ys_red are similar.
+      n1s are the number of bvect1's subtracted from vects to get vects_reduced and n2s are similar.
     """
 
     # ensure input vectors have the desired format
@@ -920,7 +1058,8 @@ def reduce_vectors(vect1, vect2, xlocs, ylocs, mode='positive'):
 
     return xs_red, ys_red, n1s, n2s
 
-def ensure_column_vect(vector):
+
+def ensure_column_vect(vector) -> np.ndarray:
     """
     Given an input vector, which may be a 1D numpy array, or a column or row vector, return it as a column vector.
 
@@ -934,7 +1073,8 @@ def ensure_column_vect(vector):
     vect_temp = np.asarray(vector)
     return vect_temp.reshape([vect_temp.size, 1])
 
-def ensure_row_vect(vector):
+
+def ensure_row_vect(vector) -> np.ndarray:
     """
     Given an input vector, return it as a row vector.
 
@@ -947,7 +1087,8 @@ def ensure_row_vect(vector):
     vect_temp = np.asarray(vector)
     return vect_temp.reshape([1, vect_temp.size])
 
-def ensure_1d_vect(vector):
+
+def ensure_1d_vect(vector) -> np.ndarray:
     """
     Given an input vector, return it as a 1D numpy array.
 
@@ -960,51 +1101,3 @@ def ensure_1d_vect(vector):
 
     vect_temp = np.asarray(vector)
     return vect_temp.reshape([vect_temp.size,])
-
-
-if __name__ == "__main__":
-    # example usage of Geometry class
-    import matplotlib.pyplot as plt
-    # from ed_geometry import *
-
-    # 8 x 1 chain geometry
-    nx = 8
-    ny = 1
-    phi1 = np.pi/3
-    phi2 = 0
-    bc_open1 = False
-    bc_open2 = True
-    gm = Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc_open1, bc_open2)
-    gm.dispGeometry()
-
-    # permute 8 x 1 chain
-    permutation = [3, 2, 1, 0, 4, 7, 6, 5]
-    # permutation = range(geom.nsites - 1, -1, -1)
-    gm.permute_sites(permutation)
-    gm.dispGeometry()
-
-    # 10 site square
-    nr = 3
-    nv = 1
-    geom_tilted = Geometry.createTiltedSquareGeometry(nr, nv, 0, 0, bc1_open=False, bc2_open=False)
-    geom_tilted.dispGeometry()
-
-    # triangular lattice
-    n1 = 4
-    n2 = 4
-    geom_triangle = Geometry.createTriangleGeometry(n1, n2, 0, 0, bc1_open=True, bc2_open=True)
-    geom_triangle.dispGeometry()
-
-    # hexagonal lattice
-    n1 = 4
-    n2 = 4
-    geom_hex = Geometry.createHexagonalGeometry(n1, n2, 0, 0, bc1_open=False, bc2_open=False)
-    geom_hex.dispGeometry()
-
-    # non-periodic geometry
-    xlocs = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
-    ylocs = [1, 2, 2, 3, 3, 4, 4, 5, 5, 6]
-    geom_arb = Geometry.createNonPeriodicGeometry(xlocs, ylocs)
-    geom_arb.dispGeometry()
-
-    plt.show()

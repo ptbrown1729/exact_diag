@@ -12,7 +12,11 @@ import exact_diag.ed_symmetry as symm
 #    I don't know a natural way to order clusters. A few ideas for doing this, which might speed up some functions,
 #    for example doing a binary search over a sorted list instead of searching through all clusters of the same order.
 
-def get_clusters_next_order(cluster_list=None, lv1=np.array([1, 0]), lv2=np.array([0, 1]), use_symmetry=False):
+
+def get_clusters_next_order(cluster_list=None,
+                            lv1: np.ndarray = np.array([1, 0]),
+                            lv2: np.ndarray = np.array([0, 1]),
+                            use_symmetry: bool = False):
     """
     Get all clusters that can be generated from a list of clusters with one fewer site.
     # TODO: should I be keeping track of the number of symmetric clusters?
@@ -21,8 +25,7 @@ def get_clusters_next_order(cluster_list=None, lv1=np.array([1, 0]), lv2=np.arra
     :param cluster_list: List of clusters to used for generating the new set of clusters
     :param lv1: Lattice vector 1, giving allowed moves to add sites to our cluster
     :param lv2:
-    :param bool use_symmetry: If using symmetry, will only keep a single cluster representing each symmetry group.
-
+    :param use_symmetry: If using symmetry, will only keep a single cluster representing each symmetry group.
     :return list cluster_list_next: clusters of one higher order.
     :return multiplicity: multiplicities of each cluster
     """
@@ -65,15 +68,18 @@ def get_clusters_next_order(cluster_list=None, lv1=np.array([1, 0]), lv2=np.arra
 
     return cluster_list_next, multiplicity
 
-def get_all_clusters(max_cluster_order, lv1=np.array([1, 0]), lv2=np.array([0, 1]), use_symmetry=True):
+
+def get_all_clusters(max_cluster_order: int,
+                     lv1: np.ndarray = np.array([1, 0]),
+                     lv2: np.ndarray = np.array([0, 1]),
+                     use_symmetry: bool = True):
     """
     Get all clusters of infinite lattice up to a given order.
 
     :param max_cluster_order:
     :param lv1:
     :param lv2:
-    :param bool use_symmetry: If True, will use D4 symmetry to reduce the number of clusters
-
+    :param use_symmetry: If True, will use D4 symmetry to reduce the number of clusters
     :return: clusters:
     :return multiplicities: list of the number of times a given cluster can be embedded in an infinite lattice.
      It is equal to the number of distinct clusters produced by point symmetry operations on the cluster
@@ -99,15 +105,20 @@ def get_all_clusters(max_cluster_order, lv1=np.array([1, 0]), lv2=np.array([0, 1
 
     return clusters, multiplicities, order_inds
 
-def get_all_clusters_with_subclusters(max_order, lv1=np.array([1, 0]), lv2=np.array([0, 1]),
-                                      use_symmetry=True, print_progress=False):
+
+def get_all_clusters_with_subclusters(max_order: int,
+                                      lv1: np.ndarray = np.array([1, 0]),
+                                      lv2: np.ndarray = np.array([0, 1]),
+                                      use_symmetry: bool = True,
+                                      print_progress: bool = False):
     """
     Obtain all sub-clusters of the infinite lattice up to a given order, including their multiplicities and sub-clusters
+
     :param max_order:
     :param lv1:
     :param lv2:
     :param use_symmetry:
-
+    :param print_progress:
     :return full_cluster_list:
     :return cluster_multiplicities:
     :return sub_cluster_mult_mat:
@@ -133,7 +144,11 @@ def get_all_clusters_with_subclusters(max_order, lv1=np.array([1, 0]), lv2=np.ar
         cluster = full_cluster_list[index]
         # get all sub clusters of each cluster
         subclusters_list, subcluster_mult_mat, order_indices_subclusters = get_reduced_subclusters(cluster)
-        cluster_reduction_mat = map_between_cluster_bases(full_cluster_list, order_indices_full, subclusters_list, order_indices_subclusters, use_symmetry=use_symmetry)
+        cluster_reduction_mat = map_between_cluster_bases(full_cluster_list,
+                                                          order_indices_full,
+                                                          subclusters_list,
+                                                          order_indices_subclusters,
+                                                          use_symmetry=use_symmetry)
 
         # now convert subcluster_mult_mat to correct indices...
         final_sub_cluster_mat = cluster_reduction_mat.transpose().dot(subcluster_mult_mat.dot(cluster_reduction_mat))
@@ -147,16 +162,20 @@ def get_all_clusters_with_subclusters(max_order, lv1=np.array([1, 0]), lv2=np.ar
 
     return full_cluster_list, cluster_multiplicities, cluster_mult_mat, order_indices_full
 
-def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluster_basis_smaller,
-                              order_indices_smaller, use_symmetry=True):
+
+def map_between_cluster_bases(cluster_basis_larger,
+                              order_indices_larger,
+                              cluster_basis_smaller,
+                              order_indices_smaller,
+                              use_symmetry: bool = True):
     """
     Create a matrix which maps between two different cluster bases.
+
     :param cluster_basis_larger: list of clusters. This list must contain all of the clusters in cluster_basis_smaller
     :param order_indices_larger:
     :param cluster_basis_smaller: a list of clusters
     :param order_indices_smaller:
     :param use_symmetry:
-
     :return basis_change_mat:
     """
 
@@ -188,7 +207,10 @@ def map_between_cluster_bases(cluster_basis_larger, order_indices_larger, cluste
     return basis_change_mat
 
 # functions work on subclusters
-def get_subclusters_next_order(parent_geometry, cluster_list=None):
+
+
+def get_subclusters_next_order(parent_geometry,
+                               cluster_list=None):
     """
     Given a list of subclusters of some parent geometry, generate all possible connected subclusters with one
     extra site. Also return which of the initial subclusters are contained in the higher order subclusters. This
@@ -199,11 +221,10 @@ def get_subclusters_next_order(parent_geometry, cluster_list=None):
 
     :param parent_geometry: Geometry to generate subclusters from
     :param cluster_list: A collection of subclusters.
-
     :return cluster_list_next_order: list of clusters
     :return old_cluster_contained_in_new_clusters: a list of lists. Each sublist contains the
-    indices of the clusters of lower order (i.e. the indices in the list cluster_list)
-    representing clusters contained in the given cluster in cluster_list_next_order
+      indices of the clusters of lower order (i.e. the indices in the list cluster_list)
+      representing clusters contained in the given cluster in cluster_list_next_order
     """
     cluster_list_next = []
     old_cluster_contained_in_new_clusters = []
@@ -222,7 +243,7 @@ def get_subclusters_next_order(parent_geometry, cluster_list=None):
             # loop over sites in our cluster, and try to add additional sites adjacent to them
             for ii, (xloc, yloc) in enumerate(cluster_coords):
                 # parent cluster coordinate? Check this
-                jj = [aa for aa,coord in enumerate(parent_coords) if coord==(xloc, yloc)]
+                jj = [aa for aa, coord in enumerate(parent_coords) if coord==(xloc, yloc)]
                 jj = jj[0]
 
                 # loop over sites in parent geometry and check if they are adjacent
@@ -251,6 +272,7 @@ def get_subclusters_next_order(parent_geometry, cluster_list=None):
 
     return cluster_list_next, old_cluster_contained_in_new_clusters
 
+
 def get_all_subclusters(parent_geometry):
     """
     Find all subclusters containing up to max_order sites of a given parent geometry, and return them as a list of
@@ -269,7 +291,6 @@ def get_all_subclusters(parent_geometry):
     gm02.
 
     :param parent_geometry:
-
     :return cluster_order_list: a list of lists of clusters
     :return sub_cluster_indices:
     :return sub_cluster_mat:
@@ -277,8 +298,8 @@ def get_all_subclusters(parent_geometry):
     """
     # TODO sub_cluster_indices is redundant as an output, and should be removed...
 
-    cluster_orders_list = [] # output variable
-    sub_cluster_indices = [] # what are these?
+    cluster_orders_list = []  # output variable
+    sub_cluster_indices = []  # what are these?
     current_order = 0
     total_clusters = 0
     total_clusters_previous = 0
@@ -322,7 +343,9 @@ def get_all_subclusters(parent_geometry):
     # flat = [g for h in cluster_orders_list for g in h]
     return cluster_orders_list, sub_cluster_indices, sub_cluster_mat
 
-def reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=True):
+
+def reduce_clusters_by_geometry(cluster_orders_list,
+                                use_symmetry: bool = True):
     """
     Reduce clusters to those which are geometrically and/or symmetrically distinct. In contrast to
     get_all_subclusters, in this function we regard clusters with different coordinates for their sites as
@@ -330,15 +353,14 @@ def reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=True):
     requires us_interspecies to put our clusters in some sort of normal order before comparing them.
 
     :param cluster_orders_list:
-
     :return clusters_geom_distinct: a list of lists. Each sublist contains all the distinct clusters for a given order.
     :return clusters_geom_multiplicity: a list of lists. Each sublist contains the multiplicities of the corresponding
-    cluster in the corresponding sublist of clusters_geom_distinct.
-    TODO: this is now redundant with the addition of cluster_reduction_mat.
+      cluster in the corresponding sublist of clusters_geom_distinct.
+      TODO: this is now redundant with the addition of cluster_reduction_mat.
     :return cluster_reduction_mat: is an n_reduced_clusters x n_full_clusters matrix, where M[ii, jj] = 1 if
-    and only if the cluster with index ii in the full list of clusters is geometrically the same as the cluster
-    with index jj in the list of reduced clusters. In some sense we can think of this as a basis
-    transformation matrix ...
+      and only if the cluster with index ii in the full list of clusters is geometrically the same as the cluster
+      with index jj in the list of reduced clusters. In some sense we can think of this as a basis
+      transformation matrix ...
     """
     # TODO: would like to rewrite thise to use cluster_list and order_start_indices instead of cluster_orders_list
     nclusters = np.sum(np.array([len(cl) for cl in cluster_orders_list]))
@@ -392,17 +414,19 @@ def reduce_clusters_by_geometry(cluster_orders_list, use_symmetry=True):
 
     return clusters_geom_distinct, clusters_geom_multiplicity, cluster_reduction_mat
 
-def get_reduced_subclusters(parent_geometry, print_progress=False):
+
+def get_reduced_subclusters(parent_geometry,
+                            print_progress: bool = False):
     """
     For a given parent geometry, produce all subclusters and the number of times each subcluster is contained in the
     parent
 
     :param parent_geometry:
-
+    :param print_progress:
     :return cluster_list: a list of distinct sub clusters of the parent_geometry (including the parent geometry itself)
     :return sub_cluster_mat: a square matrix which gives the number of times cluster j can be embedded in cluster i, if
-    cluster j is a proper sub-cluster of i (i.e. the diagonal of this matrix is zero).
-    sub_cluster_mat[ii, jj] = # C_j < C_i
+      cluster j is a proper sub-cluster of i (i.e. the diagonal of this matrix is zero).
+      sub_cluster_mat[ii, jj] = # C_j < C_i
     :return order_edge_indices: give the indices in cluster_list where clusters of increasingly larger order appear.
     """
 
@@ -439,14 +463,16 @@ def get_reduced_subclusters(parent_geometry, print_progress=False):
 
     return clusters_list, reduced_sub_cluster_mat, order_edge_indices
 
-def get_clusters_rel_by_symmetry(cluster, symmetry='d4'):
+
+def get_clusters_rel_by_symmetry(cluster,
+                                 symmetry: str = 'd4'):
     """
     Return all distinct clusters related to the initial cluster by symmetry.
 
     :param cluster: geometry object representing a cluster
     :param symmetry: TODO implement others besides D4
     :return cluster_symm_partners: a list of geometry objects, including the initial cluster which are related by the
-    specified symmetry
+      specified symmetry
     """
     rot_fn = symm.getRotFn(4)
     refl_fn = symm.getReflFn([0, 1])
@@ -472,9 +498,13 @@ def get_clusters_rel_by_symmetry(cluster, symmetry='d4'):
 
     return cluster_symm_partners
 
+
 # nlce functions
-def get_nlce_exp_val(exp_vals_clusters, sub_cluster_multiplicity_mat,
-                     parent_clust_multiplicity_vect, order_start_indices, nsites):
+def get_nlce_exp_val(exp_vals_clusters,
+                     sub_cluster_multiplicity_mat,
+                     parent_clust_multiplicity_vect,
+                     order_start_indices,
+                     nsites: int):
     """
     Compute linked cluster expansion weights and expectation values from expectation values on individual clusters
 
@@ -483,7 +513,6 @@ def get_nlce_exp_val(exp_vals_clusters, sub_cluster_multiplicity_mat,
     :param parent_clust_multiplicity_vect:
     :param order_start_indices:
     :param nsites:
-
     :return expectation_vals:
     :return cluster_weights:
     """
@@ -498,7 +527,6 @@ def get_nlce_exp_val(exp_vals_clusters, sub_cluster_multiplicity_mat,
     if isinstance(parent_clust_multiplicity_vect, list):
         parent_clust_multiplicity_vect = np.array(parent_clust_multiplicity_vect)
     parent_clust_multiplicity_vect = np.reshape(parent_clust_multiplicity_vect, (1, parent_clust_multiplicity_vect.size))
-
 
     nclusters = exp_vals_clusters.shape[0]
     # want to accept arbitrary exp_vals shapes, subject only to the condition that the first dimension loops over clusters
@@ -526,11 +554,19 @@ def get_nlce_exp_val(exp_vals_clusters, sub_cluster_multiplicity_mat,
     nlce_orders = np.zeros(tuple(size))
     for ii in range(0, len(order_start_indices) - 1):
         nlce_orders[ii, ...] = np.squeeze(np.tensordot(parent_clust_multiplicity_vect[0, order_start_indices[ii]:order_start_indices[ii+1]][None, :],
-                                                 weights[order_start_indices[ii]:order_start_indices[ii+1],...], axes=(1, 0))) / nsites
+                                                 weights[order_start_indices[ii]:order_start_indices[ii+1], ...], axes=(1, 0))) / nsites
 
     return exp_val_nlce, nlce_orders, weights
 
-def euler_resum(exp_vals_orders, y):
+
+def euler_resum(exp_vals_orders,
+                y):
+    """
+
+    :param exp_vals_orders:
+    :param y:
+    :return:
+    """
     # TODO: test
     euler_orders = np.zeros(exp_vals_orders.shape)
 
@@ -546,5 +582,11 @@ def euler_resum(exp_vals_orders, y):
 
     return euler_resum, euler_orders
 
+
 def wynn_resum(exp_vals_orders):
+    """
+
+    :param exp_vals_orders:
+    :return:
+    """
     pass

@@ -18,5 +18,9 @@ data
 
 __pycache__
 
+# python package
 build
 *.egg-info
+
+# documentation
+docs/_*

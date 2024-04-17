@@ -67,8 +67,8 @@ class TestGeom(unittest.TestCase):
         recp_v1_expected = np.array([[1. / 3.], [0.]])
         recp_v2_expected = np.array([[0.], [1. / 3.]])
 
-        correct_recps = np.array_equal(recp_v1, recp_v1_expected) and \
-                        np.array_equal(recp_v2, recp_v2_expected)
+        correct_recps = (np.array_equal(recp_v1, recp_v1_expected) and
+                         np.array_equal(recp_v2, recp_v2_expected))
 
         self.assertTrue(correct_recps)
 
@@ -92,9 +92,9 @@ class TestGeom(unittest.TestCase):
         nsites_expected = 9
         xlocs_expected = np.array([0., 0., 0., 1., 1., 1., 2., 2., 2.])
         ylocs_expected = np.array([0., 1., 2., 0., 1., 2., 0., 1., 2.])
-        correct_sites = nsites == nsites_expected and \
-                        np.array_equal(xlocs, xlocs_expected) and \
-                        np.array_equal(ylocs, ylocs_expected)
+        correct_sites = (nsites == nsites_expected and
+                         np.array_equal(xlocs, xlocs_expected) and
+                         np.array_equal(ylocs, ylocs_expected))
         self.assertTrue(correct_sites)
 
     def test_lattice_get_unique_sites_tiltedgeom(self):
@@ -118,9 +118,9 @@ class TestGeom(unittest.TestCase):
         nsites_expected = 10
         xlocs_expected = np.array([0., 0., 0., 0., 1., 1., 1., 2., 2., 2.])
         ylocs_expected = np.array([0., 1., 2., 3., 1., 2., 3., 1., 2., 3.])
-        correct_sites = nsites == nsites_expected and \
-                        np.array_equal(xlocs, xlocs_expected) and \
-                        np.array_equal(ylocs, ylocs_expected)
+        correct_sites = (nsites == nsites_expected and
+                         np.array_equal(xlocs, xlocs_expected) and
+                         np.array_equal(ylocs, ylocs_expected))
         self.assertTrue(correct_sites)
 
     def test_lattice_get_unique_sites_triangle_geom(self):
@@ -165,12 +165,15 @@ class TestGeom(unittest.TestCase):
         phase2 = 0.
         bc1_open = False
         bc2_open = True
-        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
-                                   periodicity_vect2, phase1, phase2)
+        latt = ed_geometry.Lattice(latt_vect1,
+                                   latt_vect2,
+                                   basis_vects,
+                                   periodicity_vect1,
+                                   periodicity_vect2,
+                                   phase1,
+                                   phase2)
 
         nsites, xlocs, ylocs = latt.get_unique_sites()
-        # xdist_min_mat, ydist_min_mat, dist_reduced_multiplicity = \
-        #     latt.get_reduced_distance(xlocs, ylocs)
         xdist_min_mat, ydist_min_mat, _, _ = latt.get_reduced_distance(xlocs, ylocs)
 
         xi, xj = np.meshgrid(np.arange(0, num_sites), np.arange(0, num_sites))
@@ -191,8 +194,13 @@ class TestGeom(unittest.TestCase):
         phase2 = 0.
         bc1_open = False
         bc2_open = True
-        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1,
-                                   periodicity_vect2, phase1, phase2)
+        latt = ed_geometry.Lattice(latt_vect1,
+                                   latt_vect2,
+                                   basis_vects,
+                                   periodicity_vect1,
+                                   periodicity_vect2,
+                                   phase1,
+                                   phase2)
 
         nsites, xlocs, ylocs = latt.get_unique_sites()
         xdist_min_mat, ydist_min_mat, _, _ = \
@@ -201,7 +209,6 @@ class TestGeom(unittest.TestCase):
         phase_mat = latt.get_phase_mat(xdist_min_mat, ydist_min_mat)
 
         phase_mat_expected = 0
-        #phase_mat_expected = np.exp(1j * phase1 * )
 
         self.assertTrue(np.array_equal(phase_mat, phase_mat_expected))
 
@@ -217,7 +224,13 @@ class TestGeom(unittest.TestCase):
         periodicity_vect2 = np.array([-1, 3])
         phase1 = 0
         phase2 = 0
-        latt = ed_geometry.Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2)
+        latt = ed_geometry.Lattice(latt_vect1,
+                                   latt_vect2,
+                                   basis_vects,
+                                   periodicity_vect1,
+                                   periodicity_vect2,
+                                   phase1,
+                                   phase2)
 
         xlocs_test = [0., 1., 2., 3., 4., 5., 6., 7., 8.]
         ylocs_test = [0., 0., 0., 0., 0., 0., 0., 0., 0.]
@@ -234,18 +247,33 @@ class TestGeom(unittest.TestCase):
                         np.array_equal(n2s, n2s_expected))
 
     def test_geom_get_center_of_mass(self):
-        gm = ed_geometry.Geometry.createSquareGeometry(3, 3, 0, 0, 1, 1)
+        gm = ed_geometry.Geometry.createSquareGeometry(3,
+                                                       3,
+                                                       0,
+                                                       0,
+                                                       True,
+                                                       True)
         cx, cy = gm.get_center_of_mass()
         self.assertTrue(cx == 1.0 and cy == 1.0)
 
     def test_geom_get_sorting_permutation(self):
-        gm = ed_geometry.Geometry.createSquareGeometry(3, 3, 0, 0, 1, 1)
+        gm = ed_geometry.Geometry.createSquareGeometry(3,
+                                                       3,
+                                                       0,
+                                                       0,
+                                                       True,
+                                                       True)
         permutation = gm.get_sorting_permutation(sorting_mode='top_alternating')
         permutation_expected = np.array([2., 5., 8., 7., 4., 1., 0., 3., 6.])
         self.assertTrue(np.array_equal(permutation, permutation_expected))
 
     def test_geom_get_site_distance(self):
-        gm = ed_geometry.Geometry.createSquareGeometry(3, 3, 0, 0, 0, 0)
+        gm = ed_geometry.Geometry.createSquareGeometry(3,
+                                                       3,
+                                                       0,
+                                                       0,
+                                                       False,
+                                                       False)
         xdist, ydist = gm.get_site_distance()
 
         xdist_expected = np.array([[ 0.,  0.,  0., -1., -1., -1., -2., -2., -2.],
@@ -277,7 +305,12 @@ class TestGeom(unittest.TestCase):
 
     @unittest.skip('Not finished!')
     def test_geom_permute_sites(self):
-        gm = ed_geometry.Geometry.createSquareGeometry(3, 3, 0, 0, 1, 1)
+        gm = ed_geometry.Geometry.createSquareGeometry(3,
+                                                       3,
+                                                       0,
+                                                       0,
+                                                       True,
+                                                       True)
         permutation = gm.get_sorting_permutation(sorting_mode='top_alternating')
         gm.permute_sites(permutation)
 

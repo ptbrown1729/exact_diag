@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from exact_diag import ed_geometry
+from exact_diag.ed_geometry import Geometry
 from exact_diag import ed_symmetry
 
 
@@ -79,7 +79,10 @@ class TestSymm(unittest.TestCase):
         Test function which determines how sites are permuted under the action of a transformation
         :return:
         """
-        geom = ed_geometry.Geometry.createSquareGeometry(8, 1, 0, 0, 0, 1)
+        geom = Geometry.createSquareGeometry(8,
+                                             1,
+                                             bc1_open=False,
+                                             bc2_open=True)
         transl_fn = ed_symmetry.getTranslFn(np.array([[1.0], [0.0]]))
 
         sites, trans_sites = ed_symmetry.getTransformedSites(transl_fn, range(0, geom.nsites), geom)
@@ -95,7 +98,10 @@ class TestSymm(unittest.TestCase):
         Test function which finds cyclese of sites under repeated transformations
         :return:
         """
-        geom = ed_geometry.Geometry.createSquareGeometry(4, 4, 0, 0, 1, 1)
+        geom = Geometry.createSquareGeometry(4,
+                                             4,
+                                             bc1_open=True,
+                                             bc2_open=True)
         cx, cy = geom.get_center_of_mass()
         permutation = geom.get_sorting_permutation('top_alternating')
         geom.permute_sites(permutation)
@@ -103,10 +109,14 @@ class TestSymm(unittest.TestCase):
         rot_fn = ed_symmetry.getRotFn(4, cx=cx, cy=cy)
         cycles, max_cycle_len = ed_symmetry.findSiteCycles(rot_fn, geom)
 
-        cycles_expected = [[0, 15, 12, 3], [1, 8, 13, 4], [2, 7, 14, 11], [5, 6, 9, 10]]
+        cycles_expected = [[0, 15, 12, 3],
+                           [1, 8, 13, 4],
+                           [2, 7, 14, 11],
+                           [5, 6, 9, 10]]
 
         self.assertEqual(max_cycle_len, 4)
         self.assertEqual(cycles, cycles_expected)
+
 
 if __name__ == "__main__":
     unittest.main()

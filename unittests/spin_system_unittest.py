@@ -1,8 +1,9 @@
 import unittest
 import numpy as np
-import exact_diag.ed_spins as tvi
-import exact_diag.ed_geometry as geom
+from exact_diag.ed_spins import spinSystem
+from exact_diag.ed_geometry import Geometry
 import exact_diag.ed_symmetry as symm
+
 
 class TestSpinSys(unittest.TestCase):
 
@@ -16,21 +17,21 @@ class TestSpinSys(unittest.TestCase):
         """
         spin = 2.5
 
-        nx = 4
-        ny = 1
-        phi1 = 0
-        phi2 = 0
-        bc_open1 = 1
-        bc_open2 = 1
-        gm = geom.Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc_open1, bc_open2)
+        gm = Geometry.createSquareGeometry(nx_sites=4,
+                                           ny_sites=1,
+                                           bc1_open=True,
+                                           bc2_open=True)
         gm.dispGeometry()
 
         j1 = 0.3333
         j2 = 0.23623627
         j3 = 0.8434783478
         # -1 to account for difference in definitions
-        js = -np.array([[0, j1, j2, j3], [j1, 0, j2, j3], [j2, j2, 0, j3], [j3, j3, j3, 0]])
-        ss = tvi.spinSystem(gm, jx=js, jy=js, jz=js, spin=spin)
+        js = -np.array([[0, j1, j2, j3],
+                        [j1, 0, j2, j3],
+                        [j2, j2, 0, j3],
+                        [j3, j3, j3, 0]])
+        ss = spinSystem(gm, jx=js, jy=js, jz=js, spin=spin)
         hamiltonian = ss.createH()
 
         eig_vals, eig_vects = ss.diagH(hamiltonian)
@@ -72,12 +73,13 @@ class TestSpinSys(unittest.TestCase):
         :return:
         """
 
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         # paper definition of hamiltonian differs by a factor of two from mine
         jz_critical = -2 * 0.32424925229
         h_transverse = 2 * 1.0
-        spin_model = tvi.spinSystem(cluster, jx=0.0, jy=0.0, jz=jz_critical,
-                                    hx=h_transverse, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx=0.0, jy=0.0, jz=jz_critical,
+                                hx=h_transverse, hy=0.0, hz=0.0)
         hamiltonian = spin_model.createH()
         eig_vals, eig_vects = spin_model.diagH(hamiltonian)
         # runner_offset the energy by the number of sites to match Hamiltonian in paper
@@ -97,12 +99,13 @@ class TestSpinSys(unittest.TestCase):
         :return:
         """
 
-        cluster = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=False, bc2_open=False)
         # paper definition of hamiltonian differs by a factor of two from mine
         jz_critical = -2 * 0.32424925229
         h_transverse = 2 * 1.0
-        spin_model = tvi.spinSystem(cluster, jx=0.0, jy=0.0, jz=jz_critical,
-                                    hx=h_transverse, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx=0.0, jy=0.0, jz=jz_critical,
+                                hx=h_transverse, hy=0.0, hz=0.0)
 
         # symmetry swapping up/down spins
         spin_swap_op = spin_model.get_swap_up_down_op()
@@ -126,18 +129,18 @@ class TestSpinSys(unittest.TestCase):
         full_proj_list = []
         hfull = spin_model.createH()
         for ii, proj in enumerate(symm_projs):
-                spin_swap_proj_op = proj * spin_swap_op * proj.conj().transpose()
+            spin_swap_proj_op = proj * spin_swap_op * proj.conj().transpose()
 
-                # char_table = np.array([[1, 1], [1, -1]])
-                # ccs = [[sp.eye(spin_swap_proj_op.shape[0], format="csr")], [spin_swap_proj_op]]
-                swap_projs, phase = symm.getZnProjectors(spin_swap_proj_op, 2)
+            # char_table = np.array([[1, 1], [1, -1]])
+            # ccs = [[sp.eye(spin_swap_proj_op.shape[0], format="csr")], [spin_swap_proj_op]]
+            swap_projs, phase = symm.getZnProjectors(spin_swap_proj_op, 2)
 
-                for jj, sproj in enumerate(swap_projs):
-                    full_proj_list.append(sproj * proj)
+            for jj, sproj in enumerate(swap_projs):
+                full_proj_list.append(sproj * proj)
 
-                    h_sector = sproj * proj * hfull * proj.conj().transpose() * sproj.conj().transpose()
-                    eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector, print_results=True)
-                    eig_vals_sectors.append(eig_vals_sector)
+                h_sector = sproj * proj * hfull * proj.conj().transpose() * sproj.conj().transpose()
+                eig_vals_sector, eig_vects_sector = spin_model.diagH(h_sector, print_results=True)
+                eig_vals_sectors.append(eig_vals_sector)
 
         # why only accurate to 10 decimal places?
         eigs_all_sectors = np.sort(np.concatenate(eig_vals_sectors))
@@ -157,12 +160,13 @@ class TestSpinSys(unittest.TestCase):
         :return:
         """
 
-        cluster = geom.Geometry.createSquareGeometry(5, 5, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(5, 5, 0, 0, bc1_open=False, bc2_open=False)
         # paper definition of hamiltonian differs by a factor of two from mine
         jz_critical = -2 * 0.32669593806
         h_transverse = 2 * 1.0
-        spin_model = tvi.spinSystem(cluster, jx=0.0, jy=0.0, jz=jz_critical,
-                                    hx=h_transverse, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx=0.0, jy=0.0, jz=jz_critical,
+                                hx=h_transverse, hy=0.0, hz=0.0)
 
         # symmetry swapping up/down spins
         spin_swap_op = spin_model.get_swap_up_down_op()
@@ -210,10 +214,15 @@ class TestSpinSys(unittest.TestCase):
         Test exact diagonalization of 3x3 xy model with periodic boundary conditions
 
         reference: J. Phys. A: Math. Gen 32 51 (1999).
-        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
+        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al.
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
-        spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0, hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        cluster = Geometry.createSquareGeometry(3,
+                                                3,
+                                                bc1_open=False,
+                                                bc2_open=False)
+        spin_model = spinSystem(cluster,
+                                jx=-1.0, jy=-1.0, jz=0.0,
+                                hx=0.0, hy=0.0, hz=0.0)
         hamiltonian = spin_model.createH()
         eig_vals, eig_vects = spin_model.diagH(hamiltonian)
         min_eig_per_site = eig_vals[0] / spin_model.geometry.nsites
@@ -225,14 +234,18 @@ class TestSpinSys(unittest.TestCase):
         Test exact diagonalization of 4x4 xy model with periodic boundary conditions
 
         reference: J. Phys. A: Math. Gen 32 51 (1999).
-        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al
+        "Finite-size scaling in the spin-1/2 xy model on a square lattice" by C J Hamer et al.
         """
 
-        cluster = geom.Geometry.createSquareGeometry(4, 4, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(4,
+                                                4,
+                                                bc1_open=False,
+                                                bc2_open=False)
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx=-1.0, jy=-1.0, jz=0.0,
-                                    hx=0.0, hy=0.0, hz=0.0, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx=-1.0, jy=-1.0, jz=0.0,
+                                hx=0.0, hy=0.0, hz=0.0)
 
         # x-translations
         xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
@@ -266,7 +279,7 @@ class TestSpinSys(unittest.TestCase):
         Test rotation symmetry by diagonalizing random spin system with and without using it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -275,7 +288,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -303,7 +318,7 @@ class TestSpinSys(unittest.TestCase):
         Test d2 symmetry by diagonalizing random spin system with and without it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 2, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(3, 2, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -312,7 +327,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -346,8 +363,7 @@ class TestSpinSys(unittest.TestCase):
         :return:
         """
         # adjacency_mat = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
-        # cluster = geom.Geometry.createNonPeriodicGeometry(xlocs=(0,0.5,1), ylocs=(0,np.sqrt(3)/2,0), adjacency_mat=adjacency_mat)
-        cluster = geom.Geometry.createRegularPolygonGeometry(3)
+        cluster = Geometry.createRegularPolygonGeometry(3)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -356,7 +372,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -384,9 +402,15 @@ class TestSpinSys(unittest.TestCase):
         self.assertAlmostEqual(max_diff, 0, 12)
 
     def test_d3_symm_6sites(self):
-        adjacency_mat = np.array([[0, 1, 0, 1, 0, 0], [1, 0, 1, 1, 1, 0], [0, 1, 0, 0, 1, 0], [1, 1, 0, 0, 1, 1], [0, 1, 1, 1, 0, 1], [0, 0, 0, 1, 1, 0]])
-        cluster = geom.Geometry.createNonPeriodicGeometry(xlocs=(0, 1, 2, 0.5, 1.5, 1), ylocs=(0, 0, 0, np.sqrt(3)/2, np.sqrt(3)/2, np.sqrt(3)),
-                                                          adjacency_mat=adjacency_mat)
+        adjacency_mat = np.array([[0, 1, 0, 1, 0, 0],
+                                  [1, 0, 1, 1, 1, 0],
+                                  [0, 1, 0, 0, 1, 0],
+                                  [1, 1, 0, 0, 1, 1],
+                                  [0, 1, 1, 1, 0, 1],
+                                  [0, 0, 0, 1, 1, 0]])
+        cluster = Geometry.createNonPeriodicGeometry(xlocs=(0, 1, 2, 0.5, 1.5, 1),
+                                                     ylocs=(0, 0, 0, np.sqrt(3)/2, np.sqrt(3)/2, np.sqrt(3)),
+                                                     adjacency_mat=adjacency_mat)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -395,7 +419,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -424,7 +450,7 @@ class TestSpinSys(unittest.TestCase):
         self.assertAlmostEqual(max_diff, 0, 12)
 
     def test_d4_symm_4sites(self):
-        cluster = geom.Geometry.createRegularPolygonGeometry(4)
+        cluster = Geometry.createRegularPolygonGeometry(4)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -433,7 +459,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -461,7 +489,7 @@ class TestSpinSys(unittest.TestCase):
         self.assertAlmostEqual(max_diff, 0, 12)
 
     def test_d5_symm_5sites(self):
-        cluster = geom.Geometry.createRegularPolygonGeometry(5)
+        cluster = Geometry.createRegularPolygonGeometry(5)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -470,7 +498,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -498,7 +528,7 @@ class TestSpinSys(unittest.TestCase):
         self.assertAlmostEqual(max_diff, 0, 14)
 
     def test_d6_symm_6sites(self):
-        cluster = geom.Geometry.createRegularPolygonGeometry(6)
+        cluster = Geometry.createRegularPolygonGeometry(6)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -507,7 +537,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -537,7 +569,7 @@ class TestSpinSys(unittest.TestCase):
     @unittest.skip("not working yet")
     def test_d7_symm_7sites(self):
 
-        cluster = geom.Geometry.createRegularPolygonGeometry(7)
+        cluster = Geometry.createRegularPolygonGeometry(7)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -546,7 +578,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -577,7 +611,7 @@ class TestSpinSys(unittest.TestCase):
         Test d4 symmetry by diagonalizing random spin system with and without it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -586,7 +620,9 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster,
+                                jx, jy, jz,
+                                hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -620,7 +656,7 @@ class TestSpinSys(unittest.TestCase):
         Test translational symmetry by diagonalizing random 3x3 spin system with and without it
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -629,7 +665,7 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster, jx, jy, jz, hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -644,8 +680,10 @@ class TestSpinSys(unittest.TestCase):
         ytransl_op = spin_model.get_xform_op(ytransl_cycles)
         ytransl_op = ytransl_op
 
-        symm_projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op, max_cycle_len_translx, ytransl_op,
-                                                          max_cycle_len_transly)
+        symm_projs, kxs, kys = symm.get2DTranslationProjectors(xtransl_op,
+                                                               max_cycle_len_translx,
+                                                               ytransl_op,
+                                                               max_cycle_len_transly)
 
         eig_vals_sectors = []
         for ii, proj in enumerate(symm_projs):
@@ -660,7 +698,7 @@ class TestSpinSys(unittest.TestCase):
         self.assertAlmostEqual(max_diff, 0, 10)
 
     def test_full_symm_3x3(self):
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         jx = np.random.rand()
         jy = np.random.rand()
         jz = np.random.rand()
@@ -669,7 +707,7 @@ class TestSpinSys(unittest.TestCase):
         hz = np.random.rand()
 
         # diagonalize full hamiltonian
-        spin_model = tvi.spinSystem(cluster, jx, jy, jz, hx, hy, hz, use_ryd_detunes=0)
+        spin_model = spinSystem(cluster, jx, jy, jz, hx, hy, hz)
         hamiltonian_full = spin_model.createH()
         eig_vals_full, eig_vects_full = spin_model.diagH(hamiltonian_full)
 
@@ -688,7 +726,6 @@ class TestSpinSys(unittest.TestCase):
         rot_cycles, max_cycle_len_rot = symm.findSiteCycles(rot_fn, spin_model.geometry)
         rot_op = spin_model.get_xform_op(rot_cycles)
 
-        # reflection
         # reflection about y-axis
         refl_fn = symm.getReflFn(np.array([0, 1]), cx=cx, cy=cy)
         refl_cycles, max_cycle_len_refl = symm.findSiteCycles(refl_fn, spin_model.geometry)
@@ -711,24 +748,25 @@ class TestSpinSys(unittest.TestCase):
     def test_directions_equivalent(self):
         """
         Test if all directions are equivalent for the spin system by picking three random fields and interactions_4 and
-        diagonalizing all six permutations of spin systems which can be created from these. The compare their eigenvalues
+        diagonalizing all six permutations of spin systems which can be created from these.
+        The compare their eigenvalues
 
         :return:
         """
-        cluster = geom.Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
+        cluster = Geometry.createSquareGeometry(3, 3, 0, 0, bc1_open=False, bc2_open=False)
         j1 = np.random.rand()
         j2 = np.random.rand()
         j3 = np.random.rand()
         h1 = np.random.rand()
         h2 = np.random.rand()
         h3 = np.random.rand()
-        spin_model_list = []
-        spin_model_list.append(tvi.spinSystem(cluster, jx=j1, jy=j2, jz=j3, hx=h1, hy=h2, hz=h3, use_ryd_detunes=0))
-        spin_model_list.append(tvi.spinSystem(cluster, jx=j2, jy=j3, jz=j1, hx=h2, hy=h3, hz=h1, use_ryd_detunes=0))
-        spin_model_list.append(tvi.spinSystem(cluster, jx=j3, jy=j1, jz=j2, hx=h3, hy=h1, hz=h2, use_ryd_detunes=0))
-        spin_model_list.append(tvi.spinSystem(cluster, jx=j1, jy=j3, jz=j2, hx=h1, hy=h3, hz=h2, use_ryd_detunes=0))
-        spin_model_list.append(tvi.spinSystem(cluster, jx=j2, jy=j1, jz=j3, hx=h2, hy=h1, hz=h3, use_ryd_detunes=0))
-        spin_model_list.append(tvi.spinSystem(cluster, jx=j3, jy=j2, jz=j1, hx=h3, hy=h2, hz=h1, use_ryd_detunes=0))
+        spin_model_list = [spinSystem(cluster, jx=j1, jy=j2, jz=j3, hx=h1, hy=h2, hz=h3),
+                           spinSystem(cluster, jx=j2, jy=j3, jz=j1, hx=h2, hy=h3, hz=h1),
+                           spinSystem(cluster, jx=j3, jy=j1, jz=j2, hx=h3, hy=h1, hz=h2),
+                           spinSystem(cluster, jx=j1, jy=j3, jz=j2, hx=h1, hy=h3, hz=h2),
+                           spinSystem(cluster, jx=j2, jy=j1, jz=j3, hx=h2, hy=h1, hz=h3),
+                           spinSystem(cluster, jx=j3, jy=j2, jz=j1, hx=h3, hy=h2, hz=h1)
+                           ]
 
         eig_vals_list = []
         for spin_model in spin_model_list:
@@ -743,6 +781,7 @@ class TestSpinSys(unittest.TestCase):
             eig_val_comparisons[ii] = np.abs(eig_vals_list[ii] - eig_vals_list[ii + 1]).max() == 0
 
         self.assertTrue(np.all(eig_val_comparisons))
+
 
 if __name__ == "__main__":
     unittest.main()

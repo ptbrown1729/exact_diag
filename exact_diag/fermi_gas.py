@@ -2,8 +2,8 @@
 Compute properties of a one- or two-component non-interacting Fermi gas
 """
 import numpy as np
-import scipy.optimize
-import warnings
+from scipy.optimize import root_scalar, minimize
+from warnings import warn
 
 
 def fermi(beta,
@@ -46,7 +46,8 @@ def fermi_derivatives(beta,
                       energy,
                       eta: float = 0.1):
     """
-    Calculate the derivatives of the fermi function with respect to the various inputs. Beta, mu, and energy should be given in consistent units.
+    Calculate the derivatives of the fermi function with respect to the various inputs. Beta, mu, and
+    energy should be given in consistent units.
 
     :param beta: inverse temperature
     :param mu: chemical potential
@@ -72,7 +73,6 @@ def fermi_derivatives(beta,
     e_minus_mu = energy - mu
     beta_times_e_minus_mu = beta * e_minus_mu
 
-    #dfdu = np.array( np.multiply(beta, np.divide(np.exp(beta_times_e_minus_mu), (np.exp(beta_times_e_minus_mu) + 1 ) ** 2 ) ))
     dfdx = -fermi(beta, mu, energy) * (1 - fermi(beta, mu, energy))
     dfdu = -beta * dfdx
     dfde = beta * dfdx
@@ -274,12 +274,14 @@ def fg_kspace_gfns(beta,
     if type == "greater":
         gfn = -1j * np.exp(-1j * (ek - mu) * time) * (1. - fermi(beta, mu, ek))
         dfdmu = fermi_derivatives(beta, mu, ek)[0]
-        dgdmu = time * np.exp(-1j * (ek - mu) * time) * (1. - fermi(beta, mu, ek)) + 1j * np.exp(-1j * (ek - mu) * time) * dfdmu
+        dgdmu = (time * np.exp(-1j * (ek - mu) * time) * (1. - fermi(beta, mu, ek)) +
+                 1j * np.exp(-1j * (ek - mu) * time) * dfdmu)
 
     elif type == "lesser":
         gfn = 1j * np.exp(-1j * (ek - mu) * time) * fermi(beta, mu, ek)
         dfdmu = fermi_derivatives(beta, mu, ek)[0]
-        dgdmu = -time * np.exp(-1j * (ek - mu) * time) * fermi(beta, mu, ek) + 1j * np.exp(-1j * (ek - mu) * time) * dfdmu
+        dgdmu = (-time * np.exp(-1j * (ek - mu) * time) * fermi(beta, mu, ek) +
+                 1j * np.exp(-1j * (ek - mu) * time) * dfdmu)
 
     elif type == "retarded":
         # TODO: what is correct t=0 intepretation? I guess it should be taking limit from t>0?
@@ -292,12 +294,13 @@ def fg_kspace_gfns(beta,
 
     elif type == "time-ordered":
         gfn = -1j * np.exp(-1j * (ek - mu) * time) * (np.heaviside(time, 1.) * (1. - fermi(beta, mu, ek))
-                                                     - np.heaviside(-time, 1.) * fermi(beta, mu, ek))
+                                                      - np.heaviside(-time, 1.) * fermi(beta, mu, ek))
         # TODO: implement
         dgdmu = 0 * ek
 
     else:
-        raise ValueError("Expected type argument to be 'greater', 'lesser', 'retarded', 'advanced' or 'time-ordered', but it was '%s'." % type)
+        raise ValueError(f"Expected type argument to be 'greater', 'lesser', 'retarded', 'advanced' or 'time-ordered',"
+                         f" but it was '{type:s}'.")
 
     return gfn, dgdmu
 
@@ -349,7 +352,13 @@ def fg_realspace_gfn(beta,
         dgdmu = np.zeros(beta.shape, dtype=complex)
         for ii in range(beta.size):
             coord = np.unravel_index(ii, beta.shape)
-            gfn[coord], dgdmu[coord] = fg_realspace_gfn(beta[coord], mu[coord], corr_index, time, nsites=nsites, dim=dim, type=type)
+            gfn[coord], dgdmu[coord] = fg_realspace_gfn(beta[coord],
+                                                        mu[coord],
+                                                        corr_index,
+                                                        time,
+                                                        nsites=nsites,
+                                                        dim=dim,
+                                                        type=type)
     else:
         # TODO: use FFT instead?
         if dim == '2d':
@@ -373,7 +382,9 @@ def fg_realspace_gfn(beta,
 
         emin, emax, emean = get_energy_spacing(es)
         if emean > 1. / beta:
-            warnings.warn("mean energy spacing is larger than temperature. Minimum energy spacing is %0.3e but temperature is %0.3e" % (emean, 1. / beta))
+            warn(f"mean energy spacing is larger than temperature. "
+                 f"Minimum energy spacing is {emean:.3g} "
+                 f"but temperature is {1. / beta[0]:.3g}")
 
         # real space green's function is fourier transform of k-space green's function
         # 1 / N = dkx * dky / (2*np.pi)**2 for 2D or dkx / (2*np.pi) for 1D
@@ -458,12 +469,12 @@ def fg_mu(beta,
         elif beta != np.inf:
             # seems to work more robustly than scipy.optimize.minimize
             # but fails at half-filling. jacobian_fsqr has a zero there...is that the reason?
-            fit_handle = scipy.optimize.root_scalar(jacobian_fsqr, x0=-0.1, x1=0.1)
+            fit_handle = root_scalar(jacobian_fsqr, x0=-0.1, x1=0.1)
             mu = fit_handle.root
         else:
             # jacobian_fsqr = -inf here, which is why this fials otherwise...
             mu_guess = np.array([0.0])
-            result = scipy.optimize.minimize(min_fn, mu_guess)
+            result = minimize(min_fn, mu_guess)
             mu = result.x
 
     return mu
@@ -490,6 +501,7 @@ def fg_compressibility(beta,
 
     return dndmu
 
+
 # correlators and response function
 def fg_corr(beta,
             mu,
@@ -503,6 +515,7 @@ def fg_corr(beta,
     :param mu: Chemical potential, in units of the hopping.
     :param corr_index:
     :param nsites: Number of lattice sites in each dimension to be used in the calculation
+    :param dim: "1d" or "2d"
     :return:
     """
     gfn_lesser = fg_realspace_gfn(beta, mu, corr_index, 0., nsites, dim, type="lesser")[0]
@@ -556,7 +569,8 @@ def fg_density_response(beta,
     elif beta.size == mu.size:
         pass
     else:
-        raise Exception('mu and beta must be the same size, or one of them should be a single number and the other an array.')
+        raise Exception('mu and beta must be the same size, or one of them should be a single number and '
+                        'the other an array.')
 
     if dim == '2d':
         kxkx, kyky, _, _ = get_allowed_kvects(nsites, nsites, 'balanced')
@@ -587,7 +601,13 @@ def fg_density_response(beta,
 
         for ii in range(beta.size):
             coord = np.unravel_index(ii, beta.shape)
-            chi_real[coord], chi_imag[coord] = fg_density_response(beta[coord], mu[coord], k, omega=omega, eta=eta, nsites=nsites, dim=dim)
+            chi_real[coord], chi_imag[coord] = fg_density_response(beta[coord],
+                                                                   mu[coord],
+                                                                   k,
+                                                                   omega=omega,
+                                                                   eta=eta,
+                                                                   nsites=nsites,
+                                                                   dim=dim)
     else:
         # this expression holds except where we have accidental degeneracies.
         chi_terms = np.divide(fermi(beta, mu, es) - fermi(beta, mu, es_q), omega + es - es_q + 1j * eta)
@@ -721,9 +741,9 @@ def fg_singles_corr(beta,
     n_up_corr = fg_corr(beta, mu_up, corr_index, nsites, dim)
     n_dn_corr = fg_corr(beta, mu_dn, corr_index, nsites, dim)
 
-    singles_corr = n_up_corr * (1 + 4 * n_dn ** 2 - 4 * n_dn) \
-                 + n_dn_corr * (1 + 4 * n_up ** 2 - 4 * n_up)\
-                 + 4 * n_up_corr * n_dn_corr
+    singles_corr = (n_up_corr * (1 + 4 * n_dn ** 2 - 4 * n_dn) +
+                    n_dn_corr * (1 + 4 * n_up ** 2 - 4 * n_up) +
+                    4 * n_up_corr * n_dn_corr)
 
     return singles_corr
 

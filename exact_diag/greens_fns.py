@@ -2,7 +2,7 @@
 Tools for working with Green's functions
 """
 import numpy as np
-import warnings
+from warnings import warn
 
 
 def get_matsubara_frqs(beta,
@@ -195,12 +195,12 @@ def grnfn_imagtime_ft(matsubara_frqs,
     # information about for a given dtau. Understand these and add a warning in this function.
 
     if not np.any(np.round(np.abs(taus - beta), 14) == 0):
-        warnings.warn('tau = beta was not supplied to grnfn_imagtime_ft.')
+        warn('tau = beta was not supplied to grnfn_imagtime_ft.')
 
     if np.round(taus, 14).max() > beta or np.round(taus, 14).min() < 0:
-        warnings.warn('taus supplied to grnfn_imagtime_ft contained values smaller than 0 or'
-                      ' larger than beta. Those values will be ignored in the calculation',
-                      RuntimeWarning)
+        warn('taus supplied to grnfn_imagtime_ft contained values smaller than 0 or'
+             ' larger than beta. Those values will be ignored in the calculation',
+             RuntimeWarning)
         indices_to_use = np.logical_and(np.round(taus, 14) >= 0, np.round(taus, 14) <= beta)
         grn_fn_imagtime = grn_fn_imagtime[indices_to_use]
         taus = taus[indices_to_use]
@@ -331,7 +331,9 @@ def chi_hydro(ws,
     :return:
     """
     if gamma != np.inf:
-        chi = np.divide(chi0, 1. - 1j * ws / (d0 * k ** 2 + d2 * k ** 4) - ws ** 2 / (gamma * (d0 * k ** 2 + d2 * k ** 4)))
+        chi = np.divide(chi0,
+                        1. - 1j * ws / (d0 * k ** 2 + d2 * k ** 4) -
+                        ws ** 2 / (gamma * (d0 * k ** 2 + d2 * k ** 4)))
     else:
         chi = np.divide(chi0, 1. - 1j * ws / (d0 * k ** 2 + d2 * k ** 4))
 

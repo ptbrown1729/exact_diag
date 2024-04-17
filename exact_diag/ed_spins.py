@@ -1,12 +1,11 @@
-import time
+from time import perf_counter
 import numpy as np
 import scipy.sparse as sp
-import exact_diag.ed_geometry as geom
-import exact_diag.ed_symmetry as symm
-from exact_diag import ed_base
+from exact_diag.ed_geometry import Geometry
+from exact_diag.ed_base import ed_base
 
 
-class spinSystem(ed_base.ed_base):
+class spinSystem(ed_base):
 
     # nbasis = 2
     nspecies = 1
@@ -20,7 +19,7 @@ class spinSystem(ed_base.ed_base):
     swap_op = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
     def __init__(self,
-                 geometry: geom.Geometry,
+                 geometry: Geometry,
                  jx: float = 0.0,
                  jy: float = 0.0,
                  jz: float = 0.0,
@@ -36,7 +35,8 @@ class spinSystem(ed_base.ed_base):
 
           H = \\sum_{ \\left \\langle i, j \\right \\rangle, \\alpha=x,y,z} \\frac{1}{2} j_\\alpha \\sigma_i^\\alpha \\sigma_j^\\alpha - \\sum_{i, \\alpha=x,y,z} \\frac{1}{2} h_\\alpha \\sigma_i^\\alpha
 
-        If write this in terms of spin operators instead of Pauli matrices, :math:`S_i^\\alpha = \\frac{1}{2} \\sigma_i^\\alpha`
+        If write this in terms of spin operators instead of Pauli matrices,
+        :math:`S_i^\\alpha = \\frac{1}{2} \\sigma_i^\\alpha`
 
         .. math::
 
@@ -60,7 +60,8 @@ class spinSystem(ed_base.ed_base):
         self.sy = self.get_sy(spin)
         self.sx = self.get_sx(spin)
 
-        ed_base.ed_base.__init__(self, geometry)
+        # ed_base.ed_base.__init__(self, geometry)
+        super(spinSystem, self).__init__(geometry)
         self.jx = self.get_interaction_mat(jx)
         self.jy = self.get_interaction_mat(jy)
         self.jz = self.get_interaction_mat(jz)
@@ -72,8 +73,8 @@ class spinSystem(ed_base.ed_base):
             self.rydberg_detunings = self.get_rydberg_detunes(self.jz)
             self.hz = self.hz + self.rydberg_detunings
 
-    def get_splus(self,
-                  spin):
+    @staticmethod
+    def get_splus(spin):
         """
         :math:`S^+ \\left | s m \\right \\rangle = \\sqrt{ (s-m) (s+m+1) } \\left | s (m+1) \\right \\rangle`
 
@@ -83,8 +84,8 @@ class spinSystem(ed_base.ed_base):
         ms = np.arange(spin - 1, -spin - 1, -1)
         return sp.diags(np.sqrt((spin - ms) * (spin + ms + 1)), -1)
 
-    def get_sminus(self,
-                   spin):
+    @staticmethod
+    def get_sminus(spin):
         """
         :math:`S^- \\left | s m \\right \\rangle = \\sqrt{(s+m) (s_m+1)} \\left | s (m-1) \\right \\rangle`
 
@@ -188,7 +189,7 @@ class spinSystem(ed_base.ed_base):
           on the site corresponding to the column index.
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         nsites = self.geometry.nsites
         StateSpinLabels = sp.csc_matrix((2 ** nsites, nsites))  # csc 0.7s vs. csr 9s. As expected for vertical slicing.
@@ -202,7 +203,7 @@ class spinSystem(ed_base.ed_base):
         # self.StateSpinLabels = StateSpinLabels
         StateSpinLabels.eliminate_zeros()
         if print_results:
-            tend = time.perf_counter()
+            tend = perf_counter()
             print("Took %0.2f s to generate state vector labels" % (tend - tstart))
         return StateSpinLabels
 
@@ -215,10 +216,11 @@ class spinSystem(ed_base.ed_base):
         :return:
         """
         if print_results:
-            tstart = time.perf_counter()
-        StateParity = np.mod(np.array(self.get_state_vects(self.geometry.nsites, 2 ** self.geometry.nsites).sum(1)), 2)
+            tstart = perf_counter()
+        StateParity = np.mod(np.array(self.get_state_vects(self.geometry.nsites,
+                                                           2 ** self.geometry.nsites).sum(1)), 2)
         if print_results:
-            tend = time.perf_counter()
+            tend = perf_counter()
             print("get_state_parity took %0.2fs" % (tend - tstart))
         return StateParity
 
@@ -256,12 +258,12 @@ class spinSystem(ed_base.ed_base):
         :param print_results:
         :return:
         """
-        #TODO: if I do twisted boundary conditions can I still only sum over ii > jj?
+        # TODO: if I do twisted boundary conditions can I still only sum over ii > jj?
         nsites = self.geometry.nsites
         nstates = self.nbasis ** nsites
 
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         if projector is None:
             projector = sp.eye(nstates)
@@ -273,18 +275,12 @@ class spinSystem(ed_base.ed_base):
             if self.hx[ii] != 0:
                 # THESE factors of two related to the fact I've written things in terms of the pauli matrices, instead
                 # of spin matrix = 0.5 * pauli_matrices
-                # H = H - 0.5 * self.hx[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_x, format="boson") * \
-                #     projector.conj().transpose()
                 H = H - self.hx[ii] * projector * self.get_single_site_op(ii, 0, self.sx, format="boson") * \
                     projector.conj().transpose()
             if self.hy[ii] != 0:
-                # H = H - 0.5 * self.hy[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_y, format="boson") * \
-                #     projector.conj().transpose()
                 H = H - self.hy[ii] * projector * self.get_single_site_op(ii, 0, self.sy, format="boson") * \
                     projector.conj().transpose()
             if self.hz[ii] != 0:
-                # H = H - 0.5 * self.hz[ii] * projector * self.get_single_site_op(ii, 0, self.pauli_z, format="boson") * \
-                #     projector.conj().transpose()
                 H = H - self.hz[ii] * projector * self.get_single_site_op(ii, 0, self.sz, format="boson") * \
                     projector.conj().transpose()
 
@@ -321,7 +317,7 @@ class spinSystem(ed_base.ed_base):
                                 projector.conj().transpose()
 
         if print_results:
-            tend = time.perf_counter()
+            tend = perf_counter()
             print("Constructing H of size %d x %d took %0.2f s" % (H.shape[0], H.shape[0], tend - tstart))
 
         return H
@@ -384,7 +380,7 @@ class spinSystem(ed_base.ed_base):
             AFMState2Ind = NStates - AFMState1Ind
         else:
             print('AFM State finder not implemented for even number of sites in X-direction when using '
-                      'conventional number, or not implemented for only a single site. Will return FM states instead')
+                  'conventional number, or not implemented for only a single site. Will return FM states instead')
             AFMState1Ind = 0
             AFMState2Ind = NStates - 1
 

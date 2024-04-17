@@ -9,7 +9,7 @@ The members of each conjugacy class are listed at the top of the column.
 
 """
 
-import time
+from time import perf_counter
 import numpy as np
 import scipy.sparse as sp
 from exact_diag.ed_geometry import Geometry
@@ -237,7 +237,7 @@ def reduce_symm_projector(p_full,
       symm_proj*Op*symm_proj.transpose() is the operator Op in the projected subspace
     """
     if print_results:
-        tstart = time.perf_counter()
+        tstart = perf_counter()
 
     if not sp.isspmatrix_csr(p_full):
         print("warning, projop_full2full was not csr. Converted it to csr.")
@@ -323,7 +323,7 @@ def reduce_symm_projector(p_full,
     p_red = sp.diags(np.reciprocal(norms), 0, format="csr") * p_red
 
     if print_results:
-        tend = time.perf_counter()
+        tend = perf_counter()
         print("Finding projector took %0.2f s" % (tend - tstart))
 
     return p_red

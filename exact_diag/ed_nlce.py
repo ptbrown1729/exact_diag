@@ -1,8 +1,8 @@
 import numpy as np
-import scipy.special
+from scipy.special import binom
 import scipy.sparse as sp
-import exact_diag.ed_geometry as geom
-import exact_diag.ed_symmetry as symm
+from exact_diag.ed_geometry import Geometry
+from exact_diag.ed_symmetry import getRotFn, getReflFn
 
 # TODO: some ideas
 # 1. Identify clusters which are topologically the same, to save on work done for diagonalization
@@ -35,7 +35,7 @@ def get_clusters_next_order(cluster_list=None,
 
     if cluster_list is None:
         # to zeroth order, cluster of one site
-        gm = geom.Geometry.createNonPeriodicGeometry([0], [0])
+        gm = Geometry.createNonPeriodicGeometry([0], [0])
         cluster_list_next.append(gm)
         multiplicity.append(1)
     else:
@@ -53,7 +53,7 @@ def get_clusters_next_order(cluster_list=None,
                     if (xloc_new, yloc_new) not in coords:
                         new_xlocs = np.concatenate((cluster.xlocs, np.array([xloc_new])))
                         new_ylocs = np.concatenate((cluster.ylocs, np.array([yloc_new])))
-                        new_geom = geom.Geometry.createNonPeriodicGeometry(new_xlocs, new_ylocs)
+                        new_geom = Geometry.createNonPeriodicGeometry(new_xlocs, new_ylocs)
                         new_geom.permute_sites(new_geom.get_sorting_permutation())
 
                         new_geom_symmetric_partners = [new_geom]
@@ -231,7 +231,7 @@ def get_subclusters_next_order(parent_geometry,
     if cluster_list is None:
         # to zeroth order, add each site as own cluster
         for ii in range(0, parent_geometry.nsites):
-            gm = geom.Geometry.createNonPeriodicGeometry(parent_geometry.xlocs[ii], parent_geometry.ylocs[ii])
+            gm = Geometry.createNonPeriodicGeometry(parent_geometry.xlocs[ii], parent_geometry.ylocs[ii])
             cluster_list_next.append(gm)
             old_cluster_contained_in_new_clusters.append([])
     else:
@@ -243,7 +243,7 @@ def get_subclusters_next_order(parent_geometry,
             # loop over sites in our cluster, and try to add additional sites adjacent to them
             for ii, (xloc, yloc) in enumerate(cluster_coords):
                 # parent cluster coordinate? Check this
-                jj = [aa for aa, coord in enumerate(parent_coords) if coord==(xloc, yloc)]
+                jj = [aa for aa, coord in enumerate(parent_coords) if coord == (xloc, yloc)]
                 jj = jj[0]
 
                 # loop over sites in parent geometry and check if they are adjacent
@@ -255,12 +255,12 @@ def get_subclusters_next_order(parent_geometry,
                     if parent_geometry.adjacency_mat[jj, kk] == 1 and (xloc_kk, yloc_kk) not in cluster_coords:
                         new_xlocs = np.concatenate((cluster.xlocs, np.array([xloc_kk])))
                         new_ylocs = np.concatenate((cluster.ylocs, np.array([yloc_kk])))
-                        #TODO: also get adjacency from the previous cluster
-                        new_geom = geom.Geometry.createNonPeriodicGeometry(new_xlocs, new_ylocs)
+                        # TODO: also get adjacency from the previous cluster
+                        new_geom = Geometry.createNonPeriodicGeometry(new_xlocs, new_ylocs)
                         new_geom.permute_sites(new_geom.get_sorting_permutation())
-                        #TODO: compare this cluster to  make sure a duplicate doesn't already exist? So far only
-                        #dealing with real duplicates, not 'duplicates' that are the same shape and hence have the
-                        #same hamiltonian
+                        # TODO: compare this cluster to  make sure a duplicate doesn't already exist? So far only
+                        # dealing with real duplicates, not 'duplicates' that are the same shape and hence have the
+                        # same hamiltonian
                         duplicates = [(ii, g) for ii, g in enumerate(cluster_list_next) if new_geom == g]
                         if duplicates == []:
                             cluster_list_next.append(new_geom)
@@ -319,7 +319,6 @@ def get_all_subclusters(parent_geometry):
                     if not sub_cluster_indices[ci] == []:
                         curr_indices = curr_indices + sub_cluster_indices[ci]
                 curr_indices = sorted(list(set(curr_indices)))
-                #print curr_indices
             sub_cluster_indices.append(curr_indices)
 
         # append new clusters
@@ -353,6 +352,7 @@ def reduce_clusters_by_geometry(cluster_orders_list,
     requires us_interspecies to put our clusters in some sort of normal order before comparing them.
 
     :param cluster_orders_list:
+    :param use_symmetry:
     :return clusters_geom_distinct: a list of lists. Each sublist contains all the distinct clusters for a given order.
     :return clusters_geom_multiplicity: a list of lists. Each sublist contains the multiplicities of the corresponding
       cluster in the corresponding sublist of clusters_geom_distinct.
@@ -376,7 +376,7 @@ def reduce_clusters_by_geometry(cluster_orders_list,
         clusters_this_order = []
         multiplicity_this_order = []
         # loop over clusters
-        for ii,cluster in enumerate(cluster_list):
+        for ii, cluster in enumerate(cluster_list):
             cluster_index_full = ii + running_full_cluster_total  # cluster index in full list
             # check if cluster is already in our list
 
@@ -446,7 +446,8 @@ def get_reduced_subclusters(parent_geometry,
     # M[ii, jj] = # of times cluster ii contains cluster jj
     # can do this in several steps.
 
-    # First, let us_interspecies find the multiplicity of C^R_j, the reduced cluster of index j in C^F_i, the full cluster of index i
+    # First, let us_interspecies find the multiplicity of C^R_j,
+    # the reduced cluster of index j in C^F_i, the full cluster of index i
     # i.e. RF_ij = # C^R_j < C^F_i
     # this is just RF_ij = \sum_k SC[i, k] * C[j, k] , with C = cluster_reduction_mat and SC = sub_cluster_mat
     red_cluster_mult_in_full = sub_cluster_mat.dot(cluster_reduction_mat.transpose())
@@ -474,8 +475,8 @@ def get_clusters_rel_by_symmetry(cluster,
     :return cluster_symm_partners: a list of geometry objects, including the initial cluster which are related by the
       specified symmetry
     """
-    rot_fn = symm.getRotFn(4)
-    refl_fn = symm.getReflFn([0, 1])
+    rot_fn = getRotFn(4)
+    refl_fn = getReflFn([0, 1])
 
     cluster_symm_partners = [cluster]
     # list coordinates of all D4 symmetries
@@ -491,7 +492,7 @@ def get_clusters_rel_by_symmetry(cluster,
 
     # add distinct clusters to a list
     for xys in xys_list:
-        c = geom.Geometry.createNonPeriodicGeometry(xys[0, :], xys[1, :])
+        c = Geometry.createNonPeriodicGeometry(xys[0, :], xys[1, :])
         c.permute_sites(c.get_sorting_permutation())
         if not [h for h in cluster_symm_partners if h.isequal_adjacency(c)]:
             cluster_symm_partners.append(c)
@@ -526,10 +527,12 @@ def get_nlce_exp_val(exp_vals_clusters,
         parent_clust_multiplicity_vect = parent_clust_multiplicity_vect.toarray()
     if isinstance(parent_clust_multiplicity_vect, list):
         parent_clust_multiplicity_vect = np.array(parent_clust_multiplicity_vect)
-    parent_clust_multiplicity_vect = np.reshape(parent_clust_multiplicity_vect, (1, parent_clust_multiplicity_vect.size))
+    parent_clust_multiplicity_vect = np.reshape(parent_clust_multiplicity_vect,
+                                                (1, parent_clust_multiplicity_vect.size))
 
     nclusters = exp_vals_clusters.shape[0]
-    # want to accept arbitrary exp_vals shapes, subject only to the condition that the first dimension loops over clusters
+    # want to accept arbitrary exp_vals shapes, subject only to the condition that the
+    # first dimension loops over clusters
     weights = np.zeros(exp_vals_clusters.shape)
 
     # compute weights in a nice tensorial way
@@ -545,8 +548,9 @@ def get_nlce_exp_val(exp_vals_clusters,
         weights[ii, ...] = exp_vals_clusters[ii, ...] - np.squeeze(
             np.tensordot(sub_cluster_multiplicity_mat[ii, :].toarray(), weights, axes=(1, 0)))
 
-    #exp_val_nlce[jj] = sub_cluster_multiplicity_mat[-1, :] * weights[:, jj] / nsites
-    # exp_val_nlce = np.squeeze(np.tensordot(sub_cluster_multiplicity_mat[-1, :].toarray(), weights, axes=(1,0))) / nsites
+    # exp_val_nlce[jj] = sub_cluster_multiplicity_mat[-1, :] * weights[:, jj] / nsites
+    # exp_val_nlce = np.squeeze(np.tensordot(sub_cluster_multiplicity_mat[-1, :].toarray(),
+    # weights, axes=(1,0))) / nsites
     exp_val_nlce = np.squeeze(np.tensordot(parent_clust_multiplicity_vect, weights, axes=(1, 0))) / nsites
 
     b = list(exp_vals_clusters[0, ...].shape)
@@ -574,7 +578,7 @@ def euler_resum(exp_vals_orders,
         jjs = np.arange(0, ii + 1)
         yjjs = np.power(y, jjs + 1)
         exp_vals_partial_orders = exp_vals_orders[0 : ii + 1, ...]
-        binomial_coeffs = np.array([scipy.special.binom(ii, jj) for jj in jjs])
+        binomial_coeffs = np.array([binom(ii, jj) for jj in jjs])
         partial_sum = np.tensordot(binomial_coeffs * yjjs, exp_vals_partial_orders, axes=(0, 0))
         euler_orders[ii, ...] = 1. / (1 + y) ** (ii + 1) * partial_sum
 

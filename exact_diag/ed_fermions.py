@@ -1,12 +1,11 @@
-import time
+from time import perf_counter
 import numpy as np
 import scipy.sparse as sp
-import exact_diag.ed_geometry as geom
-import exact_diag.ed_symmetry as symm
-from exact_diag import ed_base
+from exact_diag.ed_geometry import Geometry
+from exact_diag.ed_base import ed_base
 
 
-class fermions(ed_base.ed_base):
+class fermions(ed_base):
 
     nbasis = 2
 
@@ -19,7 +18,7 @@ class fermions(ed_base.ed_base):
                         [0, 0, 0, -1]])
 
     def __init__(self,
-                 geometry: geom.Geometry,
+                 geometry: Geometry,
                  us_interspecies,
                  ts,
                  ns=None,
@@ -34,14 +33,16 @@ class fermions(ed_base.ed_base):
         higher site index further to the left within each spin index.
 
         Having established the order of creation operators within a basis state, we can now write our fermion
-        occupations like spins, using a vector like [0, 0, 0, 1] to mean that there are no fermions on the first three logical
-        sites, and one fermion on the fourth. The order of these vectors will mimic the order of the tensor product state
-        We take the leftmost element of the vector to be the 'smallest' index. We say that the 'smallest' index has the
-        lowest site number and the smallest spin (i.e. most down spin). Note that there is no necessary connection
-        between the ordering of the basis states and the ordering of creation operators within a basis state.
+        occupations like spins, using a vector like [0, 0, 0, 1] to mean that there are no fermions on the first three
+        logical sites, and one fermion on the fourth. The order of these vectors will mimic the order of the tensor
+        product state We take the leftmost element of the vector to be the 'smallest' index. We say that the
+        'smallest' index has the lowest site number and the smallest spin (i.e. most down spin). Note that there
+        is no necessary connection between the ordering of the basis states and the ordering of creation
+        operators within a basis state.
 
         For example, consider a fermions model on two sites. The spin-like vectors specifying the basis states are
-        [site 0 spin down, site 1 spin down, site 0 spin up, site 1 spin up], and the first few basis states in order are
+        [site 0 spin down, site 1 spin down, site 0 spin up, site 1 spin up], and the first few basis states
+        in order are
 
         .. math::
 
@@ -65,7 +66,8 @@ class fermions(ed_base.ed_base):
         :param nspecies: number of species of fermions
         """
         self.nspecies = nspecies
-        ed_base.ed_base.__init__(self, geometry)
+        # ed_base.ed_base.__init__(self, geometry)
+        super(fermions, self).__init__(geometry)
 
         # tunneling
         ts = np.asarray(ts)
@@ -84,7 +86,7 @@ class fermions(ed_base.ed_base):
         # interaction between different species
         us_interspecies = np.asarray(us_interspecies)
         if us_interspecies.size == 1:
-            self.us_interspecies = us_interspecies * np.ones((self.geometry.nsites))
+            self.us_interspecies = us_interspecies * np.ones(self.geometry.nsites)
         else:
             self. us_interspecies = us_interspecies
 
@@ -108,7 +110,7 @@ class fermions(ed_base.ed_base):
         # mus
         mus = np.asarray(mus)
         if mus.size == 1:
-            self.mus = mus * np.ones((self.nspecies))
+            self.mus = mus * np.ones(self.nspecies)
         elif mus.size == self.nspecies:
             self.mus = mus
 
@@ -143,9 +145,10 @@ class fermions(ed_base.ed_base):
                 raise Exception("ns was inconsistent shape.")
 
         self.ns = ns
-        # should I implement this in here? Then in all my functions I would write this as a built in projector, and
+        # should I implement this in here? Then in all my functions I would write this as a built-in projector, and
         # the other projector would be applied addtionally, and it would be assumed it was already in this basis...
-        # right now I only create the operator and store it here...but it would make sense to trully integrate it into the class...
+        # right now I only create the operator and store it here...but it would make sense to trully integrate
+        # it into the class...
         # in that case, it should be an implementation detail that you don't need to know about externally...
         nops = []
         n_projs = []
@@ -157,8 +160,11 @@ class fermions(ed_base.ed_base):
                     n_species_proj = np.array(1)
                 else:
                     n_species_op = self.get_sum_op(self.n_op, ii, format="boson")
-                    n_species_proj, _ = self.get_subspace_projs(running_projector.dot(n_species_op.dot(running_projector.conj().transpose())),
-                                                                eig_vals=self.ns[ii], print_results=False)
+                    n_species_proj, _ = self.get_subspace_projs(running_projector.dot(
+                                                                n_species_op.dot(
+                                                                running_projector.conj().transpose())),
+                                                                eig_vals=self.ns[ii],
+                                                                print_results=False)
                     n_species_proj = n_species_proj[0]
 
                 # concatenate projectors
@@ -182,7 +188,7 @@ class fermions(ed_base.ed_base):
           to the column index.
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         n_logical_sites = self.geometry.nsites * self.nspecies
         state_spin_labels = sp.csc_matrix((self.nstates, n_logical_sites))
@@ -193,7 +199,8 @@ class fermions(ed_base.ed_base):
             # simple pattern to create the columns of the matrix. It goes like this: the last column alternates as
             # 1,0,1,0,... the second to last column goes 1,1,0,0,1,1,..., all the way to the first, which goes,
             # 1,1,...,1,0,...0 (is first half ones, second half zeros).
-            state_spin_labels[:, ii] = sp.kron(np.ones([2 ** ii, 1]), sp.kron(root_mat, np.ones([2 ** (n_logical_sites - ii - 1), 1])))
+            state_spin_labels[:, ii] = sp.kron(np.ones([2 ** ii, 1]),
+                                               sp.kron(root_mat, np.ones([2 ** (n_logical_sites - ii - 1), 1])))
 
         # state_spin_labels.eliminate_zeros()
         state_spin_labels = 1 - state_spin_labels.toarray()
@@ -202,7 +209,7 @@ class fermions(ed_base.ed_base):
             state_spin_labels = projector * state_spin_labels
 
         if print_results:
-            tend = time.perf_counter()
+            tend = perf_counter()
             print("Took %0.2f s to generate state vector labels" % (tend - tstart))
 
         text_labels = ''
@@ -250,7 +257,7 @@ class fermions(ed_base.ed_base):
         """
 
         if interaction.size == 1:
-            interaction = interaction * np.ones((self.nspecies))
+            interaction = interaction * np.ones(self.nspecies)
 
         int_mat = np.zeros((self.geometry.nsites, self.geometry.nsites, self.nspecies))
         for ii in range(0, self.nspecies):
@@ -271,7 +278,7 @@ class fermions(ed_base.ed_base):
         """
 
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         if projector is None:
             projector = sp.eye(self.nstates)
@@ -287,7 +294,7 @@ class fermions(ed_base.ed_base):
         haml = haml + self.get_potential_op(self.potentials, projector=projector)
 
         if print_results:
-            tend = time.perf_counter()
+            tend = perf_counter()
             print("Constructing hamiltonian of size %dx%d took %0.2f s" % (haml.shape[0], haml.shape[1], tend - tstart))
 
         return haml
@@ -328,9 +335,15 @@ class fermions(ed_base.ed_base):
                             # avoid calculating operators unless will be nonzero
                             if self.ts[ii, jj, kk] != 0:
                                 ke_op = ke_op + self.ts[ii, jj, kk] * sep_along_vector[ii, jj] * (
-                                        - projector * self.get_two_site_op(ii, kk, jj, kk, self.cdag_op, self.c_op, "fermion") *
+                                        - projector * self.get_two_site_op(ii, kk, jj, kk,
+                                                                           self.cdag_op,
+                                                                           self.c_op,
+                                                                           "fermion") *
                                           projector.conj().transpose()
-                                        - projector * self.get_two_site_op(jj, kk, ii, kk, self.cdag_op, self.c_op, "fermion") *
+                                        - projector * self.get_two_site_op(jj, kk, ii, kk,
+                                                                           self.cdag_op,
+                                                                           self.c_op,
+                                                                           "fermion") *
                                           projector.conj().transpose()
                                         )
         return ke_op
@@ -386,7 +399,10 @@ class fermions(ed_base.ed_base):
                 if ii >= jj:  # avoid double counting offsite terms
                     for kk in range(0, self.nspecies):
                         if us[ii, jj, kk] != 0:
-                            u_op = u_op + us[ii, jj, kk] * projector * self.get_two_site_op(ii, kk, jj, kk, self.n_op, self.n_op, "boson") * \
+                            u_op = u_op + us[ii, jj, kk] * projector * self.get_two_site_op(ii, kk, jj, kk,
+                                                                                            self.n_op,
+                                                                                            self.n_op,
+                                                                                            "boson") * \
                                    projector.conj().transpose()
 
         return u_op
@@ -519,12 +535,14 @@ class fermions(ed_base.ed_base):
         """
         # no broadening is necessary to perform this integral, so better to split this off as a separate function
 
-        # \int_{-\inf}^\inf d\omega_start Re(sigma(\omega_start)) = \pi/N/Z *\sum_{nm} e^{-\beta * E_n} |J_nm|^2 * (1 - exp(-beta * (E_m - E_n))/(E_m - E_n)
-        # but we need to exclude any E_m = E_n, so a more proper way to write this might be twice the one-sided integral of the optical
+        # \int_{-\inf}^\inf d\omega_start Re(sigma(\omega_start)) =
+        # \pi/N/Z *\sum_{nm} e^{-\beta * E_n} |J_nm|^2 * (1 - exp(-beta * (E_m - E_n))/(E_m - E_n)
+        # but we need to exclude any E_m = E_n, so a more proper way to write this might be twice the
+        # one-sided integral of the optical
         # conductivity, which excludes the zero frequency weights...
         # TODO: could also handle period_start = infinity case...
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         temperature = float(temperature)
         nsites = self.geometry.nsites
@@ -536,13 +554,14 @@ class fermions(ed_base.ed_base):
             z = np.sum(np.exp(- beta * eig_vals))
             [a, b] = np.meshgrid(eig_vals, eig_vals)
             omegas = b - a
-            #omegas[omegas == 0] = 1e9
+
             weight = np.divide(1 - np.exp(- beta * omegas), omegas)
             weight[omegas == 0] = 0
             # multiply each column by the appropriate exponentail factor and weight. Then sum over everything.
             # think of n as columns, n as rows
             sigma_re_two_sided_int = np.pi / z / nsites * \
-                                     np.sum(np.sum(np.multiply(np.square(np.abs(current_matrix_elems)).dot(np.diag(np.exp(- beta * eig_vals))), weight)))
+                                     np.sum(np.sum(np.multiply(np.square(np.abs(current_matrix_elems)).dot(
+                                         np.diag(np.exp(- beta * eig_vals))), weight)))
 
         else:
             # period_start = 0, only need to sum over one set of states
@@ -551,12 +570,12 @@ class fermions(ed_base.ed_base):
             weight = np.divide(1, omegas)
             weight[omegas == 0] = 0
             current_matrix_elems = current_matrix_elems[:, 0]
-            # we are effectively doing the one sided integral, therefore we need to multiply this by 2
+            # we are effectively doing the one-sided integral, therefore we need to multiply this by 2
             sigma_one_sided_int = np.pi / nsites * np.sum(np.multiply(np.square(np.abs(current_matrix_elems)), weight))
             sigma_re_two_sided_int = 2 * sigma_one_sided_int
 
         if print_results:
-            tend = time.perf_counter()
+            tend = perf_counter()
             print("integrate_current for %d x %d matrix took %0.2f s" %
                   (omegas.shape[0], omegas.shape[0], tend - tstart))
 
@@ -578,7 +597,7 @@ class fermions(ed_base.ed_base):
         :return:
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         # normalized lorentzian function. Area is constant with changing eta
         # expected to need a factor of 1/pi here to normalize lorentzian area to 1
@@ -595,14 +614,17 @@ class fermions(ed_base.ed_base):
             thermal_mat_elem = np.square(np.abs(current_matrix_elems)).dot(np.diag(np.exp(- beta * eig_vals)))
             omegas = omegas[np.abs(current_matrix_elems) > 10 ** -16].flatten()
             thermal_mat_elem = thermal_mat_elem[np.abs(current_matrix_elems) > 10 ** -16].flatten()
-            # there is some ambiguity in how to define this function. In particular, should we put e_n-e_m or omega_start as
+            # there is some ambiguity in how to define this function. In particular,
+            # should we put e_n-e_m or omega_start as
             # the argument for the exponential and the denominator? In the limit eta -> 0, it shouldn't matter. But for
-            # finite eta, it does. This controls whether or not the matrix elements at e_m-e_n = 0 contribute to the sum
-            # or not. If we put e_m-e_n in the exponential and omega_start in the denominator, then we get rid of these
-            # elements, because this is zero (and we shouldn't evaluate omega_start = 0). If we put both as e_m-e_n, then
-            # we get a nan, which is also removed later. But we should not put them both as omega_start, because???
-            omega_fn = lambda wo, eta, w, amp: np.divide(
-                np.multiply(1 - np.exp(-beta * w), lor(wo, eta, w, amp)), wo)
+            # finite eta, it does. This controls whether the matrix elements at e_m-e_n = 0 contribute to
+            # the sum or not. If we put e_m-e_n in the exponential and omega_start in the denominator, then we
+            # get rid of these elements, because this is zero (and we shouldn't evaluate omega_start = 0).
+            # If we put both as e_m-e_n, then we get a nan, which is also removed later.
+            # But we should not put them both as omega_start, because???
+            omega_fn = lambda wo, eta, w, amp: np.divide(np.multiply(1 - np.exp(-beta * w),
+                                                                     lor(wo, eta, w, amp)),
+                                                         wo)
 
         else:
             z = 1
@@ -611,12 +633,17 @@ class fermions(ed_base.ed_base):
             omegas = omegas[np.abs(current_matrix_elems[:, 0]) > 10 ** -16].flatten()
             thermal_mat_elem = thermal_mat_elem[np.abs(current_matrix_elems[:, 0]) > 10 ** -16].flatten()
             # need to turn infs into nans to more easily get rid of
-            omega_fn = lambda wo, eta, w, amp: np.multiply(np.divide(lor(np.abs(wo), eta, w, amp), w), 1 - np.isinf(1/w))
+            omega_fn = lambda wo, eta, w, amp: np.multiply(np.divide(lor(np.abs(wo), eta, w, amp),
+                                                                     w),
+                                                           1 - np.isinf(1/w))
 
-        opt_cond_fn = lambda wo, eta: np.pi / z / self.geometry.nsites * np.nansum(omega_fn(wo, eta, omegas, thermal_mat_elem))
+        opt_cond_fn = lambda wo, eta: np.pi / z / self.geometry.nsites * np.nansum(omega_fn(wo,
+                                                                                            eta,
+                                                                                            omegas,
+                                                                                            thermal_mat_elem))
 
         if print_results:
-            tend = time.perf_counter()
+            tend = perf_counter()
             print("get_optical_cond_fn took %0.2f s" % (tend - tstart))
 
         return opt_cond_fn

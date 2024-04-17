@@ -1,13 +1,17 @@
 """
 Tools for describing geometries of small clusters and clusters arranged on regular lattices
 """
+from collections.abc import Sequence
 import numpy as np
-import os
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 
 # TODO: need to modify get reciprocal vectors for case when matrix inverse fails
 
 
-class Geometry():
+class Geometry:
     _round_decimals = 14
 
     def __init__(self,
@@ -86,7 +90,8 @@ class Geometry():
                 self.lattice.get_reduced_distance(self.xlocs, self.ylocs)
 
             self.adjacency_mat = (np.round(np.sqrt(np.square(self.xdist_mat) +
-                                                   np.square(self.ydist_mat)), self._round_decimals) == 1.).astype(float)
+                                                   np.square(self.ydist_mat)),
+                                           self._round_decimals) == 1.).astype(float)
 
             self.phase_mat = self.lattice.get_phase_mat(self.xdist_mat, self.ydist_mat)
 
@@ -116,7 +121,7 @@ class Geometry():
 
         # validate instance
         if not self.validate_instance():
-            raise Exception('Geometry instance failed validation.')
+            raise ValueError('Geometry instance failed validation.')
         # TODO: it seems like there is a problem with one of the phase mats! Problem seems to be that if we have two
         # sites and they are equally far away in 'positive' and 'negative' distance, i.e. equally far away directly
         # and through the periodic entries.c., then defining their distance is ambiguous
@@ -152,7 +157,13 @@ class Geometry():
         """
 
         # trick to generate sites using lattice even if using open boundary conditions in the end
-        lattice_helper = Lattice(latt_vect1, latt_vect2, basis_vects, periodicity_vect1, periodicity_vect2, phase1, phase2)
+        lattice_helper = Lattice(latt_vect1,
+                                 latt_vect2,
+                                 basis_vects,
+                                 periodicity_vect1,
+                                 periodicity_vect2,
+                                 phase1,
+                                 phase2)
 
         nsites, xlocs, ylocs = lattice_helper.get_unique_sites()
 
@@ -234,11 +245,11 @@ class Geometry():
 
         if nx_sites == 1 and not bc1_open:
             raise ValueError('Invalid createSquareGeometry options specified. nx_sites = 1, '
-                            'but periodic boundary conditions selected.')
+                             'but periodic boundary conditions selected.')
 
         if ny_sites == 1 and not bc2_open:
             raise ValueError('Invalid createSquareGeometry options specified. ny_sites = 1, '
-                            'but periodic boundary conditions selected.')
+                             'but periodic boundary conditions selected.')
 
         latt_vect1 = np.array([[1], [0]])
         latt_vect2 = np.array([[0], [1]])
@@ -300,12 +311,12 @@ class Geometry():
         """
 
         if n1_sites == 1 and not bc1_open:
-            raise Exception('Invalid createSquareGeometry options specified. nx_sites = 1, '
-                            'but periodic boundary conditions selected.')
+            raise ValueError('Invalid createSquareGeometry options specified. nx_sites = 1, '
+                             'but periodic boundary conditions selected.')
 
         if n2_sites == 1 and not bc2_open:
-            raise Exception('Invalid createSquareGeometry options specified. ny_sites = 1, '
-                            'but periodic boundary conditions selected.')
+            raise ValueError('Invalid createSquareGeometry options specified. ny_sites = 1, '
+                             'but periodic boundary conditions selected.')
 
         latt_vect1 = np.array([[1], [0]])
         latt_vect2 = np.array([[0.5], [np.sqrt(3)/2]])
@@ -337,12 +348,12 @@ class Geometry():
         """
 
         if n1_sites == 1 and not bc1_open:
-            raise Exception('Invalid createHexagonalGeometry options specified. n1_sites = 1, '
-                            'but periodic boundary conditions selected.')
+            raise ValueError('Invalid createHexagonalGeometry options specified. n1_sites = 1, '
+                             'but periodic boundary conditions selected.')
 
         if n2_sites == 1 and not bc2_open:
-            raise Exception('Invalid createHexagonalGeometry options specified. n2_sites = 1, '
-                            'but periodic boundary conditions selected.')
+            raise ValueError('Invalid createHexagonalGeometry options specified. n2_sites = 1, '
+                             'but periodic boundary conditions selected.')
 
         latt_vect1 = np.array([[1.5], [np.sqrt(3)/2]])
         latt_vect2 = np.array([[1.5], [-np.sqrt(3)/2]])
@@ -374,7 +385,8 @@ class Geometry():
         Sort lattice sites using a type of lexographical order
 
         :param sorting_mode: the type of sorting mode to be used. The available options are
-          'top_alternating': order sites top-to-bottom, and then alternating left-to-right then right-to-left for each row.
+          'top_alternating': order sites top-to-bottom, and then alternating left-to-right
+          then right-to-left for each row.
           'top_left': order sites top-to-bottom then left-to-right
           'bottom_right': order sites bottom-to-top, then left-to-right
           'adjacency': sort sites by the number of adjacent sites
@@ -413,8 +425,8 @@ class Geometry():
             # It doesn't matter which site we select first, but we need to choose the next site in some way based on
             # this first site.
         else:
-            raise Exception("sorting_mode must be 'top_alternating', 'top_left', 'bottom_right' or"
-                            " 'adjacency' but was %s" % sorting_mode)
+            raise ValueError(f"sorting_mode must be 'top_alternating', 'top_left', 'bottom_right' or"
+                             f" 'adjacency' but was {sorting_mode:s}")
 
         return sorted_indices
 
@@ -439,7 +451,7 @@ class Geometry():
         Determine which sites are neighbors. Two sites are neighbors if either their x or y coordinates differ by one
         (but not both).
 
-        :param xdist_mat: An nsites x nsites matrix where M[ii, jj] is the distance between sites ii and jj in the
+        :param xdist_mat: nsites x nsites matrix where M[ii, jj] is the distance between sites ii and jj in the
           x-direction
         :param ydist_mat:
         :return: is_x_neighbor, is_y_neighbor, is_neighbor
@@ -472,7 +484,7 @@ class Geometry():
         :return:
         """
         if not np.array_equal(np.array(sorted(permutation)), np.array(range(0, self.nsites))):
-            raise Exception('permutation must be a list of length nsites containing all numbers between 0 and n-1')
+            raise ValueError('permutation must be a list of length nsites containing all numbers between 0 and n-1')
         self.xlocs = self.xlocs[permutation]
         self.ylocs = self.ylocs[permutation]
 
@@ -484,7 +496,7 @@ class Geometry():
         self.phase_mat = basis_change_mat.dot(self.phase_mat.dot(basis_change_mat.transpose()))
         self.xdist_mat = basis_change_mat.dot(self.xdist_mat.dot(basis_change_mat.transpose()))
         self.ydist_mat = basis_change_mat.dot(self.ydist_mat.dot(basis_change_mat.transpose()))
-        #self.dist_reduced_multiplicity = basis_change_mat.dot(self.dist_reduced_multiplicity.dot(basis_change_mat.transpose()))
+        # self.dist_reduced_multiplicity = basis_change_mat.dot(self.dist_reduced_multiplicity.dot(basis_change_mat.transpose()))
         # self.is_x_neighbor = basis_change_mat.dot(self.is_x_neighbor.dot(basis_change_mat.transpose()))
         # self.is_y_neighbor = basis_change_mat.dot(self.is_y_neighbor.dot(basis_change_mat.transpose()))
         # self.is_neighbor = basis_change_mat.dot(self.is_neighbor.dot(basis_change_mat.transpose()))
@@ -500,10 +512,7 @@ class Geometry():
         :return:
         """
 
-        r = os.system('python -c "import matplotlib.pyplot as plt; plt.figure()"')
-        if r == 0:
-            import matplotlib.pyplot as plt
-
+        if plt:
             nsites = len(self.xlocs)
             fig_handle = plt.figure()
 
@@ -528,8 +537,8 @@ class Geometry():
             plt.title('phase matrix phase angle')
 
         else:
-            print("loading matplotlib.pyplot threw an error, so skipping dispGeometry")
-            fig_handle = 0
+            print("matplotlib was not loaded, so skipping dispGeometry")
+            fig_handle = None
 
         return fig_handle
 
@@ -573,7 +582,8 @@ class Geometry():
 
         :return:
         """
-        if not np.sum(np.round(np.abs(self.phase_mat - self.phase_mat.conj().transpose()), self._round_decimals) == 0) == self.phase_mat.size:
+        if not np.sum(np.round(np.abs(self.phase_mat - self.phase_mat.conj().transpose()),
+                               self._round_decimals) == 0) == self.phase_mat.size:
             # ensure symmetric under conjugate transpose
             return False
         if not np.sum(np.round(np.abs(self.phase_mat), self._round_decimals) == 1) == self.phase_mat.size:
@@ -599,9 +609,9 @@ class Geometry():
         """
         # np.array_equal(self.dist_reduced_multiplicity, other.dist_reduced_multiplicity) and \
         if np.array_equal(self.xdist_mat, other.xdist_mat) and \
-            np.array_equal(self.ydist_mat, other.ydist_mat) and \
-            np.array_equal(self.adjacency_mat, other.adjacency_mat) and \
-            self.lattice == other.lattice:
+           np.array_equal(self.ydist_mat, other.ydist_mat) and \
+           np.array_equal(self.adjacency_mat, other.adjacency_mat) and \
+           self.lattice == other.lattice:
             return True
         else:
             return False
@@ -628,22 +638,22 @@ class Geometry():
     def __ne__(self, other):
         """
         Test if two geometry instances are not equal. Note that if this method is not explicitly defined, it does not
-        return the opposite of __eq__. Therefore it is necessary to define it.
+        return the opposite of __eq__. Therefore, it is necessary to define it.
         :param other:
         :return:
         """
         return not self.__eq__(other)
 
 
-class Lattice():
+class Lattice:
     _round_decimals = 14
 
     def __init__(self,
                  lattice_vect1,
                  lattice_vect2,
                  basis_vects=[[0, 0]],
-                 periodicity_vect1: tuple = (0, 0),
-                 periodicity_vect2: tuple = (0, 0),
+                 periodicity_vect1: Sequence = (0, 0),
+                 periodicity_vect2: Sequence = (0, 0),
                  phase1: float = 0.,
                  phase2: float = 0.):
         """
@@ -652,17 +662,20 @@ class Lattice():
         :param lattice_vect2:
         :param basis_vects: #TODO: need to change way this is handled as default argument
         :param periodicity_vect1: Cell periodicity vector 1. Given a lattice site, if you add periodicity vector 1 to
-          its coordinates, you will find yourself at an equivalent lattice site. i.e. at a lattice site that is identified
-          with the first one.
-        :param periodicity_vect2: Cell periodicity vector 2. Periodicity vectors 1 and 2 should not be linearly dependent
-        :param phase1: Phase which is picked up along reciprocal vector 1. Useful for imposing twisted boundary conditions
+          its coordinates, you will find yourself at an equivalent lattice site. i.e. at a lattice site that is
+          identified with the first one.
+        :param periodicity_vect2: Cell periodicity vector 2. Periodicity vectors 1 and 2 should not be
+          linearly dependent
+        :param phase1: Phase which is picked up along reciprocal vector 1. Useful for imposing twisted
+          boundary conditions
         :param phase2: Phase which is picked up along reciprocal vector 2
         """
         # TODO: what is the best way to represent periodicity vectors I want to ignore? Should they be zero or None?
 
         self.lattice_vect1 = ensure_column_vect(lattice_vect1).astype(float)
         self.lattice_vect2 = ensure_column_vect(lattice_vect2).astype(float)
-        self.reciprocal_latt_vect1, self.reciprocal_latt_vect2 = get_reciprocal_vects(self.lattice_vect1, self.lattice_vect2)
+        self.reciprocal_latt_vect1, self.reciprocal_latt_vect2 = get_reciprocal_vects(self.lattice_vect1,
+                                                                                      self.lattice_vect2)
 
         self.basis_vects = [ensure_column_vect(v) for v in basis_vects]
 
@@ -675,7 +688,7 @@ class Lattice():
         self.phase2 = phase2
 
         if not self.validate_instance():
-            raise Exception('validation failed for lattice instance.')
+            raise ValueError('validation failed for lattice instance.')
 
     def get_unique_sites(self):
         """
@@ -698,8 +711,11 @@ class Lattice():
         n = n[0, 0]
         m = m[0, 0]
 
-        _, _, i, j = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect2[0, 0],
-                                    self.periodicity_vect2[1, 0], mode='positive')
+        _, _, i, j = reduce_vectors(self.lattice_vect1,
+                                    self.lattice_vect2,
+                                    self.periodicity_vect2[0, 0],
+                                    self.periodicity_vect2[1, 0],
+                                    mode='positive')
         i = i[0, 0]
         j = j[0, 0]
 
@@ -728,11 +744,16 @@ class Lattice():
         vects = np.zeros((2, xx.size * nbasis))
         for ii in range(0, xx.size):
             for jj in range(0, nbasis):
-                vects[:, ii * nbasis + jj][:, None] = xrav[ii] * self.lattice_vect1 + yrav[ii] * self.lattice_vect2 + self.basis_vects[jj]
+                vects[:, ii * nbasis + jj][:, None] = (xrav[ii] * self.lattice_vect1 +
+                                                       yrav[ii] * self.lattice_vect2 +
+                                                       self.basis_vects[jj])
 
         # reduce to sites with periodicity unit self
-        xlocs_red, ylocs_red, _, _ = reduce_vectors(self.periodicity_vect1, self.periodicity_vect2,
-                                                vects[0, :], vects[1, :], mode='positive')
+        xlocs_red, ylocs_red, _, _ = reduce_vectors(self.periodicity_vect1,
+                                                    self.periodicity_vect2,
+                                                    vects[0, :],
+                                                    vects[1, :],
+                                                    mode='positive')
         xlocs_red = np.round(xlocs_red, self._round_decimals)
         ylocs_red = np.round(ylocs_red, self._round_decimals)
         # eliminate duplicates
@@ -765,11 +786,18 @@ class Lattice():
         for ii in range(0, nsites):
             for jj in range(0, ii):
                 xdist_min[ii, jj], ydist_min[ii, jj], _, _ = \
-                    reduce_vectors(self.periodicity_vect1, self.periodicity_vect2,
-                                   xlocs[ii] - xlocs[jj], ylocs[ii] - ylocs[jj], mode='centered')
+                    reduce_vectors(self.periodicity_vect1,
+                                   self.periodicity_vect2,
+                                   xlocs[ii] - xlocs[jj],
+                                   ylocs[ii] - ylocs[jj],
+                                   mode='centered')
+
                 _, _, latt_vect1_dist[ii, jj], latt_vect2_dist[ii, jj] = \
-                    reduce_vectors(self.lattice_vect1, self.lattice_vect2,
-                                   xdist_min[ii, jj], ydist_min[ii, jj], mode='centered')
+                    reduce_vectors(self.lattice_vect1,
+                                   self.lattice_vect2,
+                                   xdist_min[ii, jj],
+                                   ydist_min[ii, jj],
+                                   mode='centered')
 
                 xdist_min[jj, ii] = - xdist_min[ii, jj]
                 ydist_min[jj, ii] = - ydist_min[ii, jj]
@@ -852,8 +880,11 @@ class Lattice():
         if not np.array_equiv(xred_p1, 0) and np.array_equiv(yred_p1, 0):
             return False
 
-        xred_p2, yred_p2, _, _ = reduce_vectors(self.lattice_vect1, self.lattice_vect2, self.periodicity_vect2[0, 0],
-                                                self.periodicity_vect2[1, 0], mode='positive')
+        xred_p2, yred_p2, _, _ = reduce_vectors(self.lattice_vect1,
+                                                self.lattice_vect2,
+                                                self.periodicity_vect2[0, 0],
+                                                self.periodicity_vect2[1, 0],
+                                                mode='positive')
         if not np.array_equiv(xred_p2, 0) and np.array_equiv(yred_p2, 0):
             return False
 
@@ -891,9 +922,9 @@ class Lattice():
         norm2 = np.sqrt(self.periodicity_vect2.transpose().dot(self.periodicity_vect2))
         det = self.periodicity_vect1[0] * self.periodicity_vect2[1] - self.periodicity_vect1[1] * \
                                                                       self.periodicity_vect2[0]
-        if not np.round(norm1, self._round_decimals) == 0 and not \
-               np.round(norm2, self._round_decimals) == 0 and \
-               np.round(det, self._round_decimals) == 0:
+        if (not np.round(norm1, self._round_decimals) == 0 and
+            not np.round(norm2, self._round_decimals) == 0 and
+            np.round(det, self._round_decimals) == 0):
             # i.e. if our periodicity vectors are linearly dependent but non-zero
             return False
         return True
@@ -942,7 +973,8 @@ def get_reciprocal_vects(vect1,
             reciprocal_vect1 = inv_a[:, 0][:, None]
             reciprocal_vect2 = inv_a[:, 1][:, None]
         except np.linalg.LinAlgError:
-            raise Exception('vect1 and vect2 are linearly independent, so their reciprocal vectors could not be computed.')
+            raise ValueError('vect1 and vect2 are linearly independent, so their '
+                             'reciprocal vectors could not be computed.')
         # TODO: could catch singular matrix error and give more informative error
     elif np.array_equal(vect1, np.zeros((2, 1))) and not np.array_equal(vect2, np.zeros((2, 1))):
         reciprocal_vect1 = np.zeros((2, 1))
@@ -1050,7 +1082,7 @@ def reduce_vectors(vect1,
         n1s = np.round(proj1s)
         n2s = np.round(proj2s)
     else:
-        raise Exception
+        raise ValueError()
 
     vects_red = vects - np.kron(n1s, periodicity_vect1) - np.kron(n2s, periodicity_vect2)
     xs_red = vects_red[0, :]

@@ -1,17 +1,20 @@
 """
 Base class that other exact diagonalization classes inherit from
 """
-import time
+from collections.abc import Sequence
+from typing import Union, Optional
+from warnings import warn
+from time import perf_counter
 import datetime
 import os
 import ctypes
 import pickle
 import numpy as np
 from scipy.io import savemat, loadmat
-import scipy.sparse.linalg
-import scipy.linalg
+from scipy.sparse.linalg import eigsh
+from scipy.linalg import expm
 import scipy.sparse as sp
-import exact_diag.ed_geometry as geom
+from exact_diag.ed_geometry import Geometry
 
 
 class ed_base:
@@ -20,14 +23,20 @@ class ed_base:
     nbasis = 0
 
     # Pauli matrices
-    pauli_z = np.array([[1, 0], [0, -1]])
-    pauli_y = np.array([[0, -1j], [1j, 0]])
-    pauli_x = np.array([[0, 1], [1, 0]])
-    pauli_plus = np.array([[0, 1], [0, 0]])
-    pauli_minus = np.array([[0, 0], [1, 0]])
-    parity_op = np.array([[1, 0], [0, -1]])
+    pauli_z = np.array([[1, 0],
+                        [0, -1]])
+    pauli_y = np.array([[0, -1j],
+                        [1j, 0]])
+    pauli_x = np.array([[0, 1],
+                        [1, 0]])
+    pauli_plus = np.array([[0, 1],
+                           [0, 0]])
+    pauli_minus = np.array([[0, 0],
+                            [1, 0]])
+    parity_op = np.array([[1, 0],
+                          [0, -1]])
 
-    def __init__(self, geometry: geom.Geometry):
+    def __init__(self, geometry: Geometry):
         """
         Base class for exact diagonalizations. Classes for Bosons and Fermions will inherit from this class.
 
@@ -102,7 +111,7 @@ class ed_base:
         """
 
         if ctypes.sizeof(ctypes.c_voidp) == 4:
-            print("Warning: using 32-bit python. Array size is limited. Recommend switching to 64-bit")
+            warn("Warning: using 32-bit python. Array size is limited. Recommend switching to 64-bit")
 
     def get_state_vects(self, print_results: bool = False):
         pass
@@ -111,19 +120,21 @@ class ed_base:
     # Funtions to construct transformation operators
     # ########################
 
-    def get_xform_op(self, cycles, print_results: bool = False):
+    def get_xform_op(self,
+                     cycles: Sequence[Sequence[int]],
+                     print_results: bool = False):
         """
         Get transformation operator acting on our space (in same basis as Hamiltonian). Construct this by
         decomposing the transformation into cycles, and decomposing cycles into swap operations.
 
         :param cycles: A list of lists. Each sub-list is an ordered collection of sites, where one site transforms
-          into the next under the actaion of whichever symmetry transformation we are using. Determine cycles using the
+          into the next under the action of whichever symmetry transformation we are using. Determine cycles using the
           ed_geometry package function findSiteCycles
         :param print_results: Whether to print results
         :return: Sparse matrix representing transformation operator in Hilbert space.
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         trans_op = 1
         for cycle in cycles:
@@ -136,8 +147,7 @@ class ed_base:
                     trans_op = cycle_op * trans_op
 
         if print_results:
-            tend = time.perf_counter()
-            print("get_xform_op op took %0.2f s" % (tend - tstart))  # TODO find way to print a name
+            print(f"get_xform_op op took {perf_counter() - tstart:.2f}s")  # TODO find way to print a name
 
         return trans_op
 
@@ -167,7 +177,7 @@ class ed_base:
         :return: (eigvals, eigvects)
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
         if use_sparse:
             # from scipy.sparse.linalg import eigsh
             # look for eigenvalues nearest the all ground state.
@@ -175,7 +185,7 @@ class ed_base:
             offset = 100
             # runner_offset = -Energy_AllGnd
             # eigvals_temp,eigvects_temp = eigsh(self.H+runner_offset*sp.eye(self.NStates).tocsr(),neigs,which='SM')
-            eigvals_temp, eigvects_temp = scipy.sparse.linalg.eigsh(haml + offset * sp.eye(haml.shape[0]).tocsr(), neigs, which='LM')
+            eigvals_temp, eigvects_temp = eigsh(haml + offset * sp.eye(haml.shape[0]).tocsr(), neigs, which='LM')
             eigvals_temp = eigvals_temp - offset
             eigvals = eigvals_temp
             eigvects = eigvects_temp
@@ -188,8 +198,8 @@ class ed_base:
         eigvects = eigvects[:, sorted_is]
 
         if print_results:
-            tend = time.perf_counter()
-            print("Diagonalizing H of size %d x %d took %0.2f s" % (haml.shape[0], haml.shape[1], tend - tstart))
+            print(f"Diagonalizing H of size {haml.shape[0]:d} x {haml.shape[1]:d} "
+                  f"took {perf_counter() - tstart:.2f}s")
 
         return eigvals, eigvects
 
@@ -214,7 +224,7 @@ class ed_base:
         # TODO: implement this with scipy.sparse.linalg.expm??? Maybe not in this function, because that is mostly
         # useful if changing hamiltonian each timestep
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
         if initial_states.ndim == 1:
             # initial_states = initial_states[:, None]
             initial_states = np.expand_dims(initial_states, axis=1)
@@ -235,8 +245,8 @@ class ed_base:
         # init_state_fraction_in_basis = np.sum(np.multiply(init_states_projected_back.conj(),init_states_projected_back).real,0)
 
         if print_results:
-            print("Projection of initial states onto diagonalized subspace had minimum norm %0.3f" %
-                  float(np.min(init_state_fraction_in_basis)))
+            print(f"Projection of initial states onto diagonalized subspace "
+                  f"had minimum norm {float(np.min(init_state_fraction_in_basis)):.3f}")
         # normalize state...but of course doesn't make much sense if the state isn't nearly all in the subspace.
         # init_states_projected_back = init_states_projected_back/np.sqrt(Norm) #can add this back in with some manipulation,
         # but maybe not necessary?
@@ -259,13 +269,12 @@ class ed_base:
         evolved_states = np.squeeze(evolved_states)
 
         if evolved_states.ndim == 1:
-            # evolved_states = evolved_states[:, None]
             evolved_states = np.expand_dims(evolved_states, axis=1)
 
         if print_results:
-            tend = time.perf_counter()
-            print("Time evolving %d state(s) for %d time point(s) took %0.2f s" % (
-                num_init_states, times.size, tend - tstart))
+            print(f"Time evolving {num_init_states:d} state(s) "
+                  f"for {times.size:d} time point(s) "
+                  f"took {perf_counter() - tstart:.2f}s")
 
         return times, evolved_states
 
@@ -400,7 +409,7 @@ class ed_base:
 
     def get_sum_op(self,
                    op,
-                   species,
+                   species: int,
                    format: str = "fermion",
                    print_results: bool = False):
         """
@@ -414,18 +423,17 @@ class ed_base:
         """
 
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         opmat = 0
         for ii in range(0, self.geometry.nsites):
             opmat = opmat + self.get_single_site_op(ii, species, op, format=format)
         if print_results:
-            tend = time.perf_counter()
-            print("getSumOptook %0.2f s" % (tend - tstart))
+            print(f"getSumOptook {perf_counter() - tstart:.2f}s")
         return opmat.tocsr()
 
     def get_sum_op_q(self,
-                     species,
+                     species: int,
                      q_vector,
                      op,
                      format: str = "fermion",
@@ -441,7 +449,7 @@ class ed_base:
         """
 
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         qx = q_vector[0]
         qy = q_vector[1]
@@ -451,8 +459,7 @@ class ed_base:
                        self.get_single_site_op(ii, species, op, format=format)
 
         if print_results:
-            tend = time.perf_counter()
-            print("get_sum_op_q %0.2f s" % (tend - tstart))
+            print(f"get_sum_op_q {perf_counter() - tstart:.2f}s")
 
         return sum_op_q
 
@@ -487,11 +494,10 @@ class ed_base:
         :return: NumPy array of size ???
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         if states.ndim == 1:
             # TODO: can rewrite with reshape...
-            # states = states[:, None]
             states = np.expand_dims(states, axis=1)
 
         if sp.issparse(states):
@@ -499,9 +505,9 @@ class ed_base:
             exp_vals = sp.csr_matrix.sum(sp.csr_matrix.multiply(states.conj(), full_op.dot(states)), 0).real
         else:
             exp_vals = np.sum(np.multiply(states.conj(), full_op.dot(states)), 0).real
+
         if print_results:
-            tend = time.perf_counter()
-            print("get_exp_vals took %0.2f s" % (tend - tstart))
+            print(f"get_exp_vals took {perf_counter() - tstart:.2f}s")
 
         return exp_vals
 
@@ -518,14 +524,12 @@ class ed_base:
         :return: NumPy array of size number of 1 states x number of 2 states. M[i,j] = <states1[i]|states2[j]>.
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         if states1.ndim == 1:
-            # states1 = states1[:, None]
             states1 = np.expand_dims(states1, axis=1)
 
         if states2.ndim == 1:
-            # states2 = states2[:, None]
             states2 = np.expand_dims(states2, axis=1)
 
         if sp.issparse(states1):
@@ -540,8 +544,7 @@ class ed_base:
             overlaps = states1.conj().transpose().dot(states2)
 
         if print_results:
-            tend = time.perf_counter()
-            print("get_overlaps took %0.2f s" % (tend - tstart))
+            print(f"get_overlaps took {perf_counter() - tstart:.2f}s")
 
         return np.squeeze(overlaps)
 
@@ -556,10 +559,9 @@ class ed_base:
         :return: NumPy array of size numvectors, giving the norms of each column of states
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         if states.ndim == 1:
-            # states = states[:, None]
             states = np.expand_dim(states, axis=1)
 
         if sp.issparse(states):
@@ -568,8 +570,7 @@ class ed_base:
         else:
             norms = np.sum(np.multiply(states.conj(), states), 0).real
         if print_results:
-            tend = time.perf_counter()
-            print("get_norms took %0.2f s" % (tend - tstart))
+            print(f"get_norms took {perf_counter() - tstart:.2f}s")
 
         return norms
 
@@ -579,9 +580,9 @@ class ed_base:
     def get_exp_vals_sites(self,
                            states,
                            site_op,
-                           species,
-                           sites=None,
-                           projector=None,
+                           species: int,
+                           sites: Optional[Sequence[int]] = None,
+                           projector: Optional = None,
                            format: str = "fermion"):
         """
         Get single-site operator expectation value given sites
@@ -617,10 +618,10 @@ class ed_base:
                               eig_vects,
                               eig_vals,
                               site_op,
-                              species,
-                              temps,
-                              sites=None,
-                              projector=None,
+                              species: int,
+                              temps: Sequence[float],
+                              sites: Optional = None,
+                              projector: Optional = None,
                               format: str = "fermion",
                               print_results: bool = False):
         """
@@ -647,7 +648,12 @@ class ed_base:
 
         exp_vals = np.zeros((len(sites), temps.size))
         for ii, site in enumerate(sites):
-            full_op = projector * self.get_single_site_op(site, species, site_op, format=format) * projector.conj().transpose()
+            full_op = (projector *
+                       self.get_single_site_op(site,
+                                               species,
+                                               site_op,
+                                               format=format) *
+                       projector.conj().transpose())
             exp_vals[ii, :] = self.get_exp_vals_thermal(eig_vects,
                                                         full_op,
                                                         eig_vals,
@@ -658,13 +664,13 @@ class ed_base:
 
     def get_corr_sites(self,
                        states,
-                       species1,
-                       species2,
+                       species1: int,
+                       species2: int,
                        op1,
                        op2,
-                       sites1=None,
-                       sites2=None,
-                       projector=None,
+                       sites1: Optional[Sequence[int]] = None,
+                       sites2: Optional[Sequence[int]] = None,
+                       projector: Optional = None,
                        format: str = "fermion"):
         """
         Compute correlators between sites1 and sites2
@@ -709,9 +715,9 @@ class ed_base:
                                op1,
                                op2,
                                temps,
-                               sites1=None,
-                               sites2=None,
-                               projector=None,
+                               sites1: Optional[Sequence[int]] = None,
+                               sites2: Optional[Sequence[int]] = None,
+                               projector: Optional = None,
                                format: str = "fermion",
                                print_results: bool = False):
         """
@@ -770,7 +776,7 @@ class ed_base:
         """
 
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
         if states.ndim == 1:
             states = states[:, None]
 
@@ -783,8 +789,7 @@ class ed_base:
         for ii in range(0, len(projectors)):
             projections[ii, :] = self.get_exp_vals(states, projectors[ii].conj().transpose().dot(projectors[ii]))
         if print_results:
-            tend = time.perf_counter()
-            print("get_subspace_overlaps took %0.2f s" % (tend - tstart))
+            print(f"get_subspace_overlaps took {perf_counter() - tstart:.2f}s")
         return np.squeeze(projections)
 
     def get_subspace_projs(self,
@@ -802,20 +807,17 @@ class ed_base:
         :return:
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         if not sp.isspmatrix_csr(diagonal_op):
             raise Exception("diagonal_op in get_subspace_projs was not csr_matrix")
 
         opvector = sp.csr_matrix.diagonal(diagonal_op)
-        # nstates = opvector.shape[0]
         nstates = opvector.size
 
         if eig_vals is None:
             eig_vals = np.unique(opvector)
 
-        # if isinstance(eig_vals, (int, float)):
-        #     eig_vals = np.array([eig_vals])
         eig_vals = np.array(eig_vals)
         if eig_vals.ndim == 0:
             eig_vals = eig_vals[None]
@@ -827,8 +829,7 @@ class ed_base:
             projs.append(sp.csr_matrix((np.ones(indices.size), (np.arange(0, indices.size), indices)),
                                        shape=(indices.size, nstates)))
         if print_results:
-            tend = time.perf_counter()
-            print("get_subspace_projs took %0.2f s" % (tend - tstart))
+            print(f"get_subspace_projs took {perf_counter() - tstart}s")
 
         return projs, eig_vals
 
@@ -853,13 +854,16 @@ class ed_base:
         :return:
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
         # TODO: make capable of handling a vector of temperatures at once
         temps = np.asarray(temps, dtype=float)
         if temps.size > 1:
             thermal_exp_vals = np.zeros(temps.size)
             for ii in range(0, temps.size):
-                thermal_exp_vals[ii] = self.get_exp_vals_thermal(eig_vects, op, eig_vals, temps[ii],
+                thermal_exp_vals[ii] = self.get_exp_vals_thermal(eig_vects,
+                                                                 op,
+                                                                 eig_vals,
+                                                                 temps[ii],
                                                                  print_results=print_results)
 
         else:
@@ -874,9 +878,10 @@ class ed_base:
                 thermal_exp_vals = np.sum(exp_vals) / z
 
         if print_results:
-            tend = time.perf_counter()
-            print("get_exp_vals_thermal for %d eigenvectors, %d x %d matrix and %d temps took %0.2f s" %
-                  (eig_vects.shape[0], op.shape[0], op.shape[0], temps.size, tend - tstart))
+            print(f"get_exp_vals_thermal for {eig_vects.shape[0]:d} eigenvectors, "
+                  f"{op.shape[0]:d} x {op.shape[0]:d} matrix "
+                  f"and %d temps took "
+                  f"{perf_counter() - tstart:.2f}s")
 
         return thermal_exp_vals
 
@@ -941,7 +946,7 @@ class ed_base:
         if beta == 0:
             return hamiltonian.shape[0]
         else:
-            return np.trace(scipy.linalg.expm(- beta * hamiltonian).toarray().real)
+            return np.trace(expm(- beta * hamiltonian).toarray().real)
 
     def get_partition_fn_sectors(self,
                                  energies_sectors: list,
@@ -1017,7 +1022,6 @@ class ed_base:
 
             # so we can work on arbitrary extra dimensions, need to have at least a singleton third dimension
             if expvals_sectors.ndim == 2:
-                # expvals_sectors = expvals_sectors[:, :, None]
                 expvals_sectors = np.expand_dims(expvals_sectors, axis=2)
             # get shape for all except temperature
             shape = list(expvals_sectors.shape)
@@ -1025,7 +1029,6 @@ class ed_base:
 
             thermal_exp_vals = np.zeros(([temps.size] + shape[1:]))
             for ii in range(0, temps.size):
-                # expvals_sectors_temp = np.zeros((shape))
                 expvals_sectors_temp = expvals_sectors[:, ii, :]
                 thermal_exp_vals[ii, :] = self.thermal_avg_combine_sectors(expvals_sectors_temp,
                                                                            eigvals_sectors, temps[ii])
@@ -1053,15 +1056,15 @@ class ed_base:
         """
 
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         # a, entries = np.meshgrid(eig_vals, eig_vals)
         # omegas = entries - a #energy difference between eigenvalues for matrix element
         matrix_elems = eig_vects.conj().transpose().dot(op.dot(eig_vects))
 
         if print_results:
-            tend = time.perf_counter()
-            print("get_matrix_elems for %dx%d matrix took %0.2f s" % (op.shape[0], op.shape[0], tend - tstart))
+            print(f"get_matrix_elems for {op.shape[0]:d} x {op.shape[0]:d} matrix "
+                  f"took {perf_counter() - tstart:.2f}s")
 
         return matrix_elems
 
@@ -1085,7 +1088,7 @@ class ed_base:
         :return:
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         if format == "boson":
             factor = -1
@@ -1123,8 +1126,8 @@ class ed_base:
 
         max_imag = np.abs(thermal_mat_elem.imag).max()
         if max_imag > 1e-16:
-            print("warning, maximum imaginary part of Anm*Bmn = %g" % max_imag)
-            print("maximum real part of Anm*Bmn = %g" % np.abs(thermal_mat_elem.real).max())
+            print(f"warning, maximum imaginary part of Anm*Bmn = {max_imag:g}")
+            print(f"maximum real part of Anm*Bmn = {np.abs(thermal_mat_elem.real).max():g}")
 
         thermal_mat_elem = thermal_mat_elem.real
         omegas = omegas.flatten()
@@ -1133,8 +1136,7 @@ class ed_base:
         response_fn_imag_part = lambda wo, eta: np.pi / z * np.nansum(omega_fn(wo, eta, omegas, thermal_mat_elem))
 
         if print_results:
-            tend = time.perf_counter()
-            print("get_response_fn_retarded took %0.2f s" % (tend - tstart))
+            print(f"get_response_fn_retarded took {perf_counter() - tstart}s")
 
         return response_fn_imag_part
 
@@ -1156,7 +1158,7 @@ class ed_base:
         :return:
         """
         if print_results:
-            tstart = time.perf_counter()
+            tstart = perf_counter()
 
         # normalized lorentzian function. Area is constant with changing eta
         # expected to need a factor of 1/pi here to normalize lorentzian area to 1
@@ -1195,8 +1197,7 @@ class ed_base:
                                                             (np.nansum(omega_fn(wo, eta, -omegas, thermal_mat_elem_b))))
 
         if print_results:
-            tend = time.perf_counter()
-            print("get_optical_cond_fn took %0.2f s" % (tend - tstart))
+            print(f"get_optical_cond_fn took {perf_counter() - tstart:.2f}s")
 
         return response_fn_imag_part
     # ########################
@@ -1213,7 +1214,7 @@ class ed_base:
         """
         if file_name is None:
             today_str = datetime.datetime.today().strftime('%Y-%m-%d_%H;%M;%S')
-            file_name = "%s_ed.pkl" % today_str
+            file_name = f"{today_str:s}_ed.pkl"
 
         _, ext = os.path.splitext(file_name)
 
@@ -1224,9 +1225,9 @@ class ed_base:
                 # TODO implement savesparse. What does that mean?
                 pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         else:
-            print("Extension %s not understood" % ext)
-            return ''
-        print("Saved file to %s" % file_name)
+            raise ValueError(f"Extension '{ext:s}' is not supported")
+
+        print(f"Saved file to {file_name:s}")
         return file_name
 
     def load(self,
@@ -1248,13 +1249,13 @@ class ed_base:
                 if key[0:2] != '__':
                     self.__dict__.update({key: val})
                 else:
-                    print("Skipped key %s while loading to class from file" % key)
+                    print(f"Skipped key {key:s} while loading to class from file")
 
         elif ext == '.pkl':
             with open(file_name, 'rb') as inputFile:
                 loaded = pickle.load(inputFile)
             self.__dict__ = loaded.__dict__
         else:
-            print("Extension %s not understood" % ext)
-            loaded = {}
+            raise ValueError(f"Extension '{ext:s}' is not supported")
+
         return loaded

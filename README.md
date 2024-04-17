@@ -58,13 +58,6 @@ Some tools for working with Green's functions, and transforming between various 
 ### [examples](examples)
 This directory contains various examples which make use of the exact diagonalization code
 
-### [docs](docs)
-[sphinx](https://www.sphinx-doc.org/en/master/) documentation
-describing the `exact_diag` project. To build the documentation locally
-first ensure sphinx is installed (`pip install sphinx`). Then navigate to
-this folder and run `make html`. Open the html documentation
-by double clicking on `docs/_build/html/index.html`
-
 ### [unittests](unittests)
 This directory contains various unittests for comparing exact diagonalization results with published data,
 and checking that the symmetry operators work appropriately. To test
@@ -76,3 +69,11 @@ python -m unittest geom_unittest.py
 ### [cluster](cluster)
 This directory contains code that was used run exact diagonalizations
 scripts on Princeton Physics Feynman cluster using Slurm
+
+## Documentation
+Documentation is generated from function docstrings and the files in `doc` using 
+[sphinx](https://www.sphinx-doc.org/en/master/). To build the html version, navigate to docs and run
+```
+make html
+```
+Then open `docs/_build/html/index.html` in your browser

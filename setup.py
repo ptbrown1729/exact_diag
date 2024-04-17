@@ -12,5 +12,6 @@ setup(
     python_requires='>=3.9',
     install_requires=["numpy",
                       "scipy"],
-    extras_require={"display": ["matplotlib"]}
+    extras_require={"display": ["matplotlib"],
+                    "dev": ["sphinx"]}
 )

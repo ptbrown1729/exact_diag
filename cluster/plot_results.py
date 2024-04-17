@@ -85,5 +85,6 @@ def plot_results(fname_data):
 
     return fig_handle
 
+
 if __name__ == "__main__":
     plot_results(sys.argv[1])

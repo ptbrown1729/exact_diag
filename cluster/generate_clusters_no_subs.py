@@ -2,9 +2,11 @@ import pickle
 import os
 import sys
 import time
-import ed_nlce
+from exact_diag import ed_nlce
 
-def generate_clusters_no_subs(fname_cluster_dat, max_cluster_order):
+
+def generate_clusters_no_subs(fname_cluster_dat,
+                              max_cluster_order):
 
     # if data file already exists, read number of clusters and return
     if os.path.isfile(fname_cluster_dat):
@@ -23,6 +25,7 @@ def generate_clusters_no_subs(fname_cluster_dat, max_cluster_order):
         pickle.dump(data_clusters, f)
 
     return len(clusters_list)
+
 
 if __name__ == "__main__":
     output_fname = sys.argv[1]

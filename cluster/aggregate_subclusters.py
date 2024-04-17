@@ -4,7 +4,8 @@ import glob
 import re
 import numpy as np
 import scipy.sparse as sp
-import ed_nlce
+from exact_diag import ed_nlce
+
 
 def aggregate_subclusters(file_pattern, fname_out, fname_in):
 
@@ -16,7 +17,8 @@ def aggregate_subclusters(file_pattern, fname_out, fname_in):
     # load diagonalized cluster files_out
     files = glob.glob(file_pattern)
     if len(files) != nclusters:
-        raise Exception('number of cluster data files_out is not equal to the number of clusters. %d data files_out and %d clusters.', len(files), nclusters)
+        raise Exception('number of cluster data files_out is not equal to the number of clusters. '
+                        '%d data files_out and %d clusters.', len(files), nclusters)
     print("found %d files_out matching %s" % (len(files), file_pattern))
 
     # sort these by number ... currently this is fragile because I'm assuming that there are no other

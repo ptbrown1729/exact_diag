@@ -4,16 +4,11 @@ Eta mode calculations for attractive Hubbard model
 """
 
 import time
-import datetime
-import os.path
 import numpy as np
-import scipy.linalg
-import scipy.integrate
-import scipy.sparse as sp
+from scipy.linalg import expm
 import matplotlib.pyplot as plt
-from exact_diag import ed_spins
-import exact_diag.ed_geometry as geom
-import exact_diag.ed_symmetry as symm
+from exact_diag.ed_spins import spinSystem
+from exact_diag.ed_geometry import Geometry
 
 # parameters
 save_results = False
@@ -29,7 +24,7 @@ phi2 = 0
 
 nx = 10
 ny = 1
-gm = geom.Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc1_open, bc2_open)
+gm = Geometry.createSquareGeometry(nx, ny, phi1, phi2, bc1_open, bc2_open)
 
 # at first confused because setting one j direction to one and the others to zero gave different results
 # for different choices of directions. For example, jz = 1 has perfect staggered magnetization, but jx = 1 has
@@ -52,7 +47,7 @@ print("hz = %0.2f" % hz)
 print("larmor period_exp = %0.2f" % larmor_period)
 # factor of two based on my convention for hamiltonian = 0.5 *\sum sigma*sigma * 2 * \sum spin*spin
 
-ss = ed_spins.spinSystem(gm, jx, jy, jz, hx, hy, hz)
+ss = spinSystem(gm, jx, jy, jz, hx, hy, hz)
 
 hamiltonian = ss.createH(projector=None, print_results=print_all)
 eigvals, eigvects = ss.diagH(hamiltonian)
@@ -198,8 +193,8 @@ plt.draw()
 # is the superfluid gap phase changing, and the nutation is the fluctuating charge density wave order
 angle = np.pi/ 2.
 rot_axis_op = ss.pauli_y
-spin_rot_op_even = scipy.linalg.expm(1j * rot_axis_op * angle)
-spin_rot_op_odd = scipy.linalg.expm(1j * rot_axis_op * angle)
+spin_rot_op_even = expm(1j * rot_axis_op * angle)
+spin_rot_op_odd = expm(1j * rot_axis_op * angle)
 s_alt_rot_op = ss.getSingleSiteOp(0, ss.geometry.nsites, spin_rot_op_even, format="boson")
 for ii in range(1, ss.geometry.nsites):
     if np.mod(ii, 2) == 0:

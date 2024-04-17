@@ -9,7 +9,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from exact_diag import ed_fermions
-import exact_diag.ed_geometry as geom
+from exact_diag.ed_geometry import Geometry
 import exact_diag.ed_symmetry as symm
 import exact_diag.fermi_gas as fg
 
@@ -36,7 +36,7 @@ betas[temps == 0] = np.inf
 ints = np.linspace(0, 5, 5) * t
 ints = np.concatenate((-np.flip(ints), ints[1:]))
 
-gm = geom.Geometry.createSquareGeometry(nsites, 1, 0, 0, bc1_open=False, bc2_open=True)
+gm = Geometry.createSquareGeometry(nsites, 1, 0, 0, bc1_open=False, bc2_open=True)
 
 # translational symmetry
 # xtransl_fn = symm.getTranslFn(np.array([[1], [0]]))
@@ -58,8 +58,16 @@ for ii, U in enumerate(ints):
     # get single-site expectation values for ground state
     exps[ii, :, :], _ = sf.get_thermal_exp_sites(eig_vects, eig_vals, sf.n_op, 0, temps, format="boson")
     # get correlations
-    corrs, _, _ = sf.get_thermal_corr_sites(eig_vects, eig_vals, 0, 0, sf.n_op, sf.n_op, temps, sites1=np.zeros(gm.nsites),
-                                                      sites2=np.arange(0, gm.nsites, 1), format="boson")
+    corrs, _, _ = sf.get_thermal_corr_sites(eig_vects,
+                                            eig_vals,
+                                            0,
+                                            0,
+                                            sf.n_op,
+                                            sf.n_op,
+                                            temps,
+                                            sites1=np.zeros(gm.nsites),
+                                            sites2=np.arange(0, gm.nsites, 1),
+                                            format="boson")
 
     corrs_all[ii, :, :] = corrs
 
@@ -71,7 +79,12 @@ for ii, U in enumerate(ints):
 corrs_nnc = corrs_allc[:, 1, :]
 corrs_nnnc = corrs_allc[:, 2, :]
 
-data = {"ints": ints, "temps": temps, "gm": gm, "corrs": corrs, "corrs_c": corrs_allc, "datetime": now_str}
+data = {"ints": ints,
+        "temps": temps,
+        "gm": gm,
+        "corrs": corrs,
+        "corrs_c": corrs_allc,
+        "datetime": now_str}
 fname = os.path.join(save_dir, "%s_spinless_fermion_chain_nsites=%d_pickle.dat" % (now_str, gm.nsites))
 with open(fname, 'wb') as f:
     pickle.dump(data, f)

@@ -292,10 +292,10 @@ class ed_base:
         with higher spin indexes further to the left, and then by site indexing, with higher site index further to the
         left within each spin index.
 
-        :param spinful_site_index: Int, site index = {0,...nsites-1}
-        :param n_physical_sites: Int, total number of physical sites
-        :param spin_index: Int, spin state. |Down> = 0, |Up> = 1. Can also have more spin states.
-        :return: "spinless" index
+        :param spinful_site_index: site index = {0,...nsites-1}
+        :param n_physical_sites: total number of physical sites
+        :param spin_index: spin state. |Down> = 0, |Up> = 1. Can also have more spin states.
+        :return spinless_index:
         """
         return n_physical_sites * spin_index + spinful_site_index
 

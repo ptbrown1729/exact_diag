@@ -427,9 +427,9 @@ def fg_mu(beta,
     :param density:
     :param nsites:
     :param dim:
-    :return:
-    # TODO: this still fails at T = 0 and low T near half-filling
+    :return mu:
     """
+    # TODO: this still fails at T = 0 and low T near half-filling
 
     beta = np.asarray(beta)
     if beta.ndim == 0:
@@ -446,8 +446,8 @@ def fg_mu(beta,
     elif beta.size == density.size:
         pass
     else:
-        raise Exception(
-            'n and beta must be the same size, or one of them should be a single number and the other an array.')
+        raise ValueError('n and beta must be the same size, or one of them should be a single number'
+                         ' and the other an array.')
 
     if beta.size > 1:
         mu = np.zeros(beta.shape)

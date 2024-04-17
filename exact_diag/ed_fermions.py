@@ -183,7 +183,7 @@ class fermions(ed_base):
 
         :param projector:
         :param print_results:
-        :return: NumPy array of size 2 ** nsites x nsites describing each basis state in the tensor product spin space.
+        :return state_spin_labels, text_labels: NumPy array of size 2 ** nsites x nsites describing each basis state in the tensor product spin space.
           Each row represents the spins for a given state according to |up> = 1, |down> = 0 on the site corresponding
           to the column index.
         """
